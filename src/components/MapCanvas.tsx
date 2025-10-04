@@ -78,13 +78,13 @@ export default function MapCanvas() {
       initialViewState={INITIAL_VIEW_STATE}
       controller={true}
       layers={layers}
-      style={{ position: 'absolute', inset: 0 }}
+      style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
     >
       <Map
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/dark-v11"
         reuseMaps
-        style={{ position: 'absolute', inset: 0 }}
+        style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
       />
     </DeckGL>
   );
