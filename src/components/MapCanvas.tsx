@@ -6,6 +6,23 @@ import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM } from '@/lib/data/loaders';
 
+// TypeScript interfaces for our GTFS data
+interface RouteFeature extends GeoJSON.Feature<GeoJSON.LineString> {
+  properties: {
+    route_id: string;
+    shape_id: string;
+    route_short_name: string | null;
+    route_long_name: string | null;
+  };
+}
+
+interface StopFeature extends GeoJSON.Feature<GeoJSON.Point> {
+  properties: {
+    stop_id: string;
+    name: string;
+  };
+}
+
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 const INITIAL_VIEW_STATE = {
@@ -17,16 +34,16 @@ const INITIAL_VIEW_STATE = {
 };
 
 export default function MapCanvas() {
-  const [shapes, setShapes] = useState<any[]>([]);
-  const [stops, setStops] = useState<any[]>([]);
+  const [shapes, setShapes] = useState<RouteFeature[]>([]);
+  const [stops, setStops] = useState<StopFeature[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const shapesFC = await fetchShapesKCM();
         const stopsFC = await fetchStopsKCM();
-        setShapes(shapesFC.features as any);
-        setStops(stopsFC.features as any);
+        setShapes(shapesFC.features as RouteFeature[]);
+        setStops(stopsFC.features as StopFeature[]);
       } catch (error) {
         console.error('Failed to load GTFS data:', error);
       }
