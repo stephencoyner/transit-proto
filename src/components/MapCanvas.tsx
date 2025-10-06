@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
@@ -10,6 +10,7 @@ const HopthruIcon = '/icons/hopthru.svg';
 const SystemIcon = '/icons/system.svg';
 const RoutesIcon = '/icons/routes.svg';
 const StopsIcon = '/icons/stops.svg';
+const DropdownArrowIcon = '/icons/dropdown-arrow.svg';
 
 // TypeScript interfaces for our GTFS data
 interface RouteFeature extends GeoJSON.Feature<GeoJSON.LineString> {
@@ -69,10 +70,93 @@ export default function MapCanvas() {
   const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
+  const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'metric' | null>(null);
+  
+  // Refs for the filter elements and panel
+  const dateRef = useRef<HTMLDivElement | null>(null);
+  const daysRef = useRef<HTMLDivElement | null>(null);
+  const metricRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  
+  // State for panel position
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Add hover state tracking for filters and button
+  const [isDateHovered, setIsDateHovered] = useState(false);
+  const [isDaysHovered, setIsDaysHovered] = useState(false);
+  const [isCompareHovered, setIsCompareHovered] = useState(false);
+  const [isMetricHovered, setIsMetricHovered] = useState(false);
 
   // Determine what to show based on active tab
   const showRoutes = activeTab === 'system' || activeTab === 'routes';
   const showStops = activeTab === 'stops';
+
+  // Function to update panel position based on which filter is open
+  const updatePanelPosition = () => {
+    const GAP = 8; // 8px gap between filter and panel
+    const trigger =
+      openFilter === 'date' ? dateRef.current :
+      openFilter === 'days' ? daysRef.current :
+      openFilter === 'metric' ? metricRef.current :
+      null;
+
+    if (!trigger) return setPanelPos(null);
+
+    const rect = trigger.getBoundingClientRect(); // Get viewport coordinates
+    setPanelPos({
+      top: rect.top,           // Align tops
+      left: rect.right + GAP,  // Right edge of trigger + gap
+    });
+  };
+
+  // Update position when filter opens/closes
+  useLayoutEffect(() => {
+    if (openFilter) {
+      updatePanelPosition();
+    } else {
+      setPanelPos(null);
+    }
+  }, [openFilter]);
+
+  // Recompute on resize
+  useEffect(() => {
+    const onResize = () => {
+      if (openFilter) updatePanelPosition();
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [openFilter]);
+
+  // Outside click handler to close the panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside both the panel and the filter triggers
+      if (
+        openFilter &&
+        panelRef.current &&
+        !panelRef.current.contains(event.target as Node) &&
+        dateRef.current &&
+        !dateRef.current.contains(event.target as Node) &&
+        daysRef.current &&
+        !daysRef.current.contains(event.target as Node) &&
+        metricRef.current &&
+        !metricRef.current.contains(event.target as Node)
+      ) {
+        setOpenFilter(null);
+      }
+    };
+
+    if (openFilter) {
+      // Add listener with a slight delay to avoid immediate closing
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openFilter]);
 
   useEffect(() => {
     (async () => {
@@ -360,7 +444,7 @@ export default function MapCanvas() {
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                padding: '0px 0'
+                padding: '0px 0 16px 0'
               }}>
                 <button
                   onClick={() => setActiveTab('system')}
@@ -463,74 +547,188 @@ export default function MapCanvas() {
           </button>
         </div>
 
-        {/* Content Area */}
+        {/* Filter Section */}
         <div style={{
-          flex: 1,
-          padding: '20px',
-          overflow: 'auto'
+          padding: '16px 12px 24px 12px',
+          borderTop: '1px solid #e0e0e0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px' // Space between the two separate filters
         }}>
-          {activeTab === 'system' && (
-            <div>
-              <h3 style={{ 
-                margin: '0 0 16px 0', 
-                fontSize: '16px', 
-                fontFamily: 'Inter, sans-serif',
-                color: '#333'
-              }}>
-                System Overview
-              </h3>
-              <p style={{ 
-                margin: '0 0 16px 0', 
-                fontSize: '14px', 
-                color: '#666',
-                fontFamily: 'Inter, sans-serif'
-              }}>
-                View all transit routes across the system.
-              </p>
-            </div>
-          )}
-          {activeTab === 'routes' && (
-            <div>
-              <h3 style={{ 
-                margin: '0 0 16px 0', 
-                fontSize: '16px', 
-                fontFamily: 'Inter, sans-serif',
-                color: '#333'
-              }}>
-                Route Details
-              </h3>
-              <p style={{ 
-                margin: '0 0 16px 0', 
-                fontSize: '14px', 
-                color: '#666',
-                fontFamily: 'Inter, sans-serif'
-              }}>
-                Explore individual routes and their stops.
-              </p>
-            </div>
-          )}
-          {activeTab === 'stops' && (
-            <div>
-              <h3 style={{ 
-                margin: '0 0 16px 0', 
-                fontSize: '16px', 
-                fontFamily: 'Inter, sans-serif',
-                color: '#333'
-              }}>
-                Stop Information
-              </h3>
-              <p style={{ 
-                margin: '0 0 16px 0', 
-                fontSize: '14px', 
-                color: '#666',
-                fontFamily: 'Inter, sans-serif'
-              }}>
-                View all transit stops in the system.
-              </p>
-            </div>
-          )}
+          {/* Date Range Filter */}
+          <div 
+            ref={dateRef}
+            onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+            onMouseEnter={() => setIsDateHovered(true)}
+            onMouseLeave={() => setIsDateHovered(false)}
+            style={{
+              backgroundColor: openFilter === 'date' ? '#E8E8E8' : (isDateHovered ? '#E8E8E8' : '#FFFFFF'),
+              border: openFilter === 'date' ? '1.5px solid #000000' : '1px solid #D9D9D9',
+              borderRadius: '20px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              color: '#333',
+              userSelect: 'none',
+              transition: 'background-color 0.2s ease',
+              boxSizing: 'border-box'
+            }}
+          >
+            <span>Summer Service 2025</span>
+            <img
+              src={DropdownArrowIcon}
+              alt="Dropdown"
+              style={{
+                width: '24px',
+                height: '24px',
+                transform: openFilter === 'date' ? 'rotate(-90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease'
+              }}
+            />
+          </div>
+
+          {/* Days of Week Filter */}
+          <div 
+            ref={daysRef}
+            onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+            onMouseEnter={() => setIsDaysHovered(true)}
+            onMouseLeave={() => setIsDaysHovered(false)}
+            style={{
+              backgroundColor: openFilter === 'days' ? '#E8E8E8' : (isDaysHovered ? '#E8E8E8' : '#FFFFFF'),
+              border: openFilter === 'days' ? '1.5px solid #000000' : '1px solid #D9D9D9',
+              borderRadius: '20px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              color: '#333',
+              userSelect: 'none',
+              transition: 'background-color 0.2s ease',
+              boxSizing: 'border-box'
+            }}
+          >
+            <span>Weekdays • All Day</span>
+            <img
+              src={DropdownArrowIcon}
+              alt="Dropdown"
+              style={{
+                width: '24px',
+                height: '24px',
+                transform: openFilter === 'days' ? 'rotate(-90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease'
+              }}
+            />
+          </div>
+
+          {/* Compare Button */}
+          <button
+            onClick={() => {
+              // Add compare functionality here
+              console.log('Compare clicked');
+            }}
+            onMouseEnter={() => setIsCompareHovered(true)}
+            onMouseLeave={() => setIsCompareHovered(false)}
+            style={{
+              height: '28px',
+              padding: '0 20px',
+              backgroundColor: isCompareHovered ? '#E8E8E8' : '#FFFFFF',
+              border: '1px solid #D9D9D9',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              color: '#333',
+              userSelect: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              alignSelf: 'flex-start',
+              whiteSpace: 'nowrap',
+              transition: 'background-color 0.2s ease'
+            }}
+          >
+            Compare
+          </button>
+
+          {/* Metric Filter */}
+          <div 
+            ref={metricRef}
+            onClick={() => setOpenFilter(openFilter === 'metric' ? null : 'metric')}
+            onMouseEnter={() => setIsMetricHovered(true)}
+            onMouseLeave={() => setIsMetricHovered(false)}
+            style={{
+              backgroundColor: openFilter === 'metric' ? '#E8E8E8' : (isMetricHovered ? '#E8E8E8' : '#FFFFFF'),
+              border: openFilter === 'metric' ? '1.5px solid #000000' : '1px solid #D9D9D9',
+              borderRadius: '20px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              color: '#333',
+              userSelect: 'none',
+              transition: 'background-color 0.2s ease',
+              marginTop: '24px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <span style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flexGrow: 1,
+              marginRight: '8px'
+            }}>Average Daily Boardings</span>
+            <img
+              src={DropdownArrowIcon}
+              alt="Dropdown"
+              style={{
+                width: '24px',
+                height: '24px',
+                transform: openFilter === 'metric' ? 'rotate(-90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease'
+              }}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Open Filter Content - Overlay with Dynamic Positioning */}
+      {openFilter && panelPos && (
+        <div 
+          ref={panelRef}
+          style={{
+            position: 'fixed',
+            top: `${panelPos.top}px`,
+            left: `${panelPos.left}px`,
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #D9D9D9',
+            borderRadius: '8px',
+            padding: '16px',
+            minHeight: '100px',
+            minWidth: '300px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            color: '#666',
+            zIndex: 2000,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
+        >
+          {openFilter === 'date' ? 'Date Filter Open' : openFilter === 'days' ? 'Days Filter Open' : 'Metric Filter Open'}
+        </div>
+      )}
 
       {/* Map Container */}
       <div style={{ 
