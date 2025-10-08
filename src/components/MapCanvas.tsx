@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
-import { fetchShapesKCM, fetchStopsKCM } from '@/lib/data/loaders';
+import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 
 // Type for bounds
@@ -96,6 +96,7 @@ const MIN_ZOOM = 8;
 export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
+  const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
   const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
@@ -205,8 +206,32 @@ export default function MapCanvas() {
     if (selectedStopId) {
       return stops.filter(stop => stop.properties.stop_id === selectedStopId);
     }
-    return stops;
-  }, [stops, selectedStopId]);
+    
+    if (selectedRouteId) {
+      // Try to find the route stops using the selected route ID
+      // First try direct match, then try to find by looking up the actual route_id
+      let routeStopIds = routeStopsMap[selectedRouteId];
+      
+      if (!routeStopIds) {
+        // If not found, selectedRouteId might be route_short_name
+        // Find the actual route_id from shapes
+        const matchingShape = shapes.find(shape => 
+          (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
+        );
+        
+        if (matchingShape) {
+          routeStopIds = routeStopsMap[matchingShape.properties.route_id];
+        }
+      }
+      
+      if (routeStopIds) {
+        return stops.filter(stop => routeStopIds.has(stop.properties.stop_id));
+      }
+    }
+    
+    // Only show all stops when in stops tab view
+    return activeTab === 'stops' ? stops : [];
+  }, [stops, selectedStopId, selectedRouteId, routeStopsMap, activeTab, shapes]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -226,8 +251,7 @@ export default function MapCanvas() {
 
   // Determine what to show based on active tab
   const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const showStops = activeTab === 'stops' || selectedStopId;
+  const showStops = activeTab === 'stops' || selectedStopId || selectedRouteId;
 
   // Helper function to calculate bounding box from features (MultiLineString-safe)
   const calculateBounds = (features: RouteFeature[]) => {
@@ -468,10 +492,13 @@ export default function MapCanvas() {
       try {
         const shapesFC = await fetchShapesKCM();
         const stopsFC = await fetchStopsKCM();
+        const routeStopsData = await fetchRouteStopsMap();
+        
         const routeFeatures = shapesFC.features as RouteFeature[];
         const stopFeatures = stopsFC.features as StopFeature[];
         setShapes(routeFeatures);
         setStops(stopFeatures);
+        setRouteStopsMap(routeStopsData);
 
         if (routeFeatures.length > 0) {
           // get container size
@@ -532,6 +559,11 @@ export default function MapCanvas() {
         getPath: (d) => d.path,
         getWidth: 9,
         getColor: (d) => {
+          // If a route is selected (detail view), show it in black with 30% opacity
+          if (selectedRouteId) {
+            return [0, 0, 0, 77]; // Black at 30% opacity (255 * 0.3 = 77)
+          }
+          // Otherwise use the color scheme
           const color = getColorForId(d.properties.route_id);
           return [...color, 200]; // Add alpha for transparency
         },
@@ -648,7 +680,7 @@ export default function MapCanvas() {
   }
   
   // Conditionally add stops layer
-  if (!showRoutes) {
+  if (showStops) {
     // Base stops layers
     layers.push(
         // Colored border layer (outer ring)
