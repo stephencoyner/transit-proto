@@ -178,7 +178,7 @@ export default function MapCanvas() {
         };
       }
     });
-    return Object.values(uniqueRoutes).sort((a: any, b: any) => b.value - a.value);
+    return Object.values(uniqueRoutes).sort((a, b) => b.value - a.value);
   }, [shapes]);
 
   // Extract stops data with mock values
@@ -187,7 +187,7 @@ export default function MapCanvas() {
       id: stop.properties.stop_id,
       name: stop.properties.name,
       value: Math.floor(Math.random() * 500) + 50
-    })).sort((a: any, b: any) => b.value - a.value);
+    })).sort((a, b) => b.value - a.value);
   }, [stops]);
 
   // Filter data based on selection
@@ -210,6 +210,7 @@ export default function MapCanvas() {
 
   // Determine what to show based on active tab
   const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const showStops = activeTab === 'stops' || selectedStopId;
 
   // Helper function to calculate bounding box from features (MultiLineString-safe)
@@ -319,7 +320,7 @@ export default function MapCanvas() {
   const getQuickPickDateRange = (quickPick: string) => {
     const today = new Date();
     let startDate: Date;
-    let endDate = today;
+    const endDate = today;
 
     switch (quickPick) {
       case 'Last 7 days':
