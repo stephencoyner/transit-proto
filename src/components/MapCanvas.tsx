@@ -27,7 +27,7 @@ import ChevronLeftIcon from '@/components/Icons/Chevron_Left.svg';
 import ChevronRightIcon from '@/components/Icons/Chevron_Right.svg';
 
 // TypeScript interfaces for our GTFS data
-interface RouteFeature extends GeoJSON.Feature<GeoJSON.LineString> {
+interface RouteFeature extends GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString> {
   properties: {
     route_id: string;
     shape_id: string;
@@ -87,8 +87,8 @@ const UI_PADDING = {
   top: 24,
   right: 24,
   bottom: 24,
-  // 240 (left rail) + 12 gap + 360 (data panel) + 12 gap
-  left: 240 + 12 + 360 + 12
+  // Only account for data panel since map container already starts after left rail
+  left: 360 + 12
 };
 const MAX_ZOOM = 16;
 const MIN_ZOOM = 8;
@@ -207,6 +207,22 @@ export default function MapCanvas() {
     }
     return stops;
   }, [stops, selectedStopId]);
+
+  // Flatten LineString & MultiLineString into plain paths for PathLayer
+  const pathGeoms = React.useMemo(() => {
+    const out: Array<{ path: number[][]; properties: RouteFeature['properties'] }> = [];
+    for (const f of filteredShapes) {
+      const g = f.geometry as GeoJSON.LineString | GeoJSON.MultiLineString;
+      if (g.type === 'LineString') {
+        out.push({ path: g.coordinates as number[][], properties: f.properties });
+      } else if (g.type === 'MultiLineString') {
+        for (const line of g.coordinates as unknown as number[][][]) {
+          out.push({ path: line, properties: f.properties });
+        }
+      }
+    }
+    return out;
+  }, [filteredShapes]);
 
   // Determine what to show based on active tab
   const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId;
@@ -512,8 +528,8 @@ export default function MapCanvas() {
     layers.push(
       new PathLayer({
         id: 'routes',
-        data: filteredShapes,
-        getPath: (d) => d.geometry.coordinates,
+        data: pathGeoms,
+        getPath: (d) => d.path,
         getWidth: 9,
         getColor: (d) => {
           const color = getColorForId(d.properties.route_id);
@@ -534,16 +550,16 @@ export default function MapCanvas() {
 
     // Hovered route layer (glowing effect)
     if (hoveredRoute) {
-      const hoveredShape = filteredShapes.find(s => s.properties.route_id === hoveredRoute);
-      if (hoveredShape) {
+      const hoveredPaths = pathGeoms.filter(p => p.properties.route_id === hoveredRoute);
+      if (hoveredPaths.length) {
         const routeColor = getColorForId(hoveredRoute);
         
         // Outer glow layer (very wide, very transparent)
         layers.push(
           new PathLayer({
             id: 'route-glow-outer',
-            data: [hoveredShape],
-            getPath: (d) => d.geometry.coordinates,
+            data: hoveredPaths,
+            getPath: (d) => d.path,
             getWidth: 20,
             getColor: [...routeColor, 40], // Very low opacity for soft glow
             widthMinPixels: 10,
@@ -556,8 +572,8 @@ export default function MapCanvas() {
         layers.push(
           new PathLayer({
             id: 'route-glow-middle',
-            data: [hoveredShape],
-            getPath: (d) => d.geometry.coordinates,
+            data: hoveredPaths,
+            getPath: (d) => d.path,
             getWidth: 14,
             getColor: [...routeColor, 80], // Medium opacity
             widthMinPixels: 7,
@@ -570,8 +586,8 @@ export default function MapCanvas() {
         layers.push(
           new PathLayer({
             id: 'route-glow-inner',
-            data: [hoveredShape],
-            getPath: (d) => d.geometry.coordinates,
+            data: hoveredPaths,
+            getPath: (d) => d.path,
             getWidth: 10,
             getColor: [...routeColor, 120], // Higher opacity
             widthMinPixels: 5,
@@ -584,8 +600,8 @@ export default function MapCanvas() {
         layers.push(
           new PathLayer({
             id: 'route-core',
-            data: [hoveredShape],
-            getPath: (d) => d.geometry.coordinates,
+            data: hoveredPaths,
+            getPath: (d) => d.path,
             getWidth: 8,
             getColor: [...routeColor, 255], // Full opacity
             widthMinPixels: 4,
