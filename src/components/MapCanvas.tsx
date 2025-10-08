@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
@@ -83,6 +83,16 @@ const INITIAL_VIEW_STATE = {
   transitionDuration: 400
 };
 
+const UI_PADDING = {
+  top: 24,
+  right: 24,
+  bottom: 24,
+  // 240 (left rail) + 12 gap + 360 (data panel) + 12 gap
+  left: 240 + 12 + 360 + 12
+};
+const MAX_ZOOM = 16;
+const MIN_ZOOM = 8;
+
 export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
@@ -101,16 +111,6 @@ export default function MapCanvas() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFittedViewRef = useRef<typeof INITIAL_VIEW_STATE | null>(null);
-  
-  const UI_PADDING = {
-    top: 24,
-    right: 24,
-    bottom: 24,
-    // 240 (left rail) + 12 gap + 360 (data panel) + 12 gap
-    left: 240 + 12 + 360 + 12
-  };
-  const MAX_ZOOM = 16;
-  const MIN_ZOOM = 8;
   
   // State for panel position
   const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
@@ -231,8 +231,8 @@ export default function MapCanvas() {
       if (g.type === 'LineString') {
         for (const c of g.coordinates) pushCoord(c as number[]);
       } else if (g.type === 'MultiLineString') {
-        for (const line of g.coordinates) {
-          for (const c of line as any) pushCoord(c as number[]);
+        for (const line of g.coordinates as unknown as number[][][]) {
+          for (const c of line) pushCoord(c);
         }
       }
     }
@@ -242,7 +242,7 @@ export default function MapCanvas() {
   };
 
   // Helper function to fit bounds using proper Mercator projection
-  const fitToBounds = (bounds: LngLatBoundsLike, size: {width: number; height: number}) => {
+  const fitToBounds = useCallback((bounds: LngLatBoundsLike, size: {width: number; height: number}) => {
     const { width, height } = size;
     const viewport = new WebMercatorViewport({ width, height });
     const { longitude, latitude, zoom } = viewport.fitBounds(bounds, {
@@ -257,7 +257,7 @@ export default function MapCanvas() {
       bearing: 0,
       transitionDuration: 400
     };
-  };
+  }, []);
 
   // Handlers for date filter tooltip
   const handleDateFilterMouseEnter = () => {
@@ -381,7 +381,7 @@ export default function MapCanvas() {
   };
 
   // Function to update panel position based on which filter is open
-  const updatePanelPosition = () => {
+  const updatePanelPosition = useCallback(() => {
     const GAP = 8; // 8px gap between filter and panel
     const trigger =
       openFilter === 'date' ? dateRef.current :
@@ -396,7 +396,7 @@ export default function MapCanvas() {
       top: rect.top,           // Align tops
       left: rect.right + GAP,  // Right edge of trigger + gap
     });
-  };
+  }, [openFilter]);
 
   // Update position when filter opens/closes
   useLayoutEffect(() => {
@@ -405,7 +405,7 @@ export default function MapCanvas() {
     } else {
       setPanelPos(null);
     }
-  }, [openFilter]);
+  }, [openFilter, updatePanelPosition]);
 
   // Recompute on resize
   useEffect(() => {
@@ -414,7 +414,7 @@ export default function MapCanvas() {
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [openFilter]);
+  }, [openFilter, updatePanelPosition]);
 
   // Outside click handler to close the panel
   useEffect(() => {
@@ -474,7 +474,7 @@ export default function MapCanvas() {
         console.error('Failed to load GTFS data:', error);
       }
     })();
-  }, []);
+  }, [fitToBounds]);
 
   // Update view state when route or stop is selected
   useEffect(() => {
@@ -502,7 +502,7 @@ export default function MapCanvas() {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
-  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops]);
+  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds]);
 
   const layers = [];
   
