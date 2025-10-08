@@ -1413,7 +1413,8 @@ export default function MapCanvas() {
 
       <DeckGL
         viewState={viewState}
-        onViewStateChange={({viewState: newViewState}: any) => setViewState(newViewState)}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onViewStateChange={(params: any) => setViewState(params.viewState)}
         controller={true}
         layers={layers}
         onHover={({ object }) => {
@@ -1484,7 +1485,7 @@ export default function MapCanvas() {
                 fontWeight: '500',
                 color: '#333'
               }}>
-                {selectedRouteId ? `Route ${selectedRouteId}` : (stopsList.find((s: any) => s.id === selectedStopId)?.name || 'Stop')}
+                {selectedRouteId ? `Route ${selectedRouteId}` : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
               </div>
             </div>
 
@@ -1528,8 +1529,8 @@ export default function MapCanvas() {
                 lineHeight: '1'
               }}>
                 {selectedRouteId 
-                  ? (routesList.find((r: any) => r.id === selectedRouteId)?.value || 0).toLocaleString()
-                  : (stopsList.find((s: any) => s.id === selectedStopId)?.value || 0).toLocaleString()
+                  ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0).toLocaleString()
+                  : (stopsList.find((s) => s.id === selectedStopId)?.value || 0).toLocaleString()
                 }
               </div>
             </div>
@@ -2002,7 +2003,7 @@ export default function MapCanvas() {
               flexDirection: 'column',
               gap: '0'
             }}>
-              {(activeTab === 'routes' ? routesList : stopsList).map((item: any, index: number) => (
+              {(activeTab === 'routes' ? routesList : stopsList).map((item, index: number) => (
                 <div 
                   key={index} 
                   onClick={() => {
