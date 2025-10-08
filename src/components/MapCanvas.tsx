@@ -104,6 +104,7 @@ export default function MapCanvas() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
+  const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
   
   // Refs for the filter elements and panel
   const dateRef = useRef<HTMLDivElement | null>(null);
@@ -136,6 +137,17 @@ export default function MapCanvas() {
   const metricTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const metricTextRef = useRef<HTMLSpanElement | null>(null);
 
+  // Tooltip state for charts
+  const [chartTooltip, setChartTooltip] = useState<{
+    show: boolean;
+    value: string;
+    label: string;
+    x: number;
+    y: number;
+    lineX?: number;
+    lineHeight?: number;
+  } | null>(null);
+
   // Date picker state
   const [datePickerMode, setDatePickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
   const [selectedYear, setSelectedYear] = useState(2020);
@@ -145,18 +157,21 @@ export default function MapCanvas() {
   // Mock data for the data panel
   const mockDataByDay = [
     { day: 'Mon', value: 18500 },
-    { day: 'Tue', value: 12000 },
-    { day: 'Wed', value: 15500 },
-    { day: 'Thu', value: 17000 },
+    { day: 'Tue', value: 19200 },
+    { day: 'Wed', value: 18800 },
+    { day: 'Thu', value: 19500 },
     { day: 'Fri', value: 24000 },
+    { day: 'Sat', value: 12000 },
+    { day: 'Sun', value: 10500 }
   ];
 
   const mockDataByPeriod = [
-    { period: 'Early AM', value: 24000 },
-    { period: 'AM Peak', value: 24000 },
-    { period: 'Afternoon', value: 24000 },
+    { period: 'Early AM', value: 8000 },
+    { period: 'AM Peak', value: 22000 },
+    { period: 'Midday', value: 14000 },
     { period: 'PM Peak', value: 24000 },
-    { period: 'Night', value: 24000 },
+    { period: 'Evening', value: 12000 },
+    { period: 'Night', value: 3000 }
   ];
 
   // Mock data for by date (line chart) - simplified
@@ -828,7 +843,11 @@ export default function MapCanvas() {
                 padding: '0px 0 16px 0'
               }}>
                 <button
-                  onClick={() => setActiveTab('system')}
+                  onClick={() => {
+                    setActiveTab('system');
+                    setSelectedRouteId(null);
+                    setSelectedStopId(null);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -861,7 +880,12 @@ export default function MapCanvas() {
             System
           </button>
                 <button
-                  onClick={() => setActiveTab('routes')}
+                  onClick={() => {
+                    setActiveTab('routes');
+                    // Clear route selection to go back to routes list
+                    setSelectedRouteId(null);
+                    setSelectedStopId(null);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -894,7 +918,12 @@ export default function MapCanvas() {
             Routes
           </button>
                 <button
-                  onClick={() => setActiveTab('stops')}
+                  onClick={() => {
+                    setActiveTab('stops');
+                    setSelectedRouteId(null);
+                    // Clear stop selection to go back to stops list
+                    setSelectedStopId(null);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1102,7 +1131,7 @@ export default function MapCanvas() {
                 flexGrow: 1,
                 marginRight: '8px'
               }}
-            >Average Daily Boardings</span>
+            >{selectedMetric}</span>
             <img
               src={DropdownArrowIcon}
               alt="Dropdown"
@@ -1130,7 +1159,7 @@ export default function MapCanvas() {
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
                 pointerEvents: 'none'
               }}>
-                Average Daily Boardings
+                {selectedMetric}
               </div>
             )}
           </div>
@@ -1440,11 +1469,60 @@ export default function MapCanvas() {
             <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
               Days Filter Open
             </div>
-          ) : (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-              Metric Filter Open
+          ) : openFilter === 'metric' ? (
+            <div style={{ 
+              padding: '0',
+              fontFamily: 'Inter, sans-serif',
+              minWidth: '280px'
+            }}>
+              {[
+                'Average daily boardings',
+                'Total boardings',
+                'Average daily alightings',
+                'Total daily boardings',
+                'Average daily activity',
+                'Total activity',
+                'Average load',
+                'Maxload'
+              ].map((metric, index, array) => (
+                <div
+                  key={metric}
+                  onClick={() => {
+                    setSelectedMetric(metric);
+                    setOpenFilter(null);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    transition: 'background-color 0.2s ease',
+                    borderRadius: '8px',
+                    margin: index === 0 ? '12px 12px 4px 12px' : (index === array.length - 1 ? '4px 12px 12px 12px' : '4px 12px'),
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F5F5F5';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {selectedMetric === metric && (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                  <span style={{ marginLeft: selectedMetric === metric ? '0' : '32px' }}>
+                    {metric}
+                  </span>
+                </div>
+              ))}
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -1529,8 +1607,8 @@ export default function MapCanvas() {
                 color: '#333'
               }}>←</div>
               <div style={{
-                fontSize: '20px',
-                fontWeight: '500',
+                fontSize: '28px',
+                fontWeight: '400',
                 color: '#333'
               }}>
                 {selectedRouteId ? `Route ${selectedRouteId}` : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
@@ -1571,7 +1649,7 @@ export default function MapCanvas() {
                 Average daily boardings
               </div>
               <div style={{
-                fontSize: '48px',
+                fontSize: '28px',
                 fontWeight: '400',
                 color: '#333',
                 lineHeight: '1'
@@ -1615,7 +1693,9 @@ export default function MapCanvas() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               fontSize: '12px',
-              color: '#999'
+              color: '#999',
+              textAlign: 'right',
+              paddingRight: '12px'
             }}>
               <div>5K</div>
               <div>4K</div>
@@ -1624,7 +1704,36 @@ export default function MapCanvas() {
               <div>1K</div>
             </div>
             {/* Chart area */}
-            <svg width="280" height="120" style={{ marginLeft: '40px' }}>
+            <svg 
+              width="280" 
+              height="120" 
+              style={{ marginLeft: '40px', cursor: 'crosshair' }}
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                
+                // Find the closest data point
+                const pointIndex = Math.round((x / 280) * (mockDataByDate.length - 1));
+                const clampedIndex = Math.max(0, Math.min(mockDataByDate.length - 1, pointIndex));
+                const value = mockDataByDate[clampedIndex];
+                const scaledValue = value * (selectedRouteId ? 0.5 : 0.05);
+                const lineX = (clampedIndex / (mockDataByDate.length - 1)) * 280;
+                
+                setChartTooltip({
+                  show: true,
+                  value: Math.round(scaledValue).toLocaleString(),
+                  label: `Day ${clampedIndex + 1}`,
+                  x: rect.left + lineX,
+                  y: rect.top,
+                  lineX: lineX,
+                  lineHeight: 120
+                });
+              }}
+              onMouseLeave={() => {
+                setChartTooltip(null);
+              }}
+            >
               {/* Grid lines */}
               {[0, 1, 2, 3, 4].map((i) => (
                 <line
@@ -1648,7 +1757,20 @@ export default function MapCanvas() {
                 fill="none"
                 stroke="#333"
                 strokeWidth="2"
+                pointerEvents="none"
               />
+              {/* Vertical hover line */}
+              {chartTooltip && chartTooltip.lineX !== undefined && chartTooltip.lineHeight === 120 && (
+                <line
+                  x1={chartTooltip.lineX}
+                  y1="0"
+                  x2={chartTooltip.lineX}
+                  y2="120"
+                  stroke="#000"
+                  strokeWidth="1"
+                  pointerEvents="none"
+                />
+              )}
             </svg>
           </div>
         </div>
@@ -1682,7 +1804,9 @@ export default function MapCanvas() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               fontSize: '12px',
-              color: '#999'
+              color: '#999',
+              textAlign: 'right',
+              paddingRight: '12px'
             }}>
               <div>5K</div>
               <div>4K</div>
@@ -1697,24 +1821,44 @@ export default function MapCanvas() {
               display: 'flex',
               alignItems: 'flex-end',
               gap: '12px',
-              borderBottom: '1px solid #E0E0E0'
+              borderBottom: '1px solid #E0E0E0',
+              position: 'relative'
             }}>
               {mockDataByDay.map((item) => {
                 const scaledValue = item.value * (selectedRouteId ? 0.2 : 0.02);
-                const heightPercent = (scaledValue / 5000) * 100;
+                const heightPx = (scaledValue / 5000) * 130;
                 return (
                   <div key={item.day} style={{
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    height: '130px',
+                    justifyContent: 'flex-end'
                   }}>
-                    <div style={{
-                      width: '100%',
-                      height: `${heightPercent}%`,
-                      backgroundColor: '#333',
-                      borderRadius: '4px 4px 0 0'
-                    }} />
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${heightPx}px`,
+                        backgroundColor: '#333',
+                        borderRadius: '4px 4px 0 0',
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setChartTooltip({
+                          show: true,
+                          value: Math.round(scaledValue).toLocaleString(),
+                          label: item.day,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        setChartTooltip(null);
+                      }}
+                    />
                   </div>
                 );
               })}
@@ -1755,7 +1899,7 @@ export default function MapCanvas() {
                 Average daily boardings
               </div>
               <div style={{
-                fontSize: '48px',
+                fontSize: '28px',
                 fontWeight: '400',
                 color: '#333',
                 lineHeight: '1'
@@ -1796,7 +1940,9 @@ export default function MapCanvas() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               fontSize: '12px',
-              color: '#999'
+              color: '#999',
+              textAlign: 'right',
+              paddingRight: '12px'
             }}>
               <div>25K</div>
               <div>20K</div>
@@ -1805,7 +1951,35 @@ export default function MapCanvas() {
               <div>5K</div>
             </div>
             {/* Chart area */}
-            <svg width="280" height="120" style={{ marginLeft: '40px' }}>
+            <svg 
+              width="280" 
+              height="120" 
+              style={{ marginLeft: '40px', cursor: 'crosshair' }}
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                
+                // Find the closest data point
+                const pointIndex = Math.round((x / 280) * (mockDataByDate.length - 1));
+                const clampedIndex = Math.max(0, Math.min(mockDataByDate.length - 1, pointIndex));
+                const value = mockDataByDate[clampedIndex];
+                const lineX = (clampedIndex / (mockDataByDate.length - 1)) * 280;
+                
+                setChartTooltip({
+                  show: true,
+                  value: value.toLocaleString(),
+                  label: `Day ${clampedIndex + 1}`,
+                  x: rect.left + lineX,
+                  y: rect.top,
+                  lineX: lineX,
+                  lineHeight: 120
+                });
+              }}
+              onMouseLeave={() => {
+                setChartTooltip(null);
+              }}
+            >
               {/* Grid lines */}
               {[0, 1, 2, 3, 4].map((i) => (
                 <line
@@ -1828,7 +2002,20 @@ export default function MapCanvas() {
                 fill="none"
                 stroke="#333"
                 strokeWidth="2"
+                pointerEvents="none"
               />
+              {/* Vertical hover line */}
+              {chartTooltip && chartTooltip.lineX !== undefined && chartTooltip.lineHeight === 120 && (
+                <line
+                  x1={chartTooltip.lineX}
+                  y1="0"
+                  x2={chartTooltip.lineX}
+                  y2="120"
+                  stroke="#000"
+                  strokeWidth="1"
+                  pointerEvents="none"
+                />
+              )}
             </svg>
           </div>
         </div>
@@ -1862,7 +2049,9 @@ export default function MapCanvas() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               fontSize: '12px',
-              color: '#999'
+              color: '#999',
+              textAlign: 'right',
+              paddingRight: '12px'
             }}>
               <div>25K</div>
               <div>20K</div>
@@ -1877,23 +2066,43 @@ export default function MapCanvas() {
               display: 'flex',
               alignItems: 'flex-end',
               gap: '12px',
-              borderBottom: '1px solid #E0E0E0'
+              borderBottom: '1px solid #E0E0E0',
+              position: 'relative'
             }}>
               {mockDataByDay.map((item) => {
-                const heightPercent = (item.value / 25000) * 100;
+                const heightPx = (item.value / 25000) * 130;
                 return (
                   <div key={item.day} style={{
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    height: '130px',
+                    justifyContent: 'flex-end'
                   }}>
-                    <div style={{
-                      width: '100%',
-                      height: `${heightPercent}%`,
-                      backgroundColor: '#333',
-                      borderRadius: '4px 4px 0 0'
-                    }} />
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${heightPx}px`,
+                        backgroundColor: '#333',
+                        borderRadius: '4px 4px 0 0',
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setChartTooltip({
+                          show: true,
+                          value: item.value.toLocaleString(),
+                          label: item.day,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        setChartTooltip(null);
+                      }}
+                    />
                   </div>
                 );
               })}
@@ -1944,7 +2153,9 @@ export default function MapCanvas() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               fontSize: '12px',
-              color: '#999'
+              color: '#999',
+              textAlign: 'right',
+              paddingRight: '12px'
             }}>
               <div>25K</div>
               <div>20K</div>
@@ -1959,23 +2170,43 @@ export default function MapCanvas() {
               display: 'flex',
               alignItems: 'flex-end',
               gap: '12px',
-              borderBottom: '1px solid #E0E0E0'
+              borderBottom: '1px solid #E0E0E0',
+              position: 'relative'
             }}>
               {mockDataByPeriod.map((item) => {
-                const heightPercent = (item.value / 25000) * 100;
+                const heightPx = (item.value / 25000) * 150;
                 return (
                   <div key={item.period} style={{
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    height: '150px',
+                    justifyContent: 'flex-end'
                   }}>
-                    <div style={{
-                      width: '100%',
-                      height: `${heightPercent}%`,
-                      backgroundColor: '#333',
-                      borderRadius: '4px 4px 0 0'
-                    }} />
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: `${heightPx}px`,
+                        backgroundColor: '#333',
+                        borderRadius: '4px 4px 0 0',
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setChartTooltip({
+                          show: true,
+                          value: item.value.toLocaleString(),
+                          label: item.period,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        setChartTooltip(null);
+                      }}
+                    />
                   </div>
                 );
               })}
@@ -2092,6 +2323,28 @@ export default function MapCanvas() {
       </div>
 
       </div>
+
+      {/* Chart Tooltip */}
+      {chartTooltip && chartTooltip.show && (
+        <div style={{
+          position: 'fixed',
+          left: `${chartTooltip.x}px`,
+          top: `${chartTooltip.y - 8}px`,
+          transform: 'translate(-50%, -100%)',
+          backgroundColor: '#333',
+          color: '#FFFFFF',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          fontSize: '13px',
+          whiteSpace: 'nowrap',
+          zIndex: 10000,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          pointerEvents: 'none'
+        }}>
+          <div style={{ fontWeight: '500', marginBottom: '2px' }}>{chartTooltip.label}</div>
+          <div style={{ fontSize: '14px' }}>{chartTooltip.value}</div>
+        </div>
+      )}
     </div>
   );
 }
