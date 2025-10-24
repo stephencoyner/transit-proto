@@ -90,12 +90,31 @@ Works with all spacing utilities: `m-*` (margin), `p-*` (padding), `gap-*`, `spa
 
 ## Border Radius
 
+**Simplified border radius system with three values:**
+
 ```jsx
-className="rounded-sm"    // 4px
-className="rounded-md"    // 8px
-className="rounded-lg"    // 12px
-className="rounded-xl"    // 16px
-className="rounded-full"  // Fully rounded (9999px)
+className="rounded-default"  // 20px - Most elements (buttons, inputs, cards)
+className="rounded-large"    // 28px - Larger containers (modals, panels)
+className="rounded-full"     // Fully rounded (pills, avatars, badges)
+```
+
+**Usage Examples:**
+
+```jsx
+// Button with default radius
+<button className="rounded-default bg-btn-primary px-6 py-3">
+  Click Me
+</button>
+
+// Card with large radius
+<div className="rounded-large bg-bg-elevated p-6 shadow-md">
+  Card content
+</div>
+
+// Avatar or badge with full radius
+<div className="rounded-full w-10 h-10 bg-map-1">
+  A
+</div>
 ```
 
 ---
@@ -219,7 +238,7 @@ className="shadow-xl"  // Extra large shadow
 ### Primary Button
 
 ```jsx
-<button className="button-medium bg-btn-primary text-text-on-primary px-6 py-3 rounded-lg">
+<button className="button-medium bg-btn-primary text-text-on-primary px-6 py-3 rounded-default">
   Click me
 </button>
 ```
@@ -227,7 +246,7 @@ className="shadow-xl"  // Extra large shadow
 ### Secondary Button
 
 ```jsx
-<button className="button-medium bg-btn-secondary text-text-primary px-6 py-3 rounded-lg border border-border-default">
+<button className="button-medium bg-btn-secondary text-text-primary px-6 py-3 rounded-default border border-border-default">
   Click me
 </button>
 ```
@@ -235,7 +254,7 @@ className="shadow-xl"  // Extra large shadow
 ### Card with Header
 
 ```jsx
-<div className="bg-bg-elevated p-6 rounded-xl shadow-md border border-border-default">
+<div className="bg-bg-elevated p-6 rounded-large shadow-md border border-border-default">
   <h3 className="heading-3 text-text-primary mb-2">Card Title</h3>
   <p className="body-regular text-text-secondary">Card content goes here</p>
 </div>
@@ -247,7 +266,7 @@ className="shadow-xl"  // Extra large shadow
 <div>
   <label className="label text-text-secondary mb-1 block">Email Address</label>
   <input
-    className="body-regular bg-bg-elevated border border-border-default focus:border-border-focus rounded-lg px-4 py-2 text-text-primary w-full"
+    className="body-regular bg-bg-elevated border border-border-default focus:border-border-focus rounded-default px-4 py-2 text-text-primary w-full"
     type="email"
   />
   <span className="caption text-text-tertiary mt-1 block">We'll never share your email</span>
@@ -257,7 +276,7 @@ className="shadow-xl"  // Extra large shadow
 ### Data Card
 
 ```jsx
-<div className="bg-bg-elevated p-6 rounded-xl shadow-md border border-border-default">
+<div className="bg-bg-elevated p-6 rounded-large shadow-md border border-border-default">
   <span className="label text-text-tertiary">TOTAL RIDES</span>
   <div className="data-large text-text-primary">1,234,567</div>
   <p className="caption text-success">+12% from last month</p>
@@ -273,14 +292,14 @@ className="shadow-xl"  // Extra large shadow
 <div style={{
   backgroundColor: '#FFFFFF',
   padding: '24px',
-  borderRadius: '12px',
+  borderRadius: '20px',
   color: '#1A1410'
 }}>
 ```
 
 ### After (Tailwind Classes):
 ```jsx
-<div className="bg-bg-elevated p-6 rounded-lg text-text-primary">
+<div className="bg-bg-elevated p-6 rounded-default text-text-primary">
 ```
 
 ---
