@@ -102,7 +102,84 @@ className="rounded-full"  // Fully rounded (9999px)
 
 ## Typography
 
-### Font Sizes
+**Font Family:** Inter (with system font fallbacks)
+
+The typography system uses **Inter font** with semantic class names for consistent text styling across the application. All typography classes include font-family, size, weight, line-height, and letter-spacing.
+
+### Headings (Semibold - 600)
+
+```jsx
+<h1 className="heading-1">Page Title</h1>
+// 28px, weight 600, line-height 34px, letter-spacing -0.01em
+
+<h2 className="heading-2">Section Title</h2>
+// 22px, weight 600, line-height 28px, letter-spacing -0.01em
+
+<h3 className="heading-3">Subsection Title</h3>
+// 18px, weight 600, line-height 24px, letter-spacing -0.005em
+
+<h4 className="heading-4">Card Title</h4>
+// 16px, weight 600, line-height 22px, letter-spacing -0.005em
+```
+
+### Body Text (Regular - 400)
+
+```jsx
+<p className="body-large">Large body text for emphasis</p>
+// 16px, weight 400, line-height 24px
+
+<p className="body-regular">Standard body text</p>
+// 14px, weight 400, line-height 21px
+
+<p className="body-small">Small body text</p>
+// 13px, weight 400, line-height 20px
+```
+
+### UI Elements (Medium - 500)
+
+```jsx
+<button className="button-small">Button Text</button>
+// 14px, weight 500, line-height 20px
+
+<button className="button-medium">Button Text</button>
+// 15px, weight 500, line-height 20px
+
+<span className="caption">Helper text or caption</span>
+// 12px, weight 400, line-height 16px
+
+<label className="label">Form Label</label>
+// 12px, weight 500, line-height 16px, letter-spacing 0.01em
+
+<nav className="nav-label">NAV ITEM</nav>
+// 11px, weight 500, line-height 16px, letter-spacing 0.02em (typically uppercase)
+```
+
+### Data Displays (Semibold - 600)
+
+```jsx
+<div className="data-large">1,234</div>
+// 28px, weight 600, line-height 32px, letter-spacing -0.01em
+
+<div className="data-medium">567</div>
+// 20px, weight 600, line-height 26px, letter-spacing -0.005em
+
+<div className="data-small">89</div>
+// 14px, weight 600, line-height 20px
+```
+
+### Combining with Tailwind Utilities
+
+You can combine typography classes with Tailwind color utilities:
+
+```jsx
+<h1 className="heading-1 text-text-primary">Primary Title</h1>
+<p className="body-regular text-text-secondary">Secondary text</p>
+<button className="button-medium text-text-on-primary bg-btn-primary">Click Me</button>
+```
+
+### Font Sizes (Tailwind Utilities)
+
+If you need more flexibility, you can still use Tailwind's font-size utilities:
 
 ```jsx
 className="text-xs"    // 12px
@@ -115,7 +192,7 @@ className="text-3xl"   // 30px
 className="text-4xl"   // 36px
 ```
 
-### Font Weights
+### Font Weights (Tailwind Utilities)
 
 ```jsx
 className="font-normal"     // 400
@@ -142,7 +219,7 @@ className="shadow-xl"  // Extra large shadow
 ### Primary Button
 
 ```jsx
-<button className="bg-btn-primary text-text-on-primary px-6 py-3 rounded-lg font-medium">
+<button className="button-medium bg-btn-primary text-text-on-primary px-6 py-3 rounded-lg">
   Click me
 </button>
 ```
@@ -150,26 +227,41 @@ className="shadow-xl"  // Extra large shadow
 ### Secondary Button
 
 ```jsx
-<button className="bg-btn-secondary text-text-primary px-6 py-3 rounded-lg font-medium border border-border-default">
+<button className="button-medium bg-btn-secondary text-text-primary px-6 py-3 rounded-lg border border-border-default">
   Click me
 </button>
 ```
 
-### Card
+### Card with Header
 
 ```jsx
 <div className="bg-bg-elevated p-6 rounded-xl shadow-md border border-border-default">
-  Card content
+  <h3 className="heading-3 text-text-primary mb-2">Card Title</h3>
+  <p className="body-regular text-text-secondary">Card content goes here</p>
 </div>
 ```
 
-### Input Field
+### Input Field with Label
 
 ```jsx
-<input
-  className="bg-bg-elevated border border-border-default focus:border-border-focus rounded-lg px-4 py-2 text-text-primary"
-  type="text"
-/>
+<div>
+  <label className="label text-text-secondary mb-1 block">Email Address</label>
+  <input
+    className="body-regular bg-bg-elevated border border-border-default focus:border-border-focus rounded-lg px-4 py-2 text-text-primary w-full"
+    type="email"
+  />
+  <span className="caption text-text-tertiary mt-1 block">We'll never share your email</span>
+</div>
+```
+
+### Data Card
+
+```jsx
+<div className="bg-bg-elevated p-6 rounded-xl shadow-md border border-border-default">
+  <span className="label text-text-tertiary">TOTAL RIDES</span>
+  <div className="data-large text-text-primary">1,234,567</div>
+  <p className="caption text-success">+12% from last month</p>
+</div>
 ```
 
 ---

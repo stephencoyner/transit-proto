@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -57,21 +58,86 @@
   --radius-xl: 1rem;     /* 16px */
   --radius-full: 9999px;
 
-  /* Typography Scale */
-  --text-xs: 0.75rem;    /* 12px */
-  --text-sm: 0.875rem;   /* 14px */
-  --text-base: 1rem;     /* 16px */
-  --text-lg: 1.125rem;   /* 18px */
-  --text-xl: 1.25rem;    /* 20px */
-  --text-2xl: 1.5rem;    /* 24px */
-  --text-3xl: 1.875rem;  /* 30px */
-  --text-4xl: 2.25rem;   /* 36px */
+  /* Font Family */
+  --font-primary: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Font Weights */
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
+
+  /* Typography - Headings (Semibold - 600) */
+  --heading-1-size: 1.75rem;      /* 28px */
+  --heading-1-weight: 600;
+  --heading-1-line-height: 2.125rem;  /* 34px */
+  --heading-1-letter-spacing: -0.01em;
+
+  --heading-2-size: 1.375rem;     /* 22px */
+  --heading-2-weight: 600;
+  --heading-2-line-height: 1.75rem;  /* 28px */
+  --heading-2-letter-spacing: -0.01em;
+
+  --heading-3-size: 1.125rem;     /* 18px */
+  --heading-3-weight: 600;
+  --heading-3-line-height: 1.5rem;  /* 24px */
+  --heading-3-letter-spacing: -0.005em;
+
+  --heading-4-size: 1rem;         /* 16px */
+  --heading-4-weight: 600;
+  --heading-4-line-height: 1.375rem;  /* 22px */
+  --heading-4-letter-spacing: -0.005em;
+
+  /* Typography - Body (Regular - 400) */
+  --body-large-size: 1rem;        /* 16px */
+  --body-large-weight: 400;
+  --body-large-line-height: 1.5rem;  /* 24px */
+
+  --body-regular-size: 0.875rem;  /* 14px */
+  --body-regular-weight: 400;
+  --body-regular-line-height: 1.3125rem;  /* 21px */
+
+  --body-small-size: 0.8125rem;   /* 13px */
+  --body-small-weight: 400;
+  --body-small-line-height: 1.25rem;  /* 20px */
+
+  /* Typography - UI Elements */
+  --button-small-size: 0.875rem;  /* 14px */
+  --button-small-weight: 500;
+  --button-small-line-height: 1.25rem;  /* 20px */
+
+  --button-medium-size: 0.9375rem;  /* 15px */
+  --button-medium-weight: 500;
+  --button-medium-line-height: 1.25rem;  /* 20px */
+
+  --caption-size: 0.75rem;        /* 12px */
+  --caption-weight: 400;
+  --caption-line-height: 1rem;    /* 16px */
+
+  --label-size: 0.75rem;          /* 12px */
+  --label-weight: 500;
+  --label-line-height: 1rem;      /* 16px */
+  --label-letter-spacing: 0.01em;
+
+  --nav-label-size: 0.6875rem;    /* 11px */
+  --nav-label-weight: 500;
+  --nav-label-line-height: 1rem;  /* 16px */
+  --nav-label-letter-spacing: 0.02em;
+
+  /* Typography - Data Displays (Semibold - 600) */
+  --data-large-size: 1.75rem;     /* 28px */
+  --data-large-weight: 600;
+  --data-large-line-height: 2rem;  /* 32px */
+  --data-large-letter-spacing: -0.01em;
+
+  --data-medium-size: 1.25rem;    /* 20px */
+  --data-medium-weight: 600;
+  --data-medium-line-height: 1.625rem;  /* 26px */
+  --data-medium-letter-spacing: -0.005em;
+
+  --data-small-size: 0.875rem;    /* 14px */
+  --data-small-weight: 600;
+  --data-small-line-height: 1.25rem;  /* 20px */
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -148,7 +214,7 @@
   --font-size-4xl: var(--text-4xl);
 
   /* Font Family */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-primary);
 
   /* Shadows */
   --shadow-sm: var(--shadow-sm);
@@ -157,8 +223,122 @@
   --shadow-xl: var(--shadow-xl);
 }
 
+/* Typography Utility Classes */
+.heading-1 {
+  font-family: var(--font-primary);
+  font-size: var(--heading-1-size);
+  font-weight: var(--heading-1-weight);
+  line-height: var(--heading-1-line-height);
+  letter-spacing: var(--heading-1-letter-spacing);
+}
+
+.heading-2 {
+  font-family: var(--font-primary);
+  font-size: var(--heading-2-size);
+  font-weight: var(--heading-2-weight);
+  line-height: var(--heading-2-line-height);
+  letter-spacing: var(--heading-2-letter-spacing);
+}
+
+.heading-3 {
+  font-family: var(--font-primary);
+  font-size: var(--heading-3-size);
+  font-weight: var(--heading-3-weight);
+  line-height: var(--heading-3-line-height);
+  letter-spacing: var(--heading-3-letter-spacing);
+}
+
+.heading-4 {
+  font-family: var(--font-primary);
+  font-size: var(--heading-4-size);
+  font-weight: var(--heading-4-weight);
+  line-height: var(--heading-4-line-height);
+  letter-spacing: var(--heading-4-letter-spacing);
+}
+
+.body-large {
+  font-family: var(--font-primary);
+  font-size: var(--body-large-size);
+  font-weight: var(--body-large-weight);
+  line-height: var(--body-large-line-height);
+}
+
+.body-regular {
+  font-family: var(--font-primary);
+  font-size: var(--body-regular-size);
+  font-weight: var(--body-regular-weight);
+  line-height: var(--body-regular-line-height);
+}
+
+.body-small {
+  font-family: var(--font-primary);
+  font-size: var(--body-small-size);
+  font-weight: var(--body-small-weight);
+  line-height: var(--body-small-line-height);
+}
+
+.button-small {
+  font-family: var(--font-primary);
+  font-size: var(--button-small-size);
+  font-weight: var(--button-small-weight);
+  line-height: var(--button-small-line-height);
+}
+
+.button-medium {
+  font-family: var(--font-primary);
+  font-size: var(--button-medium-size);
+  font-weight: var(--button-medium-weight);
+  line-height: var(--button-medium-line-height);
+}
+
+.caption {
+  font-family: var(--font-primary);
+  font-size: var(--caption-size);
+  font-weight: var(--caption-weight);
+  line-height: var(--caption-line-height);
+}
+
+.label {
+  font-family: var(--font-primary);
+  font-size: var(--label-size);
+  font-weight: var(--label-weight);
+  line-height: var(--label-line-height);
+  letter-spacing: var(--label-letter-spacing);
+}
+
+.nav-label {
+  font-family: var(--font-primary);
+  font-size: var(--nav-label-size);
+  font-weight: var(--nav-label-weight);
+  line-height: var(--nav-label-line-height);
+  letter-spacing: var(--nav-label-letter-spacing);
+}
+
+.data-large {
+  font-family: var(--font-primary);
+  font-size: var(--data-large-size);
+  font-weight: var(--data-large-weight);
+  line-height: var(--data-large-line-height);
+  letter-spacing: var(--data-large-letter-spacing);
+}
+
+.data-medium {
+  font-family: var(--font-primary);
+  font-size: var(--data-medium-size);
+  font-weight: var(--data-medium-weight);
+  line-height: var(--data-medium-line-height);
+  letter-spacing: var(--data-medium-letter-spacing);
+}
+
+.data-small {
+  font-family: var(--font-primary);
+  font-size: var(--data-small-size);
+  font-weight: var(--data-small-weight);
+  line-height: var(--data-small-line-height);
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-primary);
 }
