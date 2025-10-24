@@ -1,26 +1,164 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Background Colors */
+  --bg-primary: #FAF9F5;
+  --bg-secondary: #F5F4ED;
+  --bg-elevated: #FFFFFF;
+
+  /* Button Colors */
+  --btn-primary: #3D2817;
+  --btn-secondary: #E8E0D5;
+  --btn-tertiary: #FAF9F5;
+
+  /* Text Colors */
+  --text-primary: #1A1410;
+  --text-secondary: #3D2817;
+  --text-tertiary: #5C4939;
+  --text-on-primary: #FAF9F5;
+  --text-disabled: #8B8089;
+
+  /* Border Colors */
+  --border-default: #E8E0D5;
+  --border-hover: #D4C9BA;
+  --border-focus: #C9B4A3;
+
+  /* Map Data Colors */
+  --map-1: #ED7E22;
+  --map-2: #E85C46;
+  --map-3: #DC2C7E;
+  --map-4: #C77F8F;
+  --map-5: #A01084;
+  --map-6: #7F1AA3;
+  --map-7: #5C1276;
+
+  /* Semantic Colors */
+  --success: #2D7A4F;
+  --error: #C44328;
+  --warning: #E37E22;
+
+  /* Spacing Scale (based on 4px base) */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-20: 5rem;    /* 80px */
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;  /* 4px */
+  --radius-md: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-full: 9999px;
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Background Colors */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-elevated: var(--bg-elevated);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Button Colors */
+  --color-btn-primary: var(--btn-primary);
+  --color-btn-secondary: var(--btn-secondary);
+  --color-btn-tertiary: var(--btn-tertiary);
+
+  /* Text Colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-on-primary: var(--text-on-primary);
+  --color-text-disabled: var(--text-disabled);
+
+  /* Border Colors */
+  --color-border-default: var(--border-default);
+  --color-border-hover: var(--border-hover);
+  --color-border-focus: var(--border-focus);
+
+  /* Map Data Colors */
+  --color-map-1: var(--map-1);
+  --color-map-2: var(--map-2);
+  --color-map-3: var(--map-3);
+  --color-map-4: var(--map-4);
+  --color-map-5: var(--map-5);
+  --color-map-6: var(--map-6);
+  --color-map-7: var(--map-7);
+
+  /* Semantic Colors */
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+
+  /* Spacing Scale */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+  --spacing-20: var(--space-20);
+
+  /* Border Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  /* Typography */
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-lg: var(--text-lg);
+  --font-size-xl: var(--text-xl);
+  --font-size-2xl: var(--text-2xl);
+  --font-size-3xl: var(--text-3xl);
+  --font-size-4xl: var(--text-4xl);
+
+  /* Font Family */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
 }
