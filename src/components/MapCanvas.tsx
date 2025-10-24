@@ -6,6 +6,7 @@ import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
+import { Button, Card, Input, Select } from '@/components/ui';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -97,7 +98,7 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'metric' | null>(null);
@@ -955,9 +956,47 @@ export default function MapCanvas() {
             />
             Stops
           </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('components');
+                    setSelectedRouteId(null);
+                    setSelectedStopId(null);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: activeTab === 'components' ? '16px' : '20px',
+                    paddingRight: activeTab === 'components' ? '16px' : '20px',
+                    backgroundColor: activeTab === 'components' ? '#e8e8e8' : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif',
+                    color: activeTab === 'components' ? '#333' : '#000000',
+                    textAlign: 'left',
+                    width: activeTab === 'components' ? 'calc(100% - 8px)' : '100%',
+                    borderRadius: activeTab === 'components' ? '20px' : '0',
+                    margin: activeTab === 'components' ? '0 4px' : '0'
+                  }}
+                >
+            <img
+              src={HopthruIcon}
+              alt="Components"
+              style={{
+                width: '16px',
+                height: '16px',
+                filter: activeTab === 'components' ? 'none' : 'opacity(1)'
+              }}
+            />
+            Components
+          </button>
         </div>
 
-        {/* Filter Section */}
+        {/* Filter Section - Hidden on Components Tab */}
+        {activeTab !== 'components' && (
         <div style={{
           padding: '16px 12px 24px 12px',
           borderTop: '1px solid #e0e0e0',
@@ -1164,6 +1203,7 @@ export default function MapCanvas() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Open Filter Content - Overlay with Dynamic Positioning */}
@@ -2234,6 +2274,101 @@ export default function MapCanvas() {
             </div>
           </div>
         </div>
+          </>
+        ) : activeTab === 'components' ? (
+          /* Components View - Showcase UI Components */
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <h2 className="heading-2 text-text-primary" style={{ marginBottom: '8px' }}>UI Components</h2>
+              <p className="body-regular text-text-secondary">Test the reusable components from our design system</p>
+            </div>
+
+            {/* Buttons Section */}
+            <Card header={<h3 className="heading-3">Buttons</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <Button variant="primary" size="medium">Primary Button</Button>
+                <Button variant="secondary" size="medium">Secondary Button</Button>
+                <Button variant="tertiary" size="medium">Tertiary Button</Button>
+                <Button variant="primary" size="small">Small Button</Button>
+                <Button variant="primary" disabled>Disabled Button</Button>
+              </div>
+            </Card>
+
+            {/* Input Section */}
+            <Card header={<h3 className="heading-3">Inputs</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Input
+                  label="Email Address"
+                  type="email"
+                  placeholder="you@example.com"
+                  helperText="We'll never share your email"
+                />
+                <Input
+                  label="Password"
+                  type="password"
+                  placeholder="Enter password"
+                />
+                <Input
+                  label="With Error"
+                  type="text"
+                  error="This field is required"
+                  placeholder="Enter something"
+                />
+              </div>
+            </Card>
+
+            {/* Select Section */}
+            <Card header={<h3 className="heading-3">Selects</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Select
+                  label="Choose a route"
+                  placeholder="Select a route..."
+                  options={[
+                    { value: '1', label: 'Route 1' },
+                    { value: '2', label: 'Route 2' },
+                    { value: '3', label: 'Route 3' },
+                  ]}
+                  helperText="Select from available routes"
+                />
+                <Select
+                  label="With Error"
+                  options={[
+                    { value: 'a', label: 'Option A' },
+                    { value: 'b', label: 'Option B' },
+                  ]}
+                  error="Please select an option"
+                />
+              </div>
+            </Card>
+
+            {/* Typography Section */}
+            <Card header={<h3 className="heading-3">Typography</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h1 className="heading-1 text-text-primary">Heading 1</h1>
+                <h2 className="heading-2 text-text-primary">Heading 2</h2>
+                <h3 className="heading-3 text-text-primary">Heading 3</h3>
+                <h4 className="heading-4 text-text-primary">Heading 4</h4>
+                <p className="body-large text-text-primary">Body Large</p>
+                <p className="body-regular text-text-secondary">Body Regular</p>
+                <p className="body-small text-text-tertiary">Body Small</p>
+                <span className="caption text-text-disabled">Caption Text</span>
+              </div>
+            </Card>
+
+            {/* Data Display Section */}
+            <Card header={<h3 className="heading-3">Data Display</h3>} padding="medium">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <span className="label text-text-tertiary">TOTAL RIDES</span>
+                  <div className="data-large text-text-primary">1,234,567</div>
+                  <p className="caption text-success">+12% from last month</p>
+                </div>
+                <div>
+                  <span className="label text-text-tertiary">AVERAGE SPEED</span>
+                  <div className="data-medium text-text-primary">24.5 mph</div>
+                </div>
+              </div>
+            </Card>
           </>
         ) : (
           /* Routes/Stops View - List */
