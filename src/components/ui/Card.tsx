@@ -19,10 +19,12 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     const baseClasses = 'bg-bg-elevated rounded-large border border-border-default shadow-md';
     const classes = `${baseClasses} ${className}`.trim();
 
+    const style = { borderWidth: 'var(--border-width)', ...props.style };
+
     return (
-      <div ref={ref} className={classes} {...props}>
+      <div ref={ref} className={classes} style={style} {...props}>
         {header && (
-          <div className={`border-b border-border-default ${paddingClasses[padding]} pb-4`}>
+          <div className={`border-b border-border-default ${paddingClasses[padding]} pb-4`} style={{ borderBottomWidth: 'var(--border-width)' }}>
             {header}
           </div>
         )}
@@ -30,7 +32,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
           {children}
         </div>
         {footer && (
-          <div className={`border-t border-border-default ${paddingClasses[padding]} pt-4`}>
+          <div className={`border-t border-border-default ${paddingClasses[padding]} pt-4`} style={{ borderTopWidth: 'var(--border-width)' }}>
             {footer}
           </div>
         )}

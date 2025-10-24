@@ -56,6 +56,9 @@
   --radius-large: 1.75rem;    /* 28px - Larger containers (modals, panels) */
   --radius-full: 9999px;      /* Fully rounded (pills, avatars, badges) */
 
+  /* Border Width */
+  --border-width: 0.5px;      /* Default border width for all components */
+
   /* Font Family */
   --font-primary: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
@@ -198,6 +201,9 @@
   --radius-default: var(--radius-default);
   --radius-large: var(--radius-large);
   --radius-full: var(--radius-full);
+
+  /* Border Width */
+  --border-width: var(--border-width);
 
   /* Typography */
   --font-size-xs: var(--text-xs);

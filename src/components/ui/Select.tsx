@@ -39,6 +39,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       ${className}
     `.trim().replace(/\s+/g, ' ');
 
+    const style = { borderWidth: 'var(--border-width)', ...props.style };
+
     return (
       <div className="w-full">
         {label && (
@@ -50,6 +52,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={selectClasses}
+          style={style}
           {...props}
         >
           {placeholder && (

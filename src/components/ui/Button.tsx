@@ -26,8 +26,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`.trim();
 
+    // Apply custom border width for variants with borders
+    const style = (variant === 'secondary' || variant === 'tertiary')
+      ? { borderWidth: 'var(--border-width)', ...props.style }
+      : props.style;
+
     return (
-      <button ref={ref} className={classes} {...props}>
+      <button ref={ref} className={classes} style={style} {...props}>
         {children}
       </button>
     );

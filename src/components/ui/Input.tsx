@@ -31,6 +31,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       ${className}
     `.trim().replace(/\s+/g, ' ');
 
+    const style = { borderWidth: 'var(--border-width)', ...props.style };
+
     return (
       <div className="w-full">
         {label && (
@@ -42,6 +44,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={inputClasses}
+          style={style}
           {...props}
         />
         {error && (
