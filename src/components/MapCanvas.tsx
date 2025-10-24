@@ -821,62 +821,34 @@ export default function MapCanvas() {
         zIndex: 1000
       }}>
         {/* Logo/Icon */}
-        <div style={{
-          padding: '12px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start'
-        }}>
-          <img 
-            src={HopthruIcon} 
-            alt="Hopthru" 
-            style={{ 
-              width: '56px', 
+        <div className="p-3 flex items-center justify-start">
+          <img
+            src={HopthruIcon}
+            alt="Hopthru"
+            style={{
+              width: '56px',
               height: '56px'
-            }} 
+            }}
           />
         </div>
 
               {/* Tabs */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '0px 0 16px 0'
-              }}>
+              <div className="flex flex-col pb-4">
                 <button
                   onClick={() => {
                     setActiveTab('system');
                     setSelectedRouteId(null);
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'system' ? '16px' : '20px',
-                    paddingRight: activeTab === 'system' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'system' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'system' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'system' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'system' ? '20px' : '0',
-                    margin: activeTab === 'system' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'system' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
-            <img 
-              src={SystemIcon} 
-              alt="System" 
-              style={{ 
-                width: '16px', 
-                height: '16px',
-                filter: activeTab === 'system' ? 'none' : 'opacity(1)'
-              }} 
+            <img
+              src={SystemIcon}
+              alt="System"
+              className="w-4 h-4"
             />
             System
           </button>
@@ -887,34 +859,15 @@ export default function MapCanvas() {
                     setSelectedRouteId(null);
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'routes' ? '16px' : '20px',
-                    paddingRight: activeTab === 'routes' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'routes' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'routes' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'routes' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'routes' ? '20px' : '0',
-                    margin: activeTab === 'routes' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'routes' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
-            <img 
-              src={RoutesIcon} 
-              alt="Routes" 
-              style={{ 
-                width: '16px', 
-                height: '16px',
-                filter: activeTab === 'routes' ? 'none' : 'opacity(1)'
-              }} 
+            <img
+              src={RoutesIcon}
+              alt="Routes"
+              className="w-4 h-4"
             />
             Routes
           </button>
@@ -925,34 +878,15 @@ export default function MapCanvas() {
                     // Clear stop selection to go back to stops list
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'stops' ? '16px' : '20px',
-                    paddingRight: activeTab === 'stops' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'stops' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'stops' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'stops' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'stops' ? '20px' : '0',
-                    margin: activeTab === 'stops' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'stops' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
-            <img 
-              src={StopsIcon} 
-              alt="Stops" 
-              style={{ 
-                width: '16px', 
-                height: '16px',
-                filter: activeTab === 'stops' ? 'none' : 'opacity(1)'
-              }} 
+            <img
+              src={StopsIcon}
+              alt="Stops"
+              className="w-4 h-4"
             />
             Stops
           </button>
@@ -962,34 +896,15 @@ export default function MapCanvas() {
                     setSelectedRouteId(null);
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'components' ? '16px' : '20px',
-                    paddingRight: activeTab === 'components' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'components' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'components' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'components' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'components' ? '20px' : '0',
-                    margin: activeTab === 'components' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'components' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
             <img
               src={HopthruIcon}
               alt="Components"
-              style={{
-                width: '16px',
-                height: '16px',
-                filter: activeTab === 'components' ? 'none' : 'opacity(1)'
-              }}
+              className="w-4 h-4"
             />
             Components
           </button>
