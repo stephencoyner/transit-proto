@@ -42,16 +42,15 @@ interface StopFeature extends GeoJSON.Feature<GeoJSON.Point> {
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
-// Color palette for routes and stops based on ridership data
+// Color palette for routes and stops using design system tokens
 const RIDERSHIP_COLORS = [
-  [58, 12, 72],    // 3A0C48 - Dark purple
-  [121, 39, 145],  // 792791 - Purple
-  [186, 42, 173],  // BA2AAD - Magenta
-  [222, 64, 157],  // DE409D - Pink-magenta
-  [241, 100, 121], // F16479 - Coral
-  [248, 137, 116], // F88974 - Light coral
-  [255, 178, 100], // FFB264 - Orange
-  [251, 218, 115], // FBDA73 - Yellow
+  [237, 126, 34],  // #ED7E22 - map-1
+  [232, 92, 70],   // #E85C46 - map-2
+  [220, 44, 126],  // #DC2C7E - map-3
+  [199, 127, 143], // #C77F8F - map-4
+  [160, 16, 132],  // #A01084 - map-5
+  [127, 26, 163],  // #7F1AA3 - map-6
+  [92, 18, 118],   // #5C1276 - map-7
 ];
 
 // Helper function to get a consistent color for a route/stop based on its ID
@@ -804,13 +803,27 @@ export default function MapCanvas() {
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+      {/* Left Container Wrapper with Shadow */}
+      <div style={{
+        position: 'fixed',
+        left: '12px',
+        top: '12px',
+        height: 'calc(100% - 24px)',
+        width: isFiltersPanelOpen ? '664px' : '424px',
+        boxShadow: 'var(--shadow-lg)',
+        borderRadius: '28px',
+        pointerEvents: 'none',
+        zIndex: 999,
+        transition: 'width 300ms ease-in-out'
+      }} />
+
       {/* Nav Rail */}
       <div style={{
         width: '64px',
-        height: '100%',
+        height: 'calc(100% - 24px)',
         position: 'fixed',
-        left: 0,
-        top: 0,
+        left: '12px',
+        top: '12px',
         zIndex: 1000
       }}>
         <NavRail
@@ -831,24 +844,29 @@ export default function MapCanvas() {
         id="filters-panel"
         style={{
           width: isFiltersPanelOpen ? '240px' : '0px',
-          height: '100%',
-          backgroundColor: '#FFFFFF',
-          borderRight: isFiltersPanelOpen ? '1px solid #e0e0e0' : 'none',
+          height: 'calc(100% - 24px)',
+          backgroundColor: 'var(--bg-primary)',
+          borderTop: '0.5px solid var(--border-default)',
+          borderBottom: '0.5px solid var(--border-default)',
+          borderRight: isFiltersPanelOpen ? '0.5px solid var(--border-default)' : 'none',
           display: 'flex',
           flexDirection: 'column',
           position: 'fixed',
-          left: '64px',
-          top: 0,
+          left: '76px',
+          top: '12px',
           zIndex: 1000,
           overflow: 'hidden',
-          transition: 'width 300ms ease-in-out, border-right 300ms ease-in-out'
+          transition: 'width 300ms ease-in-out',
+          borderRadius: '0'
         }}>
         {/* Filter Section */}
         <div style={{
           padding: '16px 12px 24px 12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px' // Space between the two separate filters
+          gap: '8px', // Space between the two separate filters
+          width: '240px',
+          minWidth: '240px'
         }}>
           {/* Date Range Filter */}
           <div 
@@ -1415,12 +1433,12 @@ export default function MapCanvas() {
       <div
         ref={mapContainerRef}
         style={{
-          flex: 1,
-          marginLeft: isFiltersPanelOpen ? '304px' : '64px',
-          position: 'relative',
-          width: isFiltersPanelOpen ? 'calc(100% - 304px)' : 'calc(100% - 64px)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
           height: '100%',
-          transition: 'margin-left 300ms ease-in-out, width 300ms ease-in-out'
+          zIndex: 0
         }}>
 
       <DeckGL
@@ -1447,7 +1465,7 @@ export default function MapCanvas() {
       >
         <Map
           mapboxAccessToken={MAPBOX_TOKEN}
-          mapStyle="mapbox://styles/stephencoynerseattle/cmgcvmqog004r01re3a5a6l6j"
+          mapStyle="mapbox://styles/stephencoynerseattle/cmgifl16g001u01s6699hg7iv"
           style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
           onError={(e) => {
             console.warn('Map error:', e);
@@ -1463,16 +1481,17 @@ export default function MapCanvas() {
         position: 'fixed',
         top: '12px',
         bottom: '12px',
-        left: isFiltersPanelOpen ? 'calc(304px + 12px)' : 'calc(64px + 12px)',
+        left: isFiltersPanelOpen ? '316px' : '76px',
         width: '360px',
-        backgroundColor: '#FFFFFF',
-        borderRadius: '16px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        backgroundColor: 'var(--bg-primary)',
+        borderRadius: '0 28px 28px 0',
         padding: '24px',
         fontFamily: 'Inter, sans-serif',
-        zIndex: 1000,
+        zIndex: 1001,
         overflowY: 'auto',
-        transition: 'left 300ms ease-in-out'
+        transition: 'left 300ms ease-in-out',
+        border: '0.5px solid var(--border-default)',
+        borderLeft: 'none'
       }}>
         {selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
