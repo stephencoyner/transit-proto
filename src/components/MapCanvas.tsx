@@ -6,6 +6,7 @@ import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
+import { Button, Card, Input, Select } from '@/components/ui';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -97,7 +98,7 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'metric' | null>(null);
@@ -820,62 +821,34 @@ export default function MapCanvas() {
         zIndex: 1000
       }}>
         {/* Logo/Icon */}
-        <div style={{
-          padding: '12px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start'
-        }}>
-          <img 
-            src={HopthruIcon} 
-            alt="Hopthru" 
-            style={{ 
-              width: '56px', 
+        <div className="p-3 flex items-center justify-start">
+          <img
+            src={HopthruIcon}
+            alt="Hopthru"
+            style={{
+              width: '56px',
               height: '56px'
-            }} 
+            }}
           />
         </div>
 
               {/* Tabs */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '0px 0 16px 0'
-              }}>
+              <div className="flex flex-col pb-4">
                 <button
                   onClick={() => {
                     setActiveTab('system');
                     setSelectedRouteId(null);
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'system' ? '16px' : '20px',
-                    paddingRight: activeTab === 'system' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'system' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'system' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'system' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'system' ? '20px' : '0',
-                    margin: activeTab === 'system' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'system' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
-            <img 
-              src={SystemIcon} 
-              alt="System" 
-              style={{ 
-                width: '16px', 
-                height: '16px',
-                filter: activeTab === 'system' ? 'none' : 'opacity(1)'
-              }} 
+            <img
+              src={SystemIcon}
+              alt="System"
+              className="w-4 h-4"
             />
             System
           </button>
@@ -886,34 +859,15 @@ export default function MapCanvas() {
                     setSelectedRouteId(null);
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'routes' ? '16px' : '20px',
-                    paddingRight: activeTab === 'routes' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'routes' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'routes' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'routes' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'routes' ? '20px' : '0',
-                    margin: activeTab === 'routes' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'routes' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
-            <img 
-              src={RoutesIcon} 
-              alt="Routes" 
-              style={{ 
-                width: '16px', 
-                height: '16px',
-                filter: activeTab === 'routes' ? 'none' : 'opacity(1)'
-              }} 
+            <img
+              src={RoutesIcon}
+              alt="Routes"
+              className="w-4 h-4"
             />
             Routes
           </button>
@@ -924,40 +878,40 @@ export default function MapCanvas() {
                     // Clear stop selection to go back to stops list
                     setSelectedStopId(null);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: activeTab === 'stops' ? '16px' : '20px',
-                    paddingRight: activeTab === 'stops' ? '16px' : '20px',
-                    backgroundColor: activeTab === 'stops' ? '#e8e8e8' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontFamily: 'Inter, sans-serif',
-                    color: activeTab === 'stops' ? '#333' : '#000000',
-                    textAlign: 'left',
-                    width: activeTab === 'stops' ? 'calc(100% - 8px)' : '100%',
-                    borderRadius: activeTab === 'stops' ? '20px' : '0',
-                    margin: activeTab === 'stops' ? '0 4px' : '0'
-                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'stops' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
                 >
-            <img 
-              src={StopsIcon} 
-              alt="Stops" 
-              style={{ 
-                width: '16px', 
-                height: '16px',
-                filter: activeTab === 'stops' ? 'none' : 'opacity(1)'
-              }} 
+            <img
+              src={StopsIcon}
+              alt="Stops"
+              className="w-4 h-4"
             />
             Stops
           </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('components');
+                    setSelectedRouteId(null);
+                    setSelectedStopId(null);
+                  }}
+                  className={`
+                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
+                    ${activeTab === 'components' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
+                  `}
+                >
+            <img
+              src={HopthruIcon}
+              alt="Components"
+              className="w-4 h-4"
+            />
+            Components
+          </button>
         </div>
 
-        {/* Filter Section */}
+        {/* Filter Section - Hidden on Components Tab */}
+        {activeTab !== 'components' && (
         <div style={{
           padding: '16px 12px 24px 12px',
           borderTop: '1px solid #e0e0e0',
@@ -1164,6 +1118,7 @@ export default function MapCanvas() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Open Filter Content - Overlay with Dynamic Positioning */}
@@ -2234,6 +2189,101 @@ export default function MapCanvas() {
             </div>
           </div>
         </div>
+          </>
+        ) : activeTab === 'components' ? (
+          /* Components View - Showcase UI Components */
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <h2 className="heading-2 text-text-primary" style={{ marginBottom: '8px' }}>UI Components</h2>
+              <p className="body-regular text-text-secondary">Test the reusable components from our design system</p>
+            </div>
+
+            {/* Buttons Section */}
+            <Card header={<h3 className="heading-3">Buttons</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <Button variant="primary" size="medium">Primary Button</Button>
+                <Button variant="secondary" size="medium">Secondary Button</Button>
+                <Button variant="tertiary" size="medium">Tertiary Button</Button>
+                <Button variant="primary" size="small">Small Button</Button>
+                <Button variant="primary" disabled>Disabled Button</Button>
+              </div>
+            </Card>
+
+            {/* Input Section */}
+            <Card header={<h3 className="heading-3">Inputs</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Input
+                  label="Email Address"
+                  type="email"
+                  placeholder="you@example.com"
+                  helperText="We'll never share your email"
+                />
+                <Input
+                  label="Password"
+                  type="password"
+                  placeholder="Enter password"
+                />
+                <Input
+                  label="With Error"
+                  type="text"
+                  error="This field is required"
+                  placeholder="Enter something"
+                />
+              </div>
+            </Card>
+
+            {/* Select Section */}
+            <Card header={<h3 className="heading-3">Selects</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Select
+                  label="Choose a route"
+                  placeholder="Select a route..."
+                  options={[
+                    { value: '1', label: 'Route 1' },
+                    { value: '2', label: 'Route 2' },
+                    { value: '3', label: 'Route 3' },
+                  ]}
+                  helperText="Select from available routes"
+                />
+                <Select
+                  label="With Error"
+                  options={[
+                    { value: 'a', label: 'Option A' },
+                    { value: 'b', label: 'Option B' },
+                  ]}
+                  error="Please select an option"
+                />
+              </div>
+            </Card>
+
+            {/* Typography Section */}
+            <Card header={<h3 className="heading-3">Typography</h3>} padding="medium" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h1 className="heading-1 text-text-primary">Heading 1</h1>
+                <h2 className="heading-2 text-text-primary">Heading 2</h2>
+                <h3 className="heading-3 text-text-primary">Heading 3</h3>
+                <h4 className="heading-4 text-text-primary">Heading 4</h4>
+                <p className="body-large text-text-primary">Body Large</p>
+                <p className="body-regular text-text-secondary">Body Regular</p>
+                <p className="body-small text-text-tertiary">Body Small</p>
+                <span className="caption text-text-disabled">Caption Text</span>
+              </div>
+            </Card>
+
+            {/* Data Display Section */}
+            <Card header={<h3 className="heading-3">Data Display</h3>} padding="medium">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <span className="label text-text-tertiary">TOTAL RIDES</span>
+                  <div className="data-large text-text-primary">1,234,567</div>
+                  <p className="caption text-success">+12% from last month</p>
+                </div>
+                <div>
+                  <span className="label text-text-tertiary">AVERAGE SPEED</span>
+                  <div className="data-medium text-text-primary">24.5 mph</div>
+                </div>
+              </div>
+            </Card>
           </>
         ) : (
           /* Routes/Stops View - List */
