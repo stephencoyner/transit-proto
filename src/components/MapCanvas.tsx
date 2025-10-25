@@ -6,15 +6,11 @@ import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
-import { Button, Card, Input, Select } from '@/components/ui';
+import NavRail from '@/components/NavRail';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
 // Import icons from public folder
-const HopthruIcon = '/icons/hopthru.svg';
-const SystemIcon = '/icons/system.svg';
-const RoutesIcon = '/icons/routes.svg';
-const StopsIcon = '/icons/stops.svg';
 const DropdownArrowIcon = '/icons/dropdown-arrow.svg';
 
 // Import season icons from components folder
@@ -72,11 +68,11 @@ function getColorForId(id: string): [number, number, number] {
 }
 
 const INITIAL_VIEW_STATE = {
-  // Gas Works Park coordinates with offset to account for left panels
+  // Gas Works Park coordinates with offset to account for nav rail and data panel
   // Original Gas Works Park: -122.3342, 47.6456
-  // Left panel (240px) + Data panel (360px) + margins (24px) = 624px total
-  // Offset longitude significantly to the right to center in visible map area only
-  longitude: -122.250,
+  // Nav rail (64px) + Data panel (360px) + margins (24px) = 448px total
+  // Offset longitude to the right to center in visible map area only
+  longitude: -122.270,
   latitude: 47.6456,
   zoom: 12,
   pitch: 0,
@@ -88,7 +84,7 @@ const UI_PADDING = {
   top: 24,
   right: 24,
   bottom: 24,
-  // Only account for data panel since map container already starts after left rail
+  // Only account for data panel since map container already starts after nav rail
   left: 360 + 12
 };
 const MAX_ZOOM = 16;
@@ -98,12 +94,13 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'metric' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
   
@@ -807,114 +804,48 @@ export default function MapCanvas() {
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-      {/* Left Panel */}
+      {/* Nav Rail */}
       <div style={{
-        width: '240px',
+        width: '64px',
         height: '100%',
-        backgroundColor: '#FFFFFF',
-        borderRight: '1px solid #e0e0e0',
-        display: 'flex',
-        flexDirection: 'column',
         position: 'fixed',
         left: 0,
         top: 0,
         zIndex: 1000
       }}>
-        {/* Logo/Icon */}
-        <div className="p-3 flex items-center justify-start">
-          <img
-            src={HopthruIcon}
-            alt="Hopthru"
-            style={{
-              width: '56px',
-              height: '56px'
-            }}
-          />
-        </div>
+        <NavRail
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setSelectedRouteId(null);
+            setSelectedStopId(null);
+          }}
+          userInitial="S"
+          isFiltersPanelOpen={isFiltersPanelOpen}
+          onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
+        />
+      </div>
 
-              {/* Tabs */}
-              <div className="flex flex-col pb-4">
-                <button
-                  onClick={() => {
-                    setActiveTab('system');
-                    setSelectedRouteId(null);
-                    setSelectedStopId(null);
-                  }}
-                  className={`
-                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
-                    ${activeTab === 'system' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
-                  `}
-                >
-            <img
-              src={SystemIcon}
-              alt="System"
-              className="w-4 h-4"
-            />
-            System
-          </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('routes');
-                    // Clear route selection to go back to routes list
-                    setSelectedRouteId(null);
-                    setSelectedStopId(null);
-                  }}
-                  className={`
-                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
-                    ${activeTab === 'routes' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
-                  `}
-                >
-            <img
-              src={RoutesIcon}
-              alt="Routes"
-              className="w-4 h-4"
-            />
-            Routes
-          </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('stops');
-                    setSelectedRouteId(null);
-                    // Clear stop selection to go back to stops list
-                    setSelectedStopId(null);
-                  }}
-                  className={`
-                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
-                    ${activeTab === 'stops' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
-                  `}
-                >
-            <img
-              src={StopsIcon}
-              alt="Stops"
-              className="w-4 h-4"
-            />
-            Stops
-          </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('components');
-                    setSelectedRouteId(null);
-                    setSelectedStopId(null);
-                  }}
-                  className={`
-                    flex items-center gap-3 py-3 border-none cursor-pointer body-regular text-left
-                    ${activeTab === 'components' ? 'px-4 bg-btn-secondary text-text-secondary w-[calc(100%-8px)] rounded-default mx-1' : 'px-5 bg-transparent text-text-primary w-full rounded-none m-0'}
-                  `}
-                >
-            <img
-              src={HopthruIcon}
-              alt="Components"
-              className="w-4 h-4"
-            />
-            Components
-          </button>
-        </div>
-
-        {/* Filter Section - Hidden on Components Tab */}
-        {activeTab !== 'components' && (
+      {/* Left Panel - Filter Section */}
+      <div
+        id="filters-panel"
+        style={{
+          width: isFiltersPanelOpen ? '240px' : '0px',
+          height: '100%',
+          backgroundColor: '#FFFFFF',
+          borderRight: isFiltersPanelOpen ? '1px solid #e0e0e0' : 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'fixed',
+          left: '64px',
+          top: 0,
+          zIndex: 1000,
+          overflow: 'hidden',
+          transition: 'width 300ms ease-in-out, border-right 300ms ease-in-out'
+        }}>
+        {/* Filter Section */}
         <div style={{
           padding: '16px 12px 24px 12px',
-          borderTop: '1px solid #e0e0e0',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px' // Space between the two separate filters
@@ -1118,7 +1049,6 @@ export default function MapCanvas() {
             )}
           </div>
         </div>
-        )}
       </div>
 
       {/* Open Filter Content - Overlay with Dynamic Positioning */}
@@ -1484,12 +1414,13 @@ export default function MapCanvas() {
       {/* Map Container */}
       <div
         ref={mapContainerRef}
-        style={{ 
-          flex: 1, 
-          marginLeft: '240px', 
-          position: 'relative', 
-          width: 'calc(100% - 240px)', 
-          height: '100%' 
+        style={{
+          flex: 1,
+          marginLeft: isFiltersPanelOpen ? '304px' : '64px',
+          position: 'relative',
+          width: isFiltersPanelOpen ? 'calc(100% - 304px)' : 'calc(100% - 64px)',
+          height: '100%',
+          transition: 'margin-left 300ms ease-in-out, width 300ms ease-in-out'
         }}>
 
       <DeckGL
@@ -1532,7 +1463,7 @@ export default function MapCanvas() {
         position: 'fixed',
         top: '12px',
         bottom: '12px',
-        left: 'calc(240px + 12px)',
+        left: isFiltersPanelOpen ? 'calc(304px + 12px)' : 'calc(64px + 12px)',
         width: '360px',
         backgroundColor: '#FFFFFF',
         borderRadius: '16px',
@@ -1540,7 +1471,8 @@ export default function MapCanvas() {
         padding: '24px',
         fontFamily: 'Inter, sans-serif',
         zIndex: 1000,
-        overflowY: 'auto'
+        overflowY: 'auto',
+        transition: 'left 300ms ease-in-out'
       }}>
         {selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
@@ -2189,101 +2121,6 @@ export default function MapCanvas() {
             </div>
           </div>
         </div>
-          </>
-        ) : activeTab === 'components' ? (
-          /* Components View - Showcase UI Components */
-          <>
-            <div style={{ marginBottom: '24px' }}>
-              <h2 className="heading-2 text-text-primary" style={{ marginBottom: '8px' }}>UI Components</h2>
-              <p className="body-regular text-text-secondary">Test the reusable components from our design system</p>
-            </div>
-
-            {/* Buttons Section */}
-            <Card header={<h3 className="heading-3">Buttons</h3>} padding="medium" style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <Button variant="primary" size="medium">Primary Button</Button>
-                <Button variant="secondary" size="medium">Secondary Button</Button>
-                <Button variant="tertiary" size="medium">Tertiary Button</Button>
-                <Button variant="primary" size="small">Small Button</Button>
-                <Button variant="primary" disabled>Disabled Button</Button>
-              </div>
-            </Card>
-
-            {/* Input Section */}
-            <Card header={<h3 className="heading-3">Inputs</h3>} padding="medium" style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <Input
-                  label="Email Address"
-                  type="email"
-                  placeholder="you@example.com"
-                  helperText="We'll never share your email"
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  placeholder="Enter password"
-                />
-                <Input
-                  label="With Error"
-                  type="text"
-                  error="This field is required"
-                  placeholder="Enter something"
-                />
-              </div>
-            </Card>
-
-            {/* Select Section */}
-            <Card header={<h3 className="heading-3">Selects</h3>} padding="medium" style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <Select
-                  label="Choose a route"
-                  placeholder="Select a route..."
-                  options={[
-                    { value: '1', label: 'Route 1' },
-                    { value: '2', label: 'Route 2' },
-                    { value: '3', label: 'Route 3' },
-                  ]}
-                  helperText="Select from available routes"
-                />
-                <Select
-                  label="With Error"
-                  options={[
-                    { value: 'a', label: 'Option A' },
-                    { value: 'b', label: 'Option B' },
-                  ]}
-                  error="Please select an option"
-                />
-              </div>
-            </Card>
-
-            {/* Typography Section */}
-            <Card header={<h3 className="heading-3">Typography</h3>} padding="medium" style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h1 className="heading-1 text-text-primary">Heading 1</h1>
-                <h2 className="heading-2 text-text-primary">Heading 2</h2>
-                <h3 className="heading-3 text-text-primary">Heading 3</h3>
-                <h4 className="heading-4 text-text-primary">Heading 4</h4>
-                <p className="body-large text-text-primary">Body Large</p>
-                <p className="body-regular text-text-secondary">Body Regular</p>
-                <p className="body-small text-text-tertiary">Body Small</p>
-                <span className="caption text-text-disabled">Caption Text</span>
-              </div>
-            </Card>
-
-            {/* Data Display Section */}
-            <Card header={<h3 className="heading-3">Data Display</h3>} padding="medium">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <span className="label text-text-tertiary">TOTAL RIDES</span>
-                  <div className="data-large text-text-primary">1,234,567</div>
-                  <p className="caption text-success">+12% from last month</p>
-                </div>
-                <div>
-                  <span className="label text-text-tertiary">AVERAGE SPEED</span>
-                  <div className="data-medium text-text-primary">24.5 mph</div>
-                </div>
-              </div>
-            </Card>
           </>
         ) : (
           /* Routes/Stops View - List */
