@@ -11,9 +11,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
 
     const inputClasses = `
-      body-regular
+      button-small
       w-full
-      bg-bg-elevated
+      bg-bg-primary
+      hover:bg-bg-elevated
+      focus:bg-bg-elevated
       border
       ${error ? 'border-error' : 'border-border-default'}
       ${error ? 'focus:border-error' : 'focus:border-border-focus'}
@@ -23,8 +25,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       text-text-primary
       placeholder:text-text-disabled
       focus:outline-none
-      focus:ring-2
-      ${error ? 'focus:ring-error/20' : 'focus:ring-border-focus/20'}
       disabled:opacity-50
       disabled:cursor-not-allowed
       transition-colors
