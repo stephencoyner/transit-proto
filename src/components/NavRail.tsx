@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import CloseFiltersIcon from '@/components/Icons/Close-Filters.svg';
+import OpenFiltersIcon from '@/components/Icons/Open-Filters.svg';
 
 interface NavRailProps {
   activeTab: 'system' | 'routes' | 'stops';
@@ -34,7 +36,7 @@ const NavRail: React.FC<NavRailProps> = ({
         aria-controls="filters-panel"
       >
         <img
-          src={isFiltersPanelOpen ? '/icons/close-filters.svg' : '/icons/open-filters.svg'}
+          src={isFiltersPanelOpen ? CloseFiltersIcon.src : OpenFiltersIcon.src}
           alt=""
           className="w-4 h-4"
           aria-hidden="true"
