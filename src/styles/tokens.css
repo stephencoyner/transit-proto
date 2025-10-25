@@ -1,0 +1,31 @@
+:root {
+  --background-primary: #FFFCF5;
+  --background-secondary: #FFFAF0;
+  --background-elevated: #FFFFFF;
+  --brown-deep: #3D2817;
+  --brown-rich: #5C3D2E;
+  --brown-medium: #7A5542;
+  --text-primary: #1A1410;
+  --text-secondary: #3D2817;
+  --text-tertiary: #5C4939;
+  --text-muted: #8B7965;
+  --border-soft: #E8E0D5;
+  --border-medium: #D4C9BA;
+  --border-dark: #C0B4A3;
+  --ui-hover: #E8E8E8;
+  --ui-active: #E8E8E8;
+  --ui-focus: #000000;
+  --ui-disabled: #F5F5F5;
+  --neutral-white: #FFFFFF;
+  --neutral-black: #000000;
+  --neutral-gray-light: #F0F0F0;
+  --neutral-gray: #999999;
+  --neutral-gray-dark: #666666;
+  --neutral-gray-darker: #333333;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Override tokens here for dark mode if needed */
+  }
+}
