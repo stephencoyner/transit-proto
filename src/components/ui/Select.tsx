@@ -64,7 +64,12 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           left: rect.left + window.scrollX,
           width: rect.width
         });
-        setShowTooltip(false); // Hide tooltip when menu opens
+        // Clear tooltip timer and hide tooltip when menu opens
+        if (tooltipTimerRef.current) {
+          clearTimeout(tooltipTimerRef.current);
+          tooltipTimerRef.current = null;
+        }
+        setShowTooltip(false);
       }
     }, [isOpen]);
 
