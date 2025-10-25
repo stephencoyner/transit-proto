@@ -217,8 +217,8 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               position: 'fixed',
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
-              width: `${dropdownPosition.width}px`,
-              maxHeight: '300px',
+              minWidth: `${dropdownPosition.width}px`,
+              maxHeight: '640px',
               backgroundColor: 'var(--bg-elevated)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--radius-large)',
@@ -240,17 +240,15 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                   onMouseLeave={() => setHoveredItemIndex(null)}
                   className="button-small"
                   style={{
-                    padding: '12px 16px',
+                    padding: '12px 28px 12px 16px',
                     cursor: option.disabled ? 'not-allowed' : 'pointer',
                     color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    transition: 'background-color 0.2s ease, border 0.2s ease',
-                    backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-elevated)' : 'transparent',
-                    border: isItemHovered && !option.disabled ? '0.5px solid var(--border-hover)' : '0.5px solid transparent',
-                    borderRadius: '20px',
-                    margin: index === 0 ? '12px 12px 4px 12px' : (index === options.length - 1 ? '4px 12px 12px 12px' : '4px 12px'),
+                    transition: 'background-color 0.2s ease',
+                    backgroundColor: isItemHovered && !option.disabled ? 'color-mix(in srgb, var(--btn-secondary) 50%, transparent)' : 'transparent',
+                    margin: index === 0 ? '12px 0 4px 0' : (index === options.length - 1 ? '4px 0 12px 0' : '4px 0'),
                     whiteSpace: 'nowrap',
                     opacity: option.disabled ? 0.5 : 1
                   }}

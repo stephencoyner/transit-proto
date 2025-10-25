@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface NavRailProps {
-  activeTab: 'system' | 'routes' | 'stops';
-  onTabChange: (tab: 'system' | 'routes' | 'stops') => void;
+  activeTab: 'system' | 'routes' | 'stops' | 'components';
+  onTabChange: (tab: 'system' | 'routes' | 'stops' | 'components') => void;
   userInitial?: string;
   isFiltersPanelOpen: boolean;
   onToggleFiltersPanel: () => void;
@@ -31,11 +31,27 @@ const StopsIcon = () => (
   </svg>
 );
 
+const ComponentsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor"/>
+    <rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor"/>
+    <rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor"/>
+    <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor"/>
+  </svg>
+);
+
 const OpenFiltersIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect y="2" width="16" height="2" rx="1" fill="currentColor"/>
     <rect y="7" width="16" height="2" rx="1" fill="currentColor"/>
     <rect y="12" width="16" height="2" rx="1" fill="currentColor"/>
+  </svg>
+);
+
+const OpenFilters2Icon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3.80664 14.7515C3.41808 15.1432 2.79051 15.1417 2.40332 14.7485C2.01538 14.3544 2.01538 13.7159 2.40332 13.3218L7.63184 8.01319L2.44043 2.74073C2.05314 2.34727 2.05314 1.70939 2.44043 1.31593C2.82791 0.922713 3.4563 0.922669 3.84375 1.31593L9.80176 7.36671C10.0237 7.59225 10.1024 7.89924 10.0518 8.19093C10.0496 8.35257 9.98915 8.51515 9.86328 8.6421L3.80664 14.7515Z" fill="currentColor"/>
+    <rect x="12" y="15.0001" width="14" height="2" rx="1" transform="rotate(-90 12 15.0001)" fill="currentColor"/>
   </svg>
 );
 
@@ -49,6 +65,13 @@ const CloseFiltersIcon = () => (
   </svg>
 );
 
+const CloseFilters2Icon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12.1231 1.32543C12.5503 0.891944 13.2429 0.891752 13.67 1.32543C14.097 1.75919 14.097 2.46299 13.67 2.89672L8.64658 7.99633L13.6778 13.1047C14.1045 13.5384 14.1045 14.2414 13.6778 14.675C13.2507 15.1088 12.5581 15.1087 12.131 14.675L6.42001 8.87719C6.3857 8.84984 6.35203 8.82043 6.3204 8.78832C6.10691 8.57146 6.0001 8.28736 6.00009 8.00317C5.99644 7.71413 6.10225 7.4239 6.31943 7.20336C6.35442 7.16784 6.39152 7.13541 6.42978 7.10571L12.1231 1.32543Z" fill="currentColor"/>
+    <rect x="4" y="1.00022" width="14" height="2" rx="1" transform="rotate(90 4 1.00022)" fill="currentColor"/>
+  </svg>
+);
+
 const NavRail: React.FC<NavRailProps> = ({
   activeTab,
   onTabChange,
@@ -56,10 +79,13 @@ const NavRail: React.FC<NavRailProps> = ({
   isFiltersPanelOpen,
   onToggleFiltersPanel
 }) => {
+  const [isFilterButtonHovered, setIsFilterButtonHovered] = useState(false);
+
   const navItems = [
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
     { id: 'routes' as const, label: 'Routes', Icon: RoutesIcon },
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
+    { id: 'components' as const, label: 'Components', Icon: ComponentsIcon },
   ];
 
   return (
@@ -73,12 +99,17 @@ const NavRail: React.FC<NavRailProps> = ({
       {/* Toggle Filters Button */}
       <button
         onClick={onToggleFiltersPanel}
+        onMouseEnter={() => setIsFilterButtonHovered(true)}
+        onMouseLeave={() => setIsFilterButtonHovered(false)}
         className="flex items-center justify-center w-10 h-10 rounded-default transition-colors hover:bg-btn-secondary/50 mb-3 text-text-tertiary"
         aria-label="Toggle filters panel"
         aria-expanded={isFiltersPanelOpen}
         aria-controls="filters-panel"
       >
-        {isFiltersPanelOpen ? <CloseFiltersIcon /> : <OpenFiltersIcon />}
+        {isFilterButtonHovered
+          ? (isFiltersPanelOpen ? <CloseFilters2Icon /> : <OpenFilters2Icon />)
+          : <OpenFiltersIcon />
+        }
       </button>
 
       {/* Navigation Items */}

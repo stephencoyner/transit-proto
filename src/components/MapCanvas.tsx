@@ -7,6 +7,7 @@ import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
+import { Button, Card, Input, Select } from '@/components/ui';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -93,10 +94,10 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
-  const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'metric' | null>(null);
+  const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
@@ -262,8 +263,8 @@ export default function MapCanvas() {
   }, [filteredShapes]);
 
   // Determine what to show based on active tab
-  const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId;
-  const showStops = activeTab === 'stops' || selectedStopId || selectedRouteId;
+  const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId && activeTab !== 'components';
+  const showStops = (activeTab === 'stops' || selectedStopId || selectedRouteId) && activeTab !== 'components';
 
   // Helper function to calculate bounding box from features (MultiLineString-safe)
   const calculateBounds = (features: RouteFeature[]) => {
@@ -438,15 +439,14 @@ export default function MapCanvas() {
     const trigger =
       openFilter === 'date' ? dateRef.current :
       openFilter === 'days' ? daysRef.current :
-      openFilter === 'metric' ? metricRef.current :
       null;
 
     if (!trigger) return setPanelPos(null);
 
     const rect = trigger.getBoundingClientRect(); // Get viewport coordinates
     setPanelPos({
-      top: rect.top,           // Align tops
-      left: rect.right + GAP,  // Right edge of trigger + gap
+      top: rect.bottom + GAP,  // Below trigger + gap
+      left: rect.left,         // Left-align with trigger
     });
   }, [openFilter]);
 
@@ -479,9 +479,7 @@ export default function MapCanvas() {
         dateRef.current &&
         !dateRef.current.contains(event.target as Node) &&
         daysRef.current &&
-        !daysRef.current.contains(event.target as Node) &&
-        metricRef.current &&
-        !metricRef.current.contains(event.target as Node)
+        !daysRef.current.contains(event.target as Node)
       ) {
         setOpenFilter(null);
       }
@@ -868,203 +866,91 @@ export default function MapCanvas() {
           width: '240px',
           minWidth: '240px'
         }}>
-          {/* Date Range Filter */}
-          <div 
-            ref={dateRef}
-            onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
-            onMouseEnter={handleDateFilterMouseEnter}
-            onMouseLeave={handleDateFilterMouseLeave}
-            style={{
-              backgroundColor: openFilter === 'date' ? '#E8E8E8' : (isDateHovered ? '#E8E8E8' : '#FFFFFF'),
-              border: openFilter === 'date' ? '1.5px solid #000000' : '1px solid #D9D9D9',
-              borderRadius: '20px',
-              padding: '12px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              color: '#333',
-              userSelect: 'none',
-              transition: 'background-color 0.2s ease',
-              boxSizing: 'border-box',
-              position: 'relative'
-            }}
-          >
-            <span 
-              ref={dateTextRef}
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                flexGrow: 1,
-                marginRight: '8px'
-              }}
-            >{getDateFilterText()}</span>
-            <img
-              src={DropdownArrowIcon}
-              alt="Dropdown"
-              style={{
-                width: '24px',
-                height: '24px',
-                transform: openFilter === 'date' ? 'rotate(-90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease'
-              }}
-            />
-            {/* Custom Tooltip */}
-            {showDateTooltip && (
-              <div style={{
-                position: 'absolute',
-                bottom: 'calc(100% + 8px)',
-                left: '0',
-                backgroundColor: '#333',
-                color: '#FFFFFF',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontFamily: 'Inter, sans-serif',
-                whiteSpace: 'nowrap',
-                zIndex: 3000,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                pointerEvents: 'none'
-              }}>
-                {getDateFilterText()}
+          {/* Date-time Section */}
+          <div style={{ marginBottom: '8px' }}>
+            <label className="label text-text-tertiary block mb-1">Date-time</label>
+
+            {/* Date Range Filter */}
+            <div ref={dateRef} style={{ marginBottom: '8px' }}>
+              <div
+                onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                onMouseEnter={handleDateFilterMouseEnter}
+                onMouseLeave={handleDateFilterMouseLeave}
+                className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                style={{
+                  borderWidth: 'var(--border-width)',
+                  backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                  borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                <span
+                  ref={dateTextRef}
+                  className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                >
+                  {getDateFilterText()}
+                </span>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)' }}>
+                  <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                </svg>
               </div>
-            )}
+            </div>
+
+            {/* Days of Week Filter */}
+            <div ref={daysRef}>
+              <div
+                onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+                onMouseEnter={() => setIsDaysHovered(true)}
+                onMouseLeave={() => setIsDaysHovered(false)}
+                className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                style={{
+                  borderWidth: 'var(--border-width)',
+                  backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                  borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                  Weekdays • All Day
+                </span>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)' }}>
+                  <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Compare Button */}
+            <div style={{ alignSelf: 'flex-start', marginTop: '8px' }}>
+              <Button
+                variant="tertiary"
+                size="small"
+                onClick={() => {
+                  // Add compare functionality here
+                  console.log('Compare clicked');
+                }}
+              >
+                Compare
+              </Button>
+            </div>
           </div>
 
-          {/* Days of Week Filter */}
-          <div 
-            ref={daysRef}
-            onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
-            onMouseEnter={() => setIsDaysHovered(true)}
-            onMouseLeave={() => setIsDaysHovered(false)}
-            style={{
-              backgroundColor: openFilter === 'days' ? '#E8E8E8' : (isDaysHovered ? '#E8E8E8' : '#FFFFFF'),
-              border: openFilter === 'days' ? '1.5px solid #000000' : '1px solid #D9D9D9',
-              borderRadius: '20px',
-              padding: '12px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              color: '#333',
-              userSelect: 'none',
-              transition: 'background-color 0.2s ease',
-              boxSizing: 'border-box'
-            }}
-          >
-            <span>Weekdays • All Day</span>
-            <img
-              src={DropdownArrowIcon}
-              alt="Dropdown"
-              style={{
-                width: '24px',
-                height: '24px',
-                transform: openFilter === 'days' ? 'rotate(-90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease'
-              }}
+          {/* Metric Section */}
+          <div style={{ marginTop: '16px' }}>
+            <label className="label text-text-tertiary block mb-1">Metric</label>
+            <Select
+              value={selectedMetric}
+              onChange={(value) => setSelectedMetric(value)}
+              options={[
+                { value: 'Average daily boardings', label: 'Average daily boardings' },
+                { value: 'Total boardings', label: 'Total boardings' },
+                { value: 'Average daily alightings', label: 'Average daily alightings' },
+                { value: 'Total daily boardings', label: 'Total daily boardings' },
+                { value: 'Average daily activity', label: 'Average daily activity' },
+                { value: 'Total activity', label: 'Total activity' },
+                { value: 'Average load', label: 'Average load' },
+                { value: 'Maxload', label: 'Maxload' }
+              ]}
             />
-          </div>
-
-          {/* Compare Button */}
-          <button
-            onClick={() => {
-              // Add compare functionality here
-              console.log('Compare clicked');
-            }}
-            onMouseEnter={() => setIsCompareHovered(true)}
-            onMouseLeave={() => setIsCompareHovered(false)}
-            style={{
-              height: '28px',
-              padding: '0 20px',
-              backgroundColor: isCompareHovered ? '#E8E8E8' : '#FFFFFF',
-              border: '1px solid #D9D9D9',
-              borderRadius: '20px',
-              cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              color: '#333',
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              alignSelf: 'flex-start',
-              whiteSpace: 'nowrap',
-              transition: 'background-color 0.2s ease'
-            }}
-          >
-            Compare
-          </button>
-
-          {/* Metric Filter */}
-          <div 
-            ref={metricRef}
-            onClick={() => setOpenFilter(openFilter === 'metric' ? null : 'metric')}
-            onMouseEnter={handleMetricFilterMouseEnter}
-            onMouseLeave={handleMetricFilterMouseLeave}
-            style={{
-              backgroundColor: openFilter === 'metric' ? '#E8E8E8' : (isMetricHovered ? '#E8E8E8' : '#FFFFFF'),
-              border: openFilter === 'metric' ? '1.5px solid #000000' : '1px solid #D9D9D9',
-              borderRadius: '20px',
-              padding: '12px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              color: '#333',
-              userSelect: 'none',
-              transition: 'background-color 0.2s ease',
-              marginTop: '24px',
-              boxSizing: 'border-box',
-              position: 'relative'
-            }}
-          >
-            <span 
-              ref={metricTextRef}
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                flexGrow: 1,
-                marginRight: '8px'
-              }}
-            >{selectedMetric}</span>
-            <img
-              src={DropdownArrowIcon}
-              alt="Dropdown"
-              style={{
-                width: '24px',
-                height: '24px',
-                transform: openFilter === 'metric' ? 'rotate(-90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease'
-              }}
-            />
-            {/* Custom Tooltip */}
-            {showMetricTooltip && (
-              <div style={{
-                position: 'absolute',
-                bottom: 'calc(100% + 8px)',
-                left: '0',
-                backgroundColor: '#333',
-                color: '#FFFFFF',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontFamily: 'Inter, sans-serif',
-                whiteSpace: 'nowrap',
-                zIndex: 3000,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                pointerEvents: 'none'
-              }}>
-                {selectedMetric}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -1372,59 +1258,6 @@ export default function MapCanvas() {
             <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
               Days Filter Open
             </div>
-          ) : openFilter === 'metric' ? (
-            <div style={{ 
-              padding: '0',
-              fontFamily: 'Inter, sans-serif',
-              minWidth: '280px'
-            }}>
-              {[
-                'Average daily boardings',
-                'Total boardings',
-                'Average daily alightings',
-                'Total daily boardings',
-                'Average daily activity',
-                'Total activity',
-                'Average load',
-                'Maxload'
-              ].map((metric, index, array) => (
-                <div
-                  key={metric}
-                  onClick={() => {
-                    setSelectedMetric(metric);
-                    setOpenFilter(null);
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    color: '#000',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    transition: 'background-color 0.2s ease',
-                    borderRadius: '8px',
-                    margin: index === 0 ? '12px 12px 4px 12px' : (index === array.length - 1 ? '4px 12px 12px 12px' : '4px 12px'),
-                    whiteSpace: 'nowrap'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#F5F5F5';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  {selectedMetric === metric && (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  )}
-                  <span style={{ marginLeft: selectedMetric === metric ? '0' : '32px' }}>
-                    {metric}
-                  </span>
-                </div>
-              ))}
-            </div>
           ) : null}
         </div>
       )}
@@ -1485,7 +1318,7 @@ export default function MapCanvas() {
         width: '360px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
-        padding: '24px',
+        padding: '24px 12px',
         fontFamily: 'Inter, sans-serif',
         zIndex: 1001,
         overflowY: 'auto',
@@ -2140,6 +1973,94 @@ export default function MapCanvas() {
             </div>
           </div>
         </div>
+          </>
+        ) : activeTab === 'components' ? (
+          /* Components View - Showcase */
+          <>
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: '500', marginBottom: '24px', color: 'var(--text-primary)' }}>
+                UI Components
+              </h2>
+
+              {/* Buttons Section */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '500', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Buttons
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <Button variant="primary" size="medium" style={{ width: '100%' }}>Primary</Button>
+                  <Button variant="secondary" size="medium" style={{ width: '100%' }}>Secondary</Button>
+                  <Button variant="tertiary" size="medium" style={{ width: '100%' }}>Tertiary</Button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button variant="primary" size="small">Primary</Button>
+                    <Button variant="secondary" size="small">Secondary</Button>
+                    <Button variant="tertiary" size="small">Tertiary</Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cards Section */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '500', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Cards
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <Card>
+                    <div style={{ padding: '16px' }}>
+                      <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>Card Title</h4>
+                      <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>This is a basic card component with some example content.</p>
+                    </div>
+                  </Card>
+                  <Card>
+                    <div style={{ padding: '16px' }}>
+                      <h4 style={{ marginBottom: '8px', fontSize: '16px', fontWeight: '500' }}>Another Card</h4>
+                      <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Cards can contain any content you need.</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Inputs Section */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '500', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Inputs
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <Input placeholder="Enter text here..." />
+                  <Input placeholder="Disabled input" disabled />
+                  <Input placeholder="Input with default value" defaultValue="Sample text" />
+                  <Input label="Input Label" placeholder="Input with label" />
+                </div>
+              </div>
+
+              {/* Select Section */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '500', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Select
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <Select
+                    options={[
+                      { value: 'option1', label: 'Option 1' },
+                      { value: 'option2', label: 'Option 2' },
+                      { value: 'option3', label: 'Option 3' }
+                    ]}
+                    value="option1"
+                    onChange={() => {}}
+                    placeholder="Select an option"
+                  />
+                  <Select
+                    label="Select Label"
+                    options={[
+                      { value: 'option1', label: 'Option 1' },
+                      { value: 'option2', label: 'Option 2' },
+                      { value: 'option3', label: 'Option 3' }
+                    ]}
+                    placeholder="Select with label"
+                  />
+                </div>
+              </div>
+            </div>
           </>
         ) : (
           /* Routes/Stops View - List */
