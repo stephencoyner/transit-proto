@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Tooltip } from './Tooltip';
 
 const SelectDropdownIcon = () => (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="pointer-events-none">
@@ -37,8 +39,12 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const [selectedValue, setSelectedValue] = useState(value || '');
     const [isHovered, setIsHovered] = useState(false);
     const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null);
+    const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+    const [showTooltip, setShowTooltip] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
     const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
 
     const selectedOption = options.find(opt => opt.value === selectedValue);
@@ -49,6 +55,49 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
         setSelectedValue(value);
       }
     }, [value]);
+
+    useEffect(() => {
+      if (isOpen && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.left + window.scrollX,
+          width: rect.width
+        });
+        setShowTooltip(false); // Hide tooltip when menu opens
+      }
+    }, [isOpen]);
+
+    useEffect(() => {
+      return () => {
+        if (tooltipTimerRef.current) {
+          clearTimeout(tooltipTimerRef.current);
+        }
+      };
+    }, []);
+
+    const handleMouseEnter = () => {
+      setIsHovered(true);
+      if (!isOpen) {
+        tooltipTimerRef.current = setTimeout(() => {
+          if (textRef.current && !isOpen) {
+            const isOverflowing = textRef.current.scrollWidth > textRef.current.clientWidth;
+            if (isOverflowing && displayText) {
+              setShowTooltip(true);
+            }
+          }
+        }, 500);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setIsHovered(false);
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current);
+        tooltipTimerRef.current = null;
+      }
+      setShowTooltip(false);
+    };
 
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -80,14 +129,16 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const selectClasses = `
       button-small
       w-full
+      h-10
       hover:bg-bg-elevated
       border
       ${error ? 'border-error' : 'border-border-default'}
       ${isOpen ? 'border-border-focus' : ''}
-      rounded-default
+      rounded-full
       px-4
-      py-2
       pr-10
+      flex
+      items-center
       focus:outline-none
       disabled:opacity-50
       disabled:cursor-not-allowed
@@ -103,106 +154,119 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     } as React.CSSProperties;
 
     return (
-      <div className="w-full" ref={ref}>
-        {label && (
-          <label htmlFor={selectId} className="label text-text-secondary mb-2 block">
-            {label}
-          </label>
-        )}
-        <div className="relative">
-          <div
-            ref={containerRef}
-            id={selectId}
-            className={selectClasses}
-            style={style}
-            onClick={() => !disabled && setIsOpen(!isOpen)}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            role="button"
-            tabIndex={disabled ? -1 : 0}
-            aria-expanded={isOpen}
-            aria-haspopup="listbox"
-          >
-            <span style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              display: 'block'
-            }}>
-              {displayText}
-            </span>
-          </div>
-          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none" style={{ color: 'var(--text-secondary)' }}>
-            <SelectDropdownIcon />
-          </div>
-
-          {isOpen && (
+      <>
+        <div className="w-full" ref={ref}>
+          {label && (
+            <label htmlFor={selectId} className="label text-text-tertiary mb-1 block">
+              {label}
+            </label>
+          )}
+          <div className="relative">
             <div
-              ref={dropdownRef}
-              className="absolute z-50 w-full mt-2"
-              style={{
-                backgroundColor: 'var(--bg-elevated)',
-                border: '0.5px solid var(--border-default)',
-                borderRadius: 'var(--radius-large)',
-                boxShadow: 'var(--shadow-lg)',
-                overflow: 'hidden'
-              }}
-              role="listbox"
+              ref={containerRef}
+              id={selectId}
+              className={selectClasses}
+              style={style}
+              onClick={() => !disabled && setIsOpen(!isOpen)}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              role="button"
+              tabIndex={disabled ? -1 : 0}
+              aria-expanded={isOpen}
+              aria-haspopup="listbox"
             >
-              {options.map((option, index) => {
-                const isSelected = selectedValue === option.value;
-                const isItemHovered = hoveredItemIndex === index;
-
-                return (
-                  <div
-                    key={option.value}
-                    onClick={() => !option.disabled && handleSelect(option.value)}
-                    onMouseEnter={() => setHoveredItemIndex(index)}
-                    onMouseLeave={() => setHoveredItemIndex(null)}
-                    className="button-small"
-                    style={{
-                      padding: '12px 16px',
-                      cursor: option.disabled ? 'not-allowed' : 'pointer',
-                      color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      transition: 'background-color 0.2s ease, border 0.2s ease',
-                      backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-elevated)' : 'transparent',
-                      border: isItemHovered && !option.disabled ? '0.5px solid var(--border-hover)' : '0.5px solid transparent',
-                      borderRadius: '20px',
-                      margin: index === 0 ? '12px 12px 4px 12px' : (index === options.length - 1 ? '4px 12px 12px 12px' : '4px 12px'),
-                      whiteSpace: 'nowrap',
-                      opacity: option.disabled ? 0.5 : 1
-                    }}
-                    role="option"
-                    aria-selected={isSelected}
-                  >
-                    {isSelected && (
-                      <div style={{ color: 'var(--text-primary)' }}>
-                        <CheckIcon />
-                      </div>
-                    )}
-                    <span style={{ marginLeft: isSelected ? '0' : '32px' }}>
-                      {option.label}
-                    </span>
-                  </div>
-                );
-              })}
+              <span ref={textRef} style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'block'
+              }}>
+                {displayText}
+              </span>
             </div>
+            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none" style={{ color: 'var(--text-secondary)' }}>
+              <SelectDropdownIcon />
+            </div>
+            {showTooltip && displayText && (
+              <Tooltip text={displayText}>
+                {null}
+              </Tooltip>
+            )}
+          </div>
+          {error && (
+            <span className="caption text-error mt-1 block">
+              {error}
+            </span>
+          )}
+          {!error && helperText && (
+            <span className="caption text-text-tertiary mt-1 block">
+              {helperText}
+            </span>
           )}
         </div>
-        {error && (
-          <span className="caption text-error mt-1 block">
-            {error}
-          </span>
+
+        {isOpen && dropdownPosition && createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: 'fixed',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+              maxHeight: '300px',
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-large)',
+              boxShadow: 'var(--shadow-lg)',
+              overflowY: 'auto',
+              zIndex: 9999
+            }}
+            role="listbox"
+          >
+            {options.map((option, index) => {
+              const isSelected = selectedValue === option.value;
+              const isItemHovered = hoveredItemIndex === index;
+
+              return (
+                <div
+                  key={option.value}
+                  onClick={() => !option.disabled && handleSelect(option.value)}
+                  onMouseEnter={() => setHoveredItemIndex(index)}
+                  onMouseLeave={() => setHoveredItemIndex(null)}
+                  className="button-small"
+                  style={{
+                    padding: '12px 16px',
+                    cursor: option.disabled ? 'not-allowed' : 'pointer',
+                    color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    transition: 'background-color 0.2s ease, border 0.2s ease',
+                    backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-elevated)' : 'transparent',
+                    border: isItemHovered && !option.disabled ? '0.5px solid var(--border-hover)' : '0.5px solid transparent',
+                    borderRadius: '20px',
+                    margin: index === 0 ? '12px 12px 4px 12px' : (index === options.length - 1 ? '4px 12px 12px 12px' : '4px 12px'),
+                    whiteSpace: 'nowrap',
+                    opacity: option.disabled ? 0.5 : 1
+                  }}
+                  role="option"
+                  aria-selected={isSelected}
+                >
+                  {isSelected && (
+                    <div style={{ color: 'var(--text-primary)' }}>
+                      <CheckIcon />
+                    </div>
+                  )}
+                  <span style={{ marginLeft: isSelected ? '0' : '32px' }}>
+                    {option.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>,
+          document.body
         )}
-        {!error && helperText && (
-          <span className="caption text-text-tertiary mt-1 block">
-            {helperText}
-          </span>
-        )}
-      </div>
+      </>
     );
   }
 );

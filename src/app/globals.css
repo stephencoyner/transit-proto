@@ -17,6 +17,7 @@
   --text-secondary: #3D2817;
   --text-tertiary: #5C4939;
   --text-on-primary: #FAF9F5;
+  --text-btn-primary: #FAF9F5;
   --text-disabled: #8B8089;
 
   /* Border Colors */
@@ -52,6 +53,7 @@
   --space-20: 5rem;    /* 80px */
 
   /* Border Radius */
+  --radius-sm: 0.375rem;      /* 6px - Small elements (tooltips, badges) */
   --radius-default: 1.25rem;  /* 20px - Most elements (buttons, inputs, cards) */
   --radius-large: 1.75rem;    /* 28px - Larger containers (modals, panels) */
   --radius-full: 9999px;      /* Fully rounded (pills, avatars, badges) */
@@ -163,6 +165,7 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-text-on-primary: var(--text-on-primary);
+  --color-text-btn-primary: var(--text-btn-primary);
   --color-text-disabled: var(--text-disabled);
 
   /* Border Colors */
@@ -198,6 +201,7 @@
   --spacing-20: var(--space-20);
 
   /* Border Radius */
+  --radius-sm: var(--radius-sm);
   --radius-default: var(--radius-default);
   --radius-large: var(--radius-large);
   --radius-full: var(--radius-full);
