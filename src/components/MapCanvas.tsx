@@ -80,13 +80,31 @@ const INITIAL_VIEW_STATE = {
   transitionDuration: 400
 };
 
-const UI_PADDING = {
-  top: 24,
-  right: 24,
-  bottom: 24,
-  // Only account for data panel since map container already starts after nav rail
-  left: 360 + 12
+// Calculate UI padding dynamically based on visible panels
+const getUIPadding = (isFiltersPanelOpen: boolean) => {
+  // NavRail: 64px, Filters panel: 240px (when open), Data panel: 360px
+  // Margins: 12px between panels, 12px from screen edges
+  const navRailWidth = 64;
+  const filtersPanelWidth = isFiltersPanelOpen ? 240 : 0;
+  const dataPanelWidth = 360;
+  const leftMargin = 12; // margin from screen edge
+  const gapBetweenPanels = 12;
+
+  // Extra breathing room for better visibility
+  const breathingRoom = 40;
+
+  // Total left panel width (from left screen edge to right edge of data panel)
+  const totalLeftPanelWidth = leftMargin + navRailWidth + filtersPanelWidth + dataPanelWidth + (gapBetweenPanels * 2);
+
+  return {
+    top: 24 + breathingRoom,
+    right: 24 + breathingRoom,
+    bottom: 24 + breathingRoom,
+    // Center in the space between data panel right edge and screen right edge
+    left: totalLeftPanelWidth + breathingRoom
+  };
 };
+
 const MAX_ZOOM = 16;
 const MIN_ZOOM = 8;
 
@@ -357,9 +375,10 @@ export default function MapCanvas() {
   // Helper function to fit bounds using proper Mercator projection
   const fitToBounds = useCallback((bounds: LngLatBoundsLike, size: {width: number; height: number}) => {
     const { width, height } = size;
+    const padding = getUIPadding(isFiltersPanelOpen);
     const viewport = new WebMercatorViewport({ width, height });
     const { longitude, latitude, zoom } = viewport.fitBounds(bounds, {
-      padding: UI_PADDING,
+      padding,
       maxZoom: MAX_ZOOM
     });
     return {
@@ -370,7 +389,7 @@ export default function MapCanvas() {
       bearing: 0,
       transitionDuration: 400
     };
-  }, []);
+  }, [isFiltersPanelOpen]);
 
   // Handlers for date filter tooltip
   const handleDateFilterMouseEnter = () => {
@@ -758,8 +777,72 @@ export default function MapCanvas() {
         })
       );
     }
+
+    // Add directional arrows when a pattern is selected
+    if (selectedPattern && selectedRouteId && filteredStops.length > 1) {
+      // Get the pattern data to find the correct stop sequence
+      const matchingShape = shapes.find(shape =>
+        (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
+      );
+      const actualRouteId = matchingShape?.properties.route_id;
+
+      if (actualRouteId && routePatterns[actualRouteId]) {
+        const patternInfo = routePatterns[actualRouteId].patterns.find(
+          p => p.headsign === selectedPattern
+        );
+
+        if (patternInfo && patternInfo.stop_ids && patternInfo.stop_ids.length > 1) {
+          // Get first and last stop IDs from the ordered sequence to determine direction
+          const firstStopId = patternInfo.stop_ids[0];
+          const lastStopId = patternInfo.stop_ids[patternInfo.stop_ids.length - 1];
+
+          // Find the actual stop coordinates
+          const firstStop = filteredStops.find(s => s.properties.stop_id === firstStopId);
+          const lastStop = filteredStops.find(s => s.properties.stop_id === lastStopId);
+
+          if (firstStop && lastStop) {
+            const stopLabels = [
+              {
+                position: firstStop.geometry.coordinates,
+                text: 'First stop'
+              },
+              {
+                position: lastStop.geometry.coordinates,
+                text: 'Last stop'
+              }
+            ];
+
+            layers.push(
+              new TextLayer({
+                id: 'stop-direction-labels',
+                data: stopLabels,
+                getPosition: (d) => d.position,
+                getText: (d) => d.text,
+                getSize: 12,
+                getColor: [61, 40, 23, 255], // text-secondary #3D2817
+                getBackgroundColor: [255, 255, 255, 255], // white background
+                getTextAnchor: 'start',
+                getAlignmentBaseline: 'center',
+                getBorderColor: [232, 224, 213, 255], // border-default #E8E0D5
+                getBorderWidth: 0.5,
+                background: true,
+                backgroundPadding: [8, 4, 8, 4], // [top, right, bottom, left] - 8px top/bottom, 4px left/right
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                sizeScale: 1,
+                sizeMinPixels: 12,
+                sizeMaxPixels: 12,
+                pickable: false,
+                getPixelOffset: [12, 0], // Offset to the right of the stop
+                // Note: getBorderRadius is not supported by deck.gl TextLayer
+              })
+            );
+          }
+        }
+      }
+    }
   }
-  
+
   // Conditionally add stops layer
   if (showStops) {
     // Base stops layers
@@ -930,7 +1013,7 @@ export default function MapCanvas() {
         }}>
         {/* Filter Section */}
         <div style={{
-          padding: '16px 12px 24px 12px',
+          padding: '22px 12px 24px 12px',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px', // Space between the two separate filters
