@@ -17,6 +17,7 @@ const CheckIcon = () => (
 export interface SelectOption {
   value: string;
   label: string;
+  description?: string; // Secondary text below label
   disabled?: boolean;
 }
 
@@ -45,7 +46,8 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const dropdownRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
     const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+    const idRef = useRef(id || `select-${Math.random().toString(36).substr(2, 9)}`);
+    const selectId = idRef.current;
 
     const selectedOption = options.find(opt => opt.value === selectedValue);
     const displayText = selectedOption?.label || placeholder || 'Select...';
@@ -244,25 +246,38 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                     cursor: option.disabled ? 'not-allowed' : 'pointer',
                     color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: option.description ? 'flex-start' : 'center',
                     gap: '12px',
                     transition: 'background-color 0.2s ease',
                     backgroundColor: isItemHovered && !option.disabled ? 'color-mix(in srgb, var(--btn-secondary) 50%, transparent)' : 'transparent',
                     margin: index === 0 ? '12px 0 4px 0' : (index === options.length - 1 ? '4px 0 12px 0' : '4px 0'),
-                    whiteSpace: 'nowrap',
                     opacity: option.disabled ? 0.5 : 1
                   }}
                   role="option"
                   aria-selected={isSelected}
                 >
                   {isSelected && (
-                    <div style={{ color: 'var(--text-primary)' }}>
+                    <div style={{ color: 'var(--text-primary)', flexShrink: 0 }}>
                       <CheckIcon />
                     </div>
                   )}
-                  <span style={{ marginLeft: isSelected ? '0' : '32px' }}>
-                    {option.label}
-                  </span>
+                  <div style={{
+                    marginLeft: isSelected ? '0' : '32px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}>
+                    <span>{option.label}</span>
+                    {option.description && (
+                      <span style={{
+                        fontSize: '12px',
+                        color: 'var(--text-tertiary)',
+                        lineHeight: '16px'
+                      }}>
+                        {option.description}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}

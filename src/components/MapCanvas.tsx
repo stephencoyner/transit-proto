@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
-import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap } from '@/lib/data/loaders';
+import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select } from '@/components/ui';
@@ -103,6 +103,11 @@ export default function MapCanvas() {
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
+
+  // Pattern filtering state
+  const [selectedPattern, setSelectedPattern] = useState<string | null>(null); // headsign
+  const [patternLookup, setPatternLookup] = useState<{ [shapeId: string]: PatternInfo }>({});
+  const [routePatterns, setRoutePatterns] = useState<{ [routeId: string]: RoutePatternInfo }>({});
   
   // Refs for the filter elements and panel
   const dateRef = useRef<HTMLDivElement | null>(null);
@@ -192,7 +197,12 @@ export default function MapCanvas() {
         };
       }
     });
-    return Object.values(uniqueRoutes).sort((a, b) => b.value - a.value);
+    return Object.values(uniqueRoutes).sort((a, b) => {
+      // Sort by route number (convert to number for proper numeric sorting)
+      const aNum = parseInt(a.id, 10);
+      const bNum = parseInt(b.id, 10);
+      return aNum - bNum;
+    });
   }, [shapes]);
 
   // Extract stops data with mock values
@@ -207,44 +217,94 @@ export default function MapCanvas() {
   // Filter data based on selection
   const filteredShapes = React.useMemo(() => {
     if (selectedRouteId) {
-      return shapes.filter(shape => {
+      let filtered = shapes.filter(shape => {
         const routeId = shape.properties.route_short_name || shape.properties.route_id;
         return routeId === selectedRouteId;
       });
+
+      // Apply pattern filter by headsign
+      if (selectedPattern && Object.keys(patternLookup).length > 0) {
+        filtered = filtered.filter(shape => {
+          const shapeId = shape.properties.shape_id;
+          const patternInfo = patternLookup[shapeId];
+          return patternInfo && patternInfo.headsign === selectedPattern;
+        });
+      }
+
+      return filtered;
     }
+
+    // In system view, show only the most frequent pattern per route
+    if (Object.keys(patternLookup).length > 0) {
+      const mostFrequentShapePerRoute: { [routeId: string]: string } = {};
+
+      // Find the shape with highest trip_count for each route
+      shapes.forEach(shape => {
+        const routeId = shape.properties.route_id;
+        const shapeId = shape.properties.shape_id;
+        const patternInfo = patternLookup[shapeId];
+
+        if (patternInfo) {
+          if (!mostFrequentShapePerRoute[routeId]) {
+            mostFrequentShapePerRoute[routeId] = shapeId;
+          } else {
+            const currentShapeId = mostFrequentShapePerRoute[routeId];
+            const currentPattern = patternLookup[currentShapeId];
+            if (patternInfo.trip_count > currentPattern.trip_count) {
+              mostFrequentShapePerRoute[routeId] = shapeId;
+            }
+          }
+        }
+      });
+
+      // Filter to only include the most frequent shape per route
+      return shapes.filter(shape =>
+        mostFrequentShapePerRoute[shape.properties.route_id] === shape.properties.shape_id
+      );
+    }
+
     return shapes;
-  }, [shapes, selectedRouteId]);
+  }, [shapes, selectedRouteId, selectedPattern, patternLookup]);
 
   const filteredStops = React.useMemo(() => {
     if (selectedStopId) {
       return stops.filter(stop => stop.properties.stop_id === selectedStopId);
     }
-    
+
     if (selectedRouteId) {
-      // Try to find the route stops using the selected route ID
-      // First try direct match, then try to find by looking up the actual route_id
-      let routeStopIds = routeStopsMap[selectedRouteId];
-      
-      if (!routeStopIds) {
-        // If not found, selectedRouteId might be route_short_name
-        // Find the actual route_id from shapes
-        const matchingShape = shapes.find(shape => 
-          (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
+      // Find the actual route_id
+      const matchingShape = shapes.find(shape =>
+        (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
+      );
+      const actualRouteId = matchingShape?.properties.route_id;
+
+      // If a pattern is selected, use pattern's stop_ids
+      if (selectedPattern && actualRouteId && routePatterns[actualRouteId]) {
+        const patternInfo = routePatterns[actualRouteId].patterns.find(
+          p => p.headsign === selectedPattern
         );
-        
-        if (matchingShape) {
-          routeStopIds = routeStopsMap[matchingShape.properties.route_id];
+
+        if (patternInfo && patternInfo.stop_ids) {
+          const patternStopIds = new Set(patternInfo.stop_ids);
+          return stops.filter(stop => patternStopIds.has(stop.properties.stop_id));
         }
       }
-      
+
+      // Otherwise show all stops for the route
+      let routeStopIds = routeStopsMap[selectedRouteId];
+
+      if (!routeStopIds && actualRouteId) {
+        routeStopIds = routeStopsMap[actualRouteId];
+      }
+
       if (routeStopIds) {
         return stops.filter(stop => routeStopIds.has(stop.properties.stop_id));
       }
     }
-    
+
     // Only show all stops when in stops tab view
     return activeTab === 'stops' ? stops : [];
-  }, [stops, selectedStopId, selectedRouteId, routeStopsMap, activeTab, shapes]);
+  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, shapes]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -503,12 +563,16 @@ export default function MapCanvas() {
         const shapesFC = await fetchShapesKCM();
         const stopsFC = await fetchStopsKCM();
         const routeStopsData = await fetchRouteStopsMap();
-        
+        const patternLookupData = await fetchPatternLookup();
+        const routePatternsData = await fetchRoutePatterns();
+
         const routeFeatures = shapesFC.features as RouteFeature[];
         const stopFeatures = stopsFC.features as StopFeature[];
         setShapes(routeFeatures);
         setStops(stopFeatures);
         setRouteStopsMap(routeStopsData);
+        setPatternLookup(patternLookupData);
+        setRoutePatterns(routePatternsData);
 
         if (routeFeatures.length > 0) {
           // get container size
@@ -528,6 +592,11 @@ export default function MapCanvas() {
       }
     })();
   }, [fitToBounds]);
+
+  // Reset pattern filter when route changes
+  useEffect(() => {
+    setSelectedPattern(null);
+  }, [selectedRouteId]);
 
   // Update view state when route or stop is selected
   useEffect(() => {
@@ -569,9 +638,9 @@ export default function MapCanvas() {
         getPath: (d) => d.path,
         getWidth: 9,
         getColor: (d) => {
-          // If a route is selected (detail view), show it in black with 30% opacity
+          // If a route is selected (detail view), use hardcoded light gray
           if (selectedRouteId) {
-            return [0, 0, 0, 77]; // Black at 30% opacity (255 * 0.3 = 77)
+            return [186, 177, 169, 255]; // #BAB1A9 at full opacity
           }
           // Otherwise use the color scheme
           const color = getColorForId(d.properties.route_id);
@@ -579,7 +648,7 @@ export default function MapCanvas() {
         },
         widthMinPixels: 4.5,
         widthMaxPixels: 18,
-        pickable: true,
+        pickable: !selectedRouteId, // Disable hover in route detail view
         onHover: (info) => {
           if (info.object) {
             setHoveredRoute(info.object.properties.route_id);
@@ -653,40 +722,42 @@ export default function MapCanvas() {
         );
       }
     }
-    
-    // Add route labels
-    layers.push(
-      new TextLayer({
-        id: 'route-labels',
-        data: filteredShapes,
-        background: true, // Enable background rendering
-        getPosition: (d) => {
-          // Get the middle point of the route for label placement
-          const coords = d.geometry.coordinates;
-          const midIndex = Math.floor(coords.length / 2);
-          return coords[midIndex];
-        },
-        getText: (d) => d.properties.route_short_name || '?',
-        getSize: 16,
-        getColor: [64, 64, 64], // dark gray text (like in the image)
-        getBackgroundColor: (d) => {
-          const color = getColorForId(d.properties.route_id);
-          return [...color, 200]; // Use route color with transparency
-        },
-        getBorderColor: (d) => {
-          const color = getColorForId(d.properties.route_id);
-          return color; // Use route color for border
-        },
-        getBorderWidth: 2,
-        getBorderRadius: 20, // high border radius for oval shape
-        getPadding: [6, 10, 6, 10], // padding around text
-        fontFamily: 'Inter, sans-serif',
-        fontWeight: 'bold',
-        sizeScale: 1,
-        sizeMinPixels: 12,
-        sizeMaxPixels: 20,
-      })
-    );
+
+    // Add route labels - only show when NOT in route detail view
+    if (!selectedRouteId) {
+      layers.push(
+        new TextLayer({
+          id: 'route-labels',
+          data: filteredShapes,
+          background: true, // Enable background rendering
+          getPosition: (d) => {
+            // Get the middle point of the route for label placement
+            const coords = d.geometry.coordinates;
+            const midIndex = Math.floor(coords.length / 2);
+            return coords[midIndex];
+          },
+          getText: (d) => d.properties.route_short_name || '?',
+          getSize: 16,
+          getColor: [64, 64, 64], // dark gray text (like in the image)
+          getBackgroundColor: (d) => {
+            const color = getColorForId(d.properties.route_id);
+            return [...color, 200]; // Use route color with transparency
+          },
+          getBorderColor: (d) => {
+            const color = getColorForId(d.properties.route_id);
+            return color; // Use route color for border
+          },
+          getBorderWidth: 2,
+          getBorderRadius: 20, // high border radius for oval shape
+          getPadding: [6, 10, 6, 10], // padding around text
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 'bold',
+          sizeScale: 1,
+          sizeMinPixels: 12,
+          sizeMaxPixels: 20,
+        })
+      );
+    }
   }
   
   // Conditionally add stops layer
@@ -952,6 +1023,66 @@ export default function MapCanvas() {
               ]}
             />
           </div>
+
+          {/* Route and Pattern Filters - Only show in route detail view */}
+          {selectedRouteId && (() => {
+            // Find the actual route_id from the selected route (might be route_short_name)
+            const matchingShape = shapes.find(shape =>
+              (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
+            );
+            const actualRouteId = matchingShape?.properties.route_id;
+            const routePatternInfo = actualRouteId ? routePatterns[actualRouteId] : null;
+
+            if (!routePatternInfo) return null;
+
+            return (
+              <>
+                {/* Divider */}
+                <div style={{
+                  width: '100%',
+                  height: '0.5px',
+                  backgroundColor: 'var(--border-default)',
+                  marginTop: '24px',
+                  marginBottom: '24px'
+                }} />
+
+                {/* Route Filter */}
+                <div>
+                  <label className="label text-text-tertiary block mb-1">Route</label>
+                  <Select
+                    value={selectedRouteId}
+                    onChange={(value) => {
+                      setSelectedRouteId(value);
+                    }}
+                    options={routesList.map(route => ({
+                      value: route.id,
+                      label: route.name
+                    }))}
+                  />
+                </div>
+
+                {/* Pattern Filter */}
+                <div style={{ marginTop: '16px' }}>
+                  <label className="label text-text-tertiary block mb-1">Pattern</label>
+                  <Select
+                    value={selectedPattern || 'all'}
+                    onChange={(value) => setSelectedPattern(value === 'all' ? null : value)}
+                    options={[
+                      {
+                        value: 'all',
+                        label: 'All patterns'
+                      },
+                      ...routePatternInfo.patterns.map(pattern => ({
+                        value: pattern.headsign,
+                        label: pattern.headsign,
+                        description: `${Math.round(pattern.pct_of_route)}% of trips`
+                      }))
+                    ]}
+                  />
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
