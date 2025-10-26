@@ -11,15 +11,19 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ children, header, footer, padding = 'medium', className = '', ...props }, ref) => {
     const paddingClasses = {
       none: '',
-      small: 'p-4',
-      medium: 'p-6',
-      large: 'p-8',
+      small: 'p-2',
+      medium: 'p-3',
+      large: 'p-6',
     };
 
-    const baseClasses = 'bg-bg-elevated rounded-large border border-border-default shadow-md';
+    const baseClasses = 'bg-bg-elevated border border-border-default';
     const classes = `${baseClasses} ${className}`.trim();
 
-    const style = { borderWidth: 'var(--border-width)', ...props.style };
+    const style = {
+      borderWidth: 'var(--border-width)',
+      borderRadius: '20px',
+      ...props.style
+    };
 
     return (
       <div ref={ref} className={classes} style={style} {...props}>
