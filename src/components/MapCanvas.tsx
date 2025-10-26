@@ -674,6 +674,35 @@ export default function MapCanvas() {
     }
   }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds]);
 
+  // Recenter map when filters panel is toggled (with delay to sync with animation)
+  useEffect(() => {
+    // Delay the recenter to match the panel animation duration (300ms)
+    const timer = setTimeout(() => {
+      const el = mapContainerRef.current;
+      const width = el?.clientWidth ?? window.innerWidth;
+      const height = el?.clientHeight ?? window.innerHeight;
+
+      if (selectedRouteId && filteredShapes.length > 0) {
+        const bounds = calculateBounds(filteredShapes);
+        if (bounds) {
+          const newViewState = fitToBounds(bounds, { width, height });
+          setViewState(newViewState);
+        }
+      } else if (!selectedRouteId && !selectedStopId && shapes.length > 0) {
+        // Recenter system view with new padding
+        const bounds = calculateBounds(shapes);
+        if (bounds) {
+          const newViewState = fitToBounds(bounds, { width, height });
+          initialFittedViewRef.current = newViewState;
+          setViewState(newViewState);
+        }
+      }
+    }, 300); // Match panel animation duration
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFiltersPanelOpen]);
+
   const layers = [];
   
   // Conditionally add route layer
