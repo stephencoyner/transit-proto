@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Tooltip } from './Tooltip';
 
@@ -46,8 +46,8 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const dropdownRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
     const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const idRef = useRef(id || `select-${Math.random().toString(36).substr(2, 9)}`);
-    const selectId = idRef.current;
+    const generatedId = useId();
+    const selectId = id || generatedId;
 
     const selectedOption = options.find(opt => opt.value === selectedValue);
     const displayText = selectedOption?.label || placeholder || 'Select...';

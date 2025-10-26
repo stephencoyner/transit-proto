@@ -63,20 +63,30 @@ def build_pattern_data():
 
     # Build pattern-to-stops mapping from stop_times.txt
     print("Reading stop_times.txt to map patterns to stops...")
-    pattern_stops = defaultdict(set)  # key: "route_id|headsign" -> set of stop_ids
+    pattern_stops = defaultdict(dict)  # key: "route_id|headsign" -> dict of {stop_id: stop_sequence}
+    pattern_trip_samples = {}  # Store one sample trip per pattern to get stop sequence
 
     with open('GTFS/stop_times.txt', 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             trip_id = row['trip_id']
             stop_id = row['stop_id']
+            stop_sequence = int(row['stop_sequence'])
 
             # Find which pattern this trip belongs to
             for route_id, patterns in route_patterns_raw.items():
                 for key, pattern_data in patterns.items():
                     if trip_id in pattern_data['trip_ids']:
                         pattern_key = f"{route_id}|{pattern_data['headsign']}"
-                        pattern_stops[pattern_key].add(stop_id)
+
+                        # Store stop with its sequence number
+                        if stop_id not in pattern_stops[pattern_key]:
+                            pattern_stops[pattern_key][stop_id] = stop_sequence
+
+                        # Keep track of a sample trip for this pattern (to get consistent ordering)
+                        if pattern_key not in pattern_trip_samples:
+                            pattern_trip_samples[pattern_key] = trip_id
+
                         break
 
     print(f"Mapped stops for {len(pattern_stops)} patterns")
@@ -91,7 +101,10 @@ def build_pattern_data():
         patterns_list = []
         for pattern in patterns.values():
             pattern_key = f"{route_id}|{pattern['headsign']}"
-            stop_ids = sorted(list(pattern_stops.get(pattern_key, set())))
+            stops_dict = pattern_stops.get(pattern_key, {})
+
+            # Sort stops by their stop_sequence
+            stop_ids = [stop_id for stop_id, _ in sorted(stops_dict.items(), key=lambda x: x[1])]
 
             patterns_list.append({
                 'headsign': pattern['headsign'],
