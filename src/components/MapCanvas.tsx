@@ -323,7 +323,7 @@ export default function MapCanvas() {
   }, [filteredShapes]);
 
   // Determine what to show based on active tab
-  const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId && activeTab !== 'components';
+  const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId;
   const showStops = (activeTab === 'stops' || selectedStopId || selectedRouteId) && activeTab !== 'components';
 
   // Helper function to calculate bounding box from features (MultiLineString-safe)
