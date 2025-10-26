@@ -77,7 +77,7 @@ const INITIAL_VIEW_STATE = {
   zoom: 12,
   pitch: 0,
   bearing: 0,
-  transitionDuration: 400
+  transitionDuration: 200
 };
 
 // Calculate UI padding dynamically based on visible panels
@@ -91,7 +91,7 @@ const getUIPadding = (isFiltersPanelOpen: boolean) => {
   const gapBetweenPanels = 12;
 
   // Extra breathing room for better visibility
-  const breathingRoom = 40;
+  const breathingRoom = 80;
 
   // Total left panel width (from left screen edge to right edge of data panel)
   const totalLeftPanelWidth = leftMargin + navRailWidth + filtersPanelWidth + dataPanelWidth + (gapBetweenPanels * 2);
@@ -286,7 +286,8 @@ export default function MapCanvas() {
 
   const filteredStops = React.useMemo(() => {
     if (selectedStopId) {
-      return stops.filter(stop => stop.properties.stop_id === selectedStopId);
+      // Show all stops when in stop detail view, so user can see context
+      return stops;
     }
 
     if (selectedRouteId) {
@@ -387,7 +388,7 @@ export default function MapCanvas() {
       zoom: Math.max(zoom, MIN_ZOOM),
       pitch: 0,
       bearing: 0,
-      transitionDuration: 400
+      transitionDuration: 200
     };
   }, [isFiltersPanelOpen]);
 
@@ -629,15 +630,43 @@ export default function MapCanvas() {
         setViewState(newViewState);
       }
     } else if (selectedStopId && filteredStops.length > 0) {
-      const stop = filteredStops[0];
-      const [longitude, latitude] = stop.geometry.coordinates as number[];
+      // Find the actual selected stop
+      const stop = filteredStops.find(s => s.properties.stop_id === selectedStopId);
+      if (!stop) return;
+      const [stopLng, stopLat] = stop.geometry.coordinates as number[];
+
+      // Calculate the center point accounting for the left panel offset
+      const el = mapContainerRef.current;
+      const width = el?.clientWidth ?? window.innerWidth;
+      const height = el?.clientHeight ?? window.innerHeight;
+      const padding = getUIPadding(isFiltersPanelOpen);
+
+      // Create a viewport at zoom 16 centered on the stop
+      const viewport = new WebMercatorViewport({
+        width,
+        height,
+        longitude: stopLng,
+        latitude: stopLat,
+        zoom: 16
+      });
+
+      // The stop is currently at screen center (width/2)
+      // We want it at the center of the visible area
+      const screenCenterX = width / 2;
+      const visibleCenterX = padding.left + ((width - padding.left - padding.right) / 2);
+      const offsetX = visibleCenterX - screenCenterX;
+
+      // Project the stop to screen coordinates, shift it, then unproject
+      const [stopX, stopY] = viewport.project([stopLng, stopLat]);
+      const [newLng, newLat] = viewport.unproject([stopX - offsetX, stopY]);
+
       setViewState({
-        longitude,
-        latitude,
+        longitude: newLng,
+        latitude: newLat,
         zoom: 16,
         pitch: 0,
         bearing: 0,
-        transitionDuration: 400
+        transitionDuration: 200
       });
     } else if (!selectedRouteId && !selectedStopId) {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
@@ -845,6 +874,48 @@ export default function MapCanvas() {
 
   // Conditionally add stops layer
   if (showStops) {
+    // Selected stop halo layer (render first, so it's below everything else)
+    if (selectedStopId) {
+      const selectedStopData = filteredStops.filter(stop => stop.properties.stop_id === selectedStopId);
+      if (selectedStopData.length > 0) {
+        const selectedStopColor = getColorForId(selectedStopId);
+
+        // Halo layer (12px larger than the stop, 50% opacity)
+        layers.push(
+          new ScatterplotLayer({
+            id: 'selected-stop-halo',
+            data: selectedStopData,
+            getPosition: (d) => d.geometry.coordinates,
+            getRadius: 24, // 12px (base) + 12px = 24px
+            getFillColor: [...selectedStopColor, 128], // 50% opacity
+            radiusMinPixels: 18, // 6px (base min) + 12px = 18px
+            radiusMaxPixels: 36, // 24px (base max) + 12px = 36px
+          })
+        );
+      }
+    }
+
+    // Hovered stop halo (same style as selected stop, render before base layers)
+    if (hoveredStop && hoveredStop !== selectedStopId) {
+      const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === hoveredStop);
+      if (hoveredStopData.length > 0) {
+        const hoveredStopColor = getColorForId(hoveredStop);
+
+        // Halo layer (12px larger than the stop, 50% opacity)
+        layers.push(
+          new ScatterplotLayer({
+            id: 'hovered-stop-halo',
+            data: hoveredStopData,
+            getPosition: (d) => d.geometry.coordinates,
+            getRadius: 24, // 12px (base) + 12px = 24px
+            getFillColor: [...hoveredStopColor, 128], // 50% opacity
+            radiusMinPixels: 18, // 6px (base min) + 12px = 18px
+            radiusMaxPixels: 36, // 24px (base max) + 12px = 36px
+          })
+        );
+      }
+    }
+
     // Base stops layers
     layers.push(
         // Colored border layer (outer ring)
@@ -855,12 +926,25 @@ export default function MapCanvas() {
           getRadius: 12, // Outer radius (8px border + 4px white center)
           getFillColor: (d) => {
             const color = getColorForId(d.properties.stop_id);
-            return [...color, 200]; // Add alpha for transparency
+            // If in stop detail view, fade non-selected stops to 50% opacity
+            const isSelected = selectedStopId === d.properties.stop_id;
+            // Selected stop: full opacity (200), non-selected when viewing details: 50% (100), no selection: full (200)
+            const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
+            return [...color, alpha];
           },
           radiusMinPixels: 6,
           radiusMaxPixels: 24,
-          pickable: true, // Enable hover detection
+          pickable: true, // Enable hover and click detection
           onHover: ({ object }) => setHoveredStop(object ? (object as StopFeature).properties.stop_id : null),
+          onClick: ({ object }) => {
+            if (object) {
+              setSelectedStopId((object as StopFeature).properties.stop_id);
+              setActiveTab('stops'); // Switch to stops tab to show stop detail
+            }
+          },
+          updateTriggers: {
+            getFillColor: [selectedStopId] // Force recalculation when selectedStopId changes
+          }
         }),
         // White center layer (inner circle)
         new ScatterplotLayer({
@@ -868,89 +952,28 @@ export default function MapCanvas() {
           data: filteredStops,
           getPosition: (d) => d.geometry.coordinates,
           getRadius: 4, // Inner radius (white center stays same)
-          getFillColor: [255, 255, 255, 255], // White center
+          getFillColor: (d) => {
+            // If in stop detail view, fade non-selected stops to 50% opacity
+            const isSelected = selectedStopId === d.properties.stop_id;
+            // Selected stop: full opacity (255), non-selected when viewing details: 50% (128), no selection: full (255)
+            const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
+            return [255, 255, 255, alpha];
+          },
           radiusMinPixels: 2,
           radiusMaxPixels: 8,
-          pickable: true, // Enable hover detection
+          pickable: true, // Enable hover and click detection
           onHover: ({ object }) => setHoveredStop(object ? (object as StopFeature).properties.stop_id : null),
+          onClick: ({ object }) => {
+            if (object) {
+              setSelectedStopId((object as StopFeature).properties.stop_id);
+              setActiveTab('stops'); // Switch to stops tab to show stop detail
+            }
+          },
+          updateTriggers: {
+            getFillColor: [selectedStopId] // Force recalculation when selectedStopId changes
+          }
         })
     );
-
-    // Hovered stop layers (glowing effect)
-    if (hoveredStop) {
-      const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === hoveredStop);
-      const hoveredStopColor = getColorForId(hoveredStop);
-
-      // Outer glow layer (most transparent, largest)
-      layers.push(
-        new ScatterplotLayer({
-          id: 'hovered-stop-outer-glow',
-          data: hoveredStopData,
-          getPosition: (d) => d.geometry.coordinates,
-          getRadius: 20, // Much larger for glow
-          getFillColor: [...hoveredStopColor, 40], // Very transparent
-          radiusMinPixels: 10,
-          radiusMaxPixels: 40,
-          parameters: { depthTest: false }, // Render on top
-        })
-      );
-
-      // Middle glow layer
-      layers.push(
-        new ScatterplotLayer({
-          id: 'hovered-stop-middle-glow',
-          data: hoveredStopData,
-          getPosition: (d) => d.geometry.coordinates,
-          getRadius: 16, // Medium size
-          getFillColor: [...hoveredStopColor, 80], // Medium transparency
-          radiusMinPixels: 8,
-          radiusMaxPixels: 32,
-          parameters: { depthTest: false }, // Render on top
-        })
-      );
-
-      // Inner glow layer
-      layers.push(
-        new ScatterplotLayer({
-          id: 'hovered-stop-inner-glow',
-          data: hoveredStopData,
-          getPosition: (d) => d.geometry.coordinates,
-          getRadius: 14, // Closer to base size
-          getFillColor: [...hoveredStopColor, 120], // Higher transparency
-          radiusMinPixels: 7,
-          radiusMaxPixels: 28,
-          parameters: { depthTest: false }, // Render on top
-        })
-      );
-
-      // Enhanced border for hovered stop
-      layers.push(
-        new ScatterplotLayer({
-          id: 'hovered-stop-border',
-          data: hoveredStopData,
-          getPosition: (d) => d.geometry.coordinates,
-          getRadius: 12, // Same as base border
-          getFillColor: [...hoveredStopColor, 255], // Full opacity
-          radiusMinPixels: 6,
-          radiusMaxPixels: 24,
-          parameters: { depthTest: false }, // Render on top
-        })
-      );
-
-      // Enhanced white center for hovered stop
-      layers.push(
-        new ScatterplotLayer({
-          id: 'hovered-stop-center',
-          data: hoveredStopData,
-          getPosition: (d) => d.geometry.coordinates,
-          getRadius: 4, // Same as base center
-          getFillColor: [255, 255, 255, 255], // White center
-          radiusMinPixels: 2,
-          radiusMaxPixels: 8,
-          parameters: { depthTest: false }, // Render on top
-        })
-      );
-    }
   }
 
   return (
