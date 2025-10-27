@@ -200,37 +200,67 @@ export default function MapCanvas() {
     14800, 13500, 15000, 18000, 19500, 20500, 20800, 21000, 20500, 20000
   ];
 
+  // State to persist mock ridership values
+  const [routeMockValues, setRouteMockValues] = React.useState<{ [key: string]: number }>({});
+  const [stopMockValues, setStopMockValues] = React.useState<{ [key: string]: number }>({});
+
   // Extract unique routes from shapes data with mock values
   const routesList = React.useMemo(() => {
     const uniqueRoutes: { [key: string]: { id: string; name: string; value: number } } = {};
+    const newMockValues: { [key: string]: number } = { ...routeMockValues };
+
     shapes.forEach(shape => {
       const routeId = shape.properties.route_short_name || shape.properties.route_id;
       if (!uniqueRoutes[routeId]) {
-        // Generate mock ridership value based on route ID
-        const mockValue = Math.floor(Math.random() * 5000) + 100;
+        // Use existing mock value or generate new one only if it doesn't exist
+        if (!newMockValues[routeId]) {
+          newMockValues[routeId] = Math.floor(Math.random() * 5000) + 100;
+        }
         uniqueRoutes[routeId] = {
           id: routeId,
           name: `Route ${routeId}`,
-          value: mockValue
+          value: newMockValues[routeId]
         };
       }
     });
+
+    // Update state if new values were generated
+    if (Object.keys(newMockValues).length !== Object.keys(routeMockValues).length) {
+      setRouteMockValues(newMockValues);
+    }
+
     return Object.values(uniqueRoutes).sort((a, b) => {
       // Sort by route number (convert to number for proper numeric sorting)
       const aNum = parseInt(a.id, 10);
       const bNum = parseInt(b.id, 10);
       return aNum - bNum;
     });
-  }, [shapes]);
+  }, [shapes, routeMockValues]);
 
   // Extract stops data with mock values
   const stopsList = React.useMemo(() => {
-    return stops.map(stop => ({
-      id: stop.properties.stop_id,
-      name: stop.properties.name,
-      value: Math.floor(Math.random() * 500) + 50
-    })).sort((a, b) => b.value - a.value);
-  }, [stops]);
+    const newMockValues: { [key: string]: number } = { ...stopMockValues };
+
+    const stopsWithValues = stops.map(stop => {
+      const stopId = stop.properties.stop_id;
+      // Use existing mock value or generate new one only if it doesn't exist
+      if (!newMockValues[stopId]) {
+        newMockValues[stopId] = Math.floor(Math.random() * 500) + 50;
+      }
+      return {
+        id: stopId,
+        name: stop.properties.name,
+        value: newMockValues[stopId]
+      };
+    });
+
+    // Update state if new values were generated
+    if (Object.keys(newMockValues).length !== Object.keys(stopMockValues).length) {
+      setStopMockValues(newMockValues);
+    }
+
+    return stopsWithValues.sort((a, b) => b.value - a.value);
+  }, [stops, stopMockValues]);
 
   // Filter data based on selection
   const filteredShapes = React.useMemo(() => {
@@ -2375,9 +2405,9 @@ export default function MapCanvas() {
               flexDirection: 'column',
               gap: '0'
             }}>
-              {(activeTab === 'routes' ? routesList : stopsList).map((item, index: number) => (
-                <div 
-                  key={index} 
+              {(activeTab === 'routes' ? routesList : stopsList).map((item) => (
+                <div
+                  key={item.id} 
                   onClick={() => {
                     if (activeTab === 'routes') {
                       setSelectedRouteId(item.id);
