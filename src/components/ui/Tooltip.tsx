@@ -5,7 +5,7 @@ export interface TooltipProps {
   children: React.ReactNode;
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
+export const Tooltip: React.FC<TooltipProps> = ({ text }) => {
   return (
     <div
       className="label"

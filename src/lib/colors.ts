@@ -1,5 +1,4 @@
 /* auto-generated from tokens/colors.json */
-/* eslint-disable */
 
 export const HEX = {
   "background_primary": "#FFFCF5",

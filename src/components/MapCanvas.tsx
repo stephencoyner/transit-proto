@@ -11,8 +11,6 @@ import { Button, Card, Input, Select } from '@/components/ui';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
-// Import icons from public folder
-const DropdownArrowIcon = '/icons/dropdown-arrow.svg';
 
 // Import season icons from components folder
 import WinterIcon from '@/components/Icons/Winter.svg';
@@ -130,7 +128,7 @@ export default function MapCanvas() {
   // Refs for the filter elements and panel
   const dateRef = useRef<HTMLDivElement | null>(null);
   const daysRef = useRef<HTMLDivElement | null>(null);
-  const metricRef = useRef<HTMLDivElement | null>(null);
+  // const metricRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFittedViewRef = useRef<typeof INITIAL_VIEW_STATE | null>(null);
@@ -157,6 +155,13 @@ export default function MapCanvas() {
   const [showMetricTooltip, setShowMetricTooltip] = useState(false);
   const metricTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const metricTextRef = useRef<HTMLSpanElement | null>(null);
+
+  // Suppress unused variable warnings for future use
+  void isCompareHovered;
+  void setIsCompareHovered;
+  void isMetricHovered;
+  void showDateTooltip;
+  void showMetricTooltip;
 
   // Tooltip state for charts
   const [chartTooltip, setChartTooltip] = useState<{
@@ -418,29 +423,29 @@ export default function MapCanvas() {
   };
 
   // Handlers for metric filter tooltip
-  const handleMetricFilterMouseEnter = () => {
-    setIsMetricHovered(true);
-    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
-    metricTooltipTimerRef.current = setTimeout(() => {
-      // Check if text is overflowing
-      if (metricTextRef.current) {
-        const isOverflowing = metricTextRef.current.scrollWidth > metricTextRef.current.clientWidth;
-        if (isOverflowing) {
-          setShowMetricTooltip(true);
-        }
-      }
-    }, 500);
-  };
+  // const handleMetricFilterMouseEnter = () => {
+  //   setIsMetricHovered(true);
+  //   // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
+  //   metricTooltipTimerRef.current = setTimeout(() => {
+  //     // Check if text is overflowing
+  //     if (metricTextRef.current) {
+  //       const isOverflowing = metricTextRef.current.scrollWidth > metricTextRef.current.clientWidth;
+  //       if (isOverflowing) {
+  //         setShowMetricTooltip(true);
+  //       }
+  //     }
+  //   }, 500);
+  // };
 
-  const handleMetricFilterMouseLeave = () => {
-    setIsMetricHovered(false);
-    // Clear timer and hide tooltip instantly
-    if (metricTooltipTimerRef.current) {
-      clearTimeout(metricTooltipTimerRef.current);
-      metricTooltipTimerRef.current = null;
-    }
-    setShowMetricTooltip(false);
-  };
+  // const handleMetricFilterMouseLeave = () => {
+  //   setIsMetricHovered(false);
+  //   // Clear timer and hide tooltip instantly
+  //   if (metricTooltipTimerRef.current) {
+  //     clearTimeout(metricTooltipTimerRef.current);
+  //     metricTooltipTimerRef.current = null;
+  //   }
+  //   setShowMetricTooltip(false);
+  // };
 
   // Helper function to format date as "Mon DD, YYYY" or "Mon DD" (without year)
   const formatDate = (date: Date, includeYear: boolean = true) => {
@@ -672,7 +677,7 @@ export default function MapCanvas() {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
-  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds]);
+  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds, isFiltersPanelOpen]);
 
   // Adjust map viewport when filters panel is toggled (synced with panel animation)
   useEffect(() => {
@@ -699,7 +704,7 @@ export default function MapCanvas() {
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
     return [...color, alpha];
-  }, [selectedStopId, getColorForId]);
+  }, [selectedStopId]);
 
   const getStopCenterColor = React.useCallback((d: StopFeature) => {
     const isSelected = selectedStopId === d.properties.stop_id;
