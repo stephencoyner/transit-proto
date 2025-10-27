@@ -11,8 +11,6 @@ import { Button, Card, Input, Select } from '@/components/ui';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
-// Import icons from public folder
-const DropdownArrowIcon = '/icons/dropdown-arrow.svg';
 
 // Import season icons from components folder
 import WinterIcon from '@/components/Icons/Winter.svg';
@@ -130,7 +128,7 @@ export default function MapCanvas() {
   // Refs for the filter elements and panel
   const dateRef = useRef<HTMLDivElement | null>(null);
   const daysRef = useRef<HTMLDivElement | null>(null);
-  const metricRef = useRef<HTMLDivElement | null>(null);
+  // const metricRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFittedViewRef = useRef<typeof INITIAL_VIEW_STATE | null>(null);
@@ -157,6 +155,16 @@ export default function MapCanvas() {
   const [showMetricTooltip, setShowMetricTooltip] = useState(false);
   const metricTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const metricTextRef = useRef<HTMLSpanElement | null>(null);
+
+  // Suppress unused variable warnings for future use
+  void isCompareHovered;
+  void setIsCompareHovered;
+  void isMetricHovered;
+  void showDateTooltip;
+  void showMetricTooltip;
+  void setShowMetricTooltip;
+  void metricTooltipTimerRef;
+  void metricTextRef;
 
   // Tooltip state for charts
   const [chartTooltip, setChartTooltip] = useState<{
@@ -448,29 +456,29 @@ export default function MapCanvas() {
   };
 
   // Handlers for metric filter tooltip
-  const handleMetricFilterMouseEnter = () => {
-    setIsMetricHovered(true);
-    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
-    metricTooltipTimerRef.current = setTimeout(() => {
-      // Check if text is overflowing
-      if (metricTextRef.current) {
-        const isOverflowing = metricTextRef.current.scrollWidth > metricTextRef.current.clientWidth;
-        if (isOverflowing) {
-          setShowMetricTooltip(true);
-        }
-      }
-    }, 500);
-  };
+  // const handleMetricFilterMouseEnter = () => {
+  //   setIsMetricHovered(true);
+  //   // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
+  //   metricTooltipTimerRef.current = setTimeout(() => {
+  //     // Check if text is overflowing
+  //     if (metricTextRef.current) {
+  //       const isOverflowing = metricTextRef.current.scrollWidth > metricTextRef.current.clientWidth;
+  //       if (isOverflowing) {
+  //         setShowMetricTooltip(true);
+  //       }
+  //     }
+  //   }, 500);
+  // };
 
-  const handleMetricFilterMouseLeave = () => {
-    setIsMetricHovered(false);
-    // Clear timer and hide tooltip instantly
-    if (metricTooltipTimerRef.current) {
-      clearTimeout(metricTooltipTimerRef.current);
-      metricTooltipTimerRef.current = null;
-    }
-    setShowMetricTooltip(false);
-  };
+  // const handleMetricFilterMouseLeave = () => {
+  //   setIsMetricHovered(false);
+  //   // Clear timer and hide tooltip instantly
+  //   if (metricTooltipTimerRef.current) {
+  //     clearTimeout(metricTooltipTimerRef.current);
+  //     metricTooltipTimerRef.current = null;
+  //   }
+  //   setShowMetricTooltip(false);
+  // };
 
   // Helper function to format date as "Mon DD, YYYY" or "Mon DD" (without year)
   const formatDate = (date: Date, includeYear: boolean = true) => {
@@ -702,39 +710,46 @@ export default function MapCanvas() {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
-  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds]);
+  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds, isFiltersPanelOpen]);
 
-  // Recenter map when filters panel is toggled (with delay to sync with animation)
+  // Adjust map viewport when filters panel is toggled (synced with panel animation)
   useEffect(() => {
-    // Delay the recenter to match the panel animation duration (300ms)
-    const timer = setTimeout(() => {
+    // Only recenter if a specific route is selected
+    // For system view, let the map naturally adjust to padding changes without refitting bounds
+    if (selectedRouteId && filteredShapes.length > 0) {
       const el = mapContainerRef.current;
       const width = el?.clientWidth ?? window.innerWidth;
       const height = el?.clientHeight ?? window.innerHeight;
-
-      if (selectedRouteId && filteredShapes.length > 0) {
-        const bounds = calculateBounds(filteredShapes);
-        if (bounds) {
-          const newViewState = fitToBounds(bounds, { width, height });
-          setViewState(newViewState);
-        }
-      } else if (!selectedRouteId && !selectedStopId && shapes.length > 0) {
-        // Recenter system view with new padding
-        const bounds = calculateBounds(shapes);
-        if (bounds) {
-          const newViewState = fitToBounds(bounds, { width, height });
-          initialFittedViewRef.current = newViewState;
-          setViewState(newViewState);
-        }
+      const bounds = calculateBounds(filteredShapes);
+      if (bounds) {
+        const newViewState = fitToBounds(bounds, { width, height });
+        setViewState(newViewState);
       }
-    }, 300); // Match panel animation duration
-
-    return () => clearTimeout(timer);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFiltersPanelOpen]);
 
+  // Memoize DeckGL accessor functions to prevent unnecessary recalculations
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getStopPosition = React.useCallback((d: any) => d.geometry.coordinates, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
+    const color = getColorForId(d.properties.stop_id);
+    const isSelected = selectedStopId === d.properties.stop_id;
+    const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
+    return [...color, alpha] as [number, number, number, number];
+  }, [selectedStopId]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
+    const isSelected = selectedStopId === d.properties.stop_id;
+    const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
+    return [255, 255, 255, alpha] as [number, number, number, number];
+  }, [selectedStopId]);
+
   const layers = [];
-  
+
   // Conditionally add route layer
   if (showRoutes) {
     // Base route layer
@@ -944,7 +959,7 @@ export default function MapCanvas() {
           new ScatterplotLayer({
             id: 'selected-stop-halo',
             data: selectedStopData,
-            getPosition: (d) => d.geometry.coordinates,
+            getPosition: getStopPosition,
             getRadius: 24, // 12px (base) + 12px = 24px
             getFillColor: [...selectedStopColor, 128], // 50% opacity
             radiusMinPixels: 18, // 6px (base min) + 12px = 18px
@@ -965,7 +980,7 @@ export default function MapCanvas() {
           new ScatterplotLayer({
             id: 'hovered-stop-halo',
             data: hoveredStopData,
-            getPosition: (d) => d.geometry.coordinates,
+            getPosition: getStopPosition,
             getRadius: 24, // 12px (base) + 12px = 24px
             getFillColor: [...hoveredStopColor, 128], // 50% opacity
             radiusMinPixels: 18, // 6px (base min) + 12px = 18px
@@ -981,16 +996,9 @@ export default function MapCanvas() {
         new ScatterplotLayer({
           id: 'stops-border',
           data: filteredStops,
-          getPosition: (d) => d.geometry.coordinates,
+          getPosition: getStopPosition,
           getRadius: 12, // Outer radius (8px border + 4px white center)
-          getFillColor: (d) => {
-            const color = getColorForId(d.properties.stop_id);
-            // If in stop detail view, fade non-selected stops to 50% opacity
-            const isSelected = selectedStopId === d.properties.stop_id;
-            // Selected stop: full opacity (200), non-selected when viewing details: 50% (100), no selection: full (200)
-            const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
-            return [...color, alpha];
-          },
+          getFillColor: getStopBorderColor,
           radiusMinPixels: 6,
           radiusMaxPixels: 24,
           pickable: true, // Enable hover and click detection
@@ -1009,15 +1017,9 @@ export default function MapCanvas() {
         new ScatterplotLayer({
           id: 'stops-center',
           data: filteredStops,
-          getPosition: (d) => d.geometry.coordinates,
+          getPosition: getStopPosition,
           getRadius: 4, // Inner radius (white center stays same)
-          getFillColor: (d) => {
-            // If in stop detail view, fade non-selected stops to 50% opacity
-            const isSelected = selectedStopId === d.properties.stop_id;
-            // Selected stop: full opacity (255), non-selected when viewing details: 50% (128), no selection: full (255)
-            const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
-            return [255, 255, 255, alpha];
-          },
+          getFillColor: getStopCenterColor,
           radiusMinPixels: 2,
           radiusMaxPixels: 8,
           pickable: true, // Enable hover and click detection
@@ -1618,6 +1620,7 @@ export default function MapCanvas() {
         fontFamily: 'Inter, sans-serif',
         zIndex: 1001,
         overflowY: 'auto',
+        overflowX: 'hidden',
         transition: 'left 300ms ease-in-out',
         border: '0.5px solid var(--border-default)',
         borderLeft: 'none'
