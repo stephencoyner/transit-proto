@@ -704,18 +704,18 @@ export default function MapCanvas() {
   const getStopPosition = React.useCallback((d: any) => d.geometry.coordinates, []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getStopBorderColor = React.useCallback((d: any) => {
+  const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
     const color = getColorForId(d.properties.stop_id);
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
-    return [...color, alpha];
+    return [...color, alpha] as [number, number, number, number];
   }, [selectedStopId]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getStopCenterColor = React.useCallback((d: any) => {
+  const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
-    return [255, 255, 255, alpha];
+    return [255, 255, 255, alpha] as [number, number, number, number];
   }, [selectedStopId]);
 
   const layers = [];
