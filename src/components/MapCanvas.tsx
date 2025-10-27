@@ -162,6 +162,9 @@ export default function MapCanvas() {
   void isMetricHovered;
   void showDateTooltip;
   void showMetricTooltip;
+  void setShowMetricTooltip;
+  void metricTooltipTimerRef;
+  void metricTextRef;
 
   // Tooltip state for charts
   const [chartTooltip, setChartTooltip] = useState<{
@@ -697,8 +700,10 @@ export default function MapCanvas() {
   }, [isFiltersPanelOpen]);
 
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopPosition = React.useCallback((d: any) => d.geometry.coordinates, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopBorderColor = React.useCallback((d: any) => {
     const color = getColorForId(d.properties.stop_id);
     const isSelected = selectedStopId === d.properties.stop_id;
@@ -706,6 +711,7 @@ export default function MapCanvas() {
     return [...color, alpha];
   }, [selectedStopId]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any) => {
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
