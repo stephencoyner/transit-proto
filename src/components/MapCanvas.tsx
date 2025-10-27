@@ -697,16 +697,16 @@ export default function MapCanvas() {
   }, [isFiltersPanelOpen]);
 
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
-  const getStopPosition = React.useCallback((d: StopFeature) => d.geometry.coordinates, []);
+  const getStopPosition = React.useCallback((d: any) => d.geometry.coordinates, []);
 
-  const getStopBorderColor = React.useCallback((d: StopFeature) => {
+  const getStopBorderColor = React.useCallback((d: any) => {
     const color = getColorForId(d.properties.stop_id);
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
     return [...color, alpha];
   }, [selectedStopId]);
 
-  const getStopCenterColor = React.useCallback((d: StopFeature) => {
+  const getStopCenterColor = React.useCallback((d: any) => {
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
     return [255, 255, 255, alpha];
