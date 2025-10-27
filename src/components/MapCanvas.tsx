@@ -712,23 +712,6 @@ export default function MapCanvas() {
     }
   }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds, isFiltersPanelOpen]);
 
-  // Adjust map viewport when filters panel is toggled (synced with panel animation)
-  useEffect(() => {
-    // Only recenter if a specific route is selected
-    // For system view, let the map naturally adjust to padding changes without refitting bounds
-    if (selectedRouteId && filteredShapes.length > 0) {
-      const el = mapContainerRef.current;
-      const width = el?.clientWidth ?? window.innerWidth;
-      const height = el?.clientHeight ?? window.innerHeight;
-      const bounds = calculateBounds(filteredShapes);
-      if (bounds) {
-        const newViewState = fitToBounds(bounds, { width, height });
-        setViewState(newViewState);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFiltersPanelOpen]);
-
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopPosition = React.useCallback((d: any) => d.geometry.coordinates, []);
