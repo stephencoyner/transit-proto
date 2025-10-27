@@ -412,6 +412,8 @@ export default function MapCanvas() {
   };
 
   // Helper function to fit bounds using proper Mercator projection
+  // Note: isFiltersPanelOpen is captured at call time via getUIPadding, not as a dependency
+  // This prevents fitToBounds from being recreated on every panel toggle
   const fitToBounds = useCallback((bounds: LngLatBoundsLike, size: {width: number; height: number}) => {
     const { width, height } = size;
     const padding = getUIPadding(isFiltersPanelOpen);
@@ -420,6 +422,7 @@ export default function MapCanvas() {
       padding,
       maxZoom: MAX_ZOOM
     });
+    console.log('fitToBounds called:', { padding, zoom, isFiltersPanelOpen });
     return {
       longitude,
       latitude,
@@ -428,7 +431,7 @@ export default function MapCanvas() {
       bearing: 0,
       transitionDuration: 200
     };
-  }, [isFiltersPanelOpen]);
+  }, []); // Empty dependency array - padding is calculated at call time
 
   // Handlers for date filter tooltip
   const handleDateFilterMouseEnter = () => {
@@ -710,7 +713,7 @@ export default function MapCanvas() {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
-  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds, isFiltersPanelOpen]);
+  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds]);
 
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
