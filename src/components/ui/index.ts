@@ -1,5 +1,5 @@
-export { Button } from './Button';
-export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
+export { Button, StatefulButton } from './Button';
+export type { ButtonProps, ButtonVariant, ButtonSize, StatefulButtonProps } from './Button';
 
 export { Card } from './Card';
 export type { CardProps } from './Card';
