@@ -40,3 +40,53 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = 'Button';
+
+export interface StatefulButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'onToggle'> {
+  size?: ButtonSize;
+  selected?: boolean;
+  onToggle?: (selected: boolean) => void;
+  children: React.ReactNode;
+}
+
+export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButtonProps>(
+  ({ size = 'small', selected = false, onToggle, className = '', children, ...props }, ref) => {
+    const baseClasses = 'rounded-full transition-colors duration-200 cursor-pointer font-medium border';
+
+    const stateClasses = selected
+      ? 'bg-bg-secondary text-text-primary border-border-focus'
+      : 'bg-bg-elevated text-text-primary border-border-default hover:bg-bg-primary';
+
+    const sizeClasses = {
+      small: 'button-small h-7 px-4',
+      medium: 'button-medium h-10 px-6',
+    };
+
+    const classes = `${baseClasses} ${stateClasses} ${sizeClasses[size]} ${className}`.trim();
+
+    const handleClick = () => {
+      if (onToggle) {
+        onToggle(!selected);
+      }
+    };
+
+    const style = {
+      borderWidth: 'var(--border-width)',
+      borderColor: selected ? 'var(--border-focus)' : 'var(--border-default)',
+      ...props.style
+    };
+
+    return (
+      <button
+        ref={ref}
+        className={classes}
+        style={style}
+        onClick={handleClick}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+);
+
+StatefulButton.displayName = 'StatefulButton';
