@@ -41,7 +41,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = 'Button';
 
-export interface StatefulButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
+export interface StatefulButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'onToggle'> {
   size?: ButtonSize;
   selected?: boolean;
   onToggle?: (selected: boolean) => void;
@@ -63,7 +63,7 @@ export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButton
 
     const classes = `${baseClasses} ${stateClasses} ${sizeClasses[size]} ${className}`.trim();
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = () => {
       if (onToggle) {
         onToggle(!selected);
       }
