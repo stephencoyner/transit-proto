@@ -1,12 +1,18 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
+interface PeriodDataPoint {
+  period: string;
+  value: number;
+  [key: string]: string | number;
+}
+
 export default function ByPeriodChart({
   data,
   colors,
   activePieIndex,
   setActivePieIndex
 }: {
-  data: any[],
+  data: PeriodDataPoint[],
   colors: string[],
   activePieIndex: number | null,
   setActivePieIndex: (index: number | null) => void

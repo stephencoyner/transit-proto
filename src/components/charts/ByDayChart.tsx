@@ -1,6 +1,12 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-export default function ByDayChart({ data, average }: { data: any[], average: number }) {
+interface DayDataPoint {
+  day: string;
+  value: number;
+  [key: string]: string | number;
+}
+
+export default function ByDayChart({ data, average }: { data: DayDataPoint[], average: number }) {
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',

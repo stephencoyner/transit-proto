@@ -1,6 +1,12 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function ByDateChart({ data, gradientId }: { data: any[], gradientId: string }) {
+interface ChartDataPoint {
+  date: string;
+  value: number;
+  [key: string]: string | number;
+}
+
+export default function ByDateChart({ data, gradientId }: { data: ChartDataPoint[], gradientId: string }) {
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',
