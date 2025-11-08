@@ -8,6 +8,7 @@ import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, 
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
+import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -207,6 +208,28 @@ export default function MapCanvas() {
   const mockDataByDate = [
     14800, 13500, 15000, 18000, 19500, 20500, 20800, 21000, 20500, 20000
   ];
+
+  // Transform mock data for Recharts
+  const chartDataByDate = mockDataByDate.map((value, index) => ({
+    date: `Day ${index + 1}`,
+    value: value
+  }));
+
+  // Calculate average for By Day chart
+  const averageDailyByDay = mockDataByDay.reduce((sum, item) => sum + item.value, 0) / mockDataByDay.length;
+
+  // Color palette for pie chart - using brown/beige design tokens
+  const PERIOD_COLORS = [
+    'var(--text-primary)',    // Darkest brown (#1A1410)
+    'var(--text-secondary)',  // Dark brown (#3D2817)
+    'var(--text-tertiary)',   // Medium brown (#5C4939)
+    'var(--border-focus)',    // Light brown (#C9B4A3)
+    'var(--border-hover)',    // Lighter beige (#D4C9BA)
+    'var(--border-default)'   // Lightest beige (#D8CCBD)
+  ];
+
+  // State for pie chart active segment
+  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
 
   // State to persist mock ridership values
   const [routeMockValues, setRouteMockValues] = React.useState<{ [key: string]: number }>({});
@@ -1690,603 +1713,35 @@ export default function MapCanvas() {
               ))}
             </div>
 
-            {/* Value */}
-            <div style={{
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                fontSize: '16px',
-                color: '#666',
-                marginBottom: '8px'
-              }}>
-                Average daily boardings
-              </div>
-              <div style={{
-                fontSize: '28px',
-                fontWeight: '400',
-                color: '#333',
-                lineHeight: '1'
-              }}>
-                {selectedRouteId 
-                  ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0).toLocaleString()
-                  : (stopsList.find((s) => s.id === selectedStopId)?.value || 0).toLocaleString()
-                }
-              </div>
-            </div>
-
-        {/* By Date Chart */}
-        <div style={{
-          marginBottom: '32px',
-          paddingBottom: '32px',
-          borderBottom: '1px solid #E0E0E0'
-        }}>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '400',
-            color: '#333',
-            marginBottom: '16px'
-          }}>
-            By date
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '120px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            {/* Y-axis labels */}
-            <div style={{
-              position: 'absolute',
-              left: '0',
-              top: '0',
-              bottom: '0',
-              width: '40px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: '#999',
-              textAlign: 'right',
-              paddingRight: '12px'
-            }}>
-              <div>5K</div>
-              <div>4K</div>
-              <div>3K</div>
-              <div>2K</div>
-              <div>1K</div>
-            </div>
-            {/* Chart area */}
-            <svg 
-              width="280" 
-              height="120" 
-              style={{ marginLeft: '40px', cursor: 'crosshair' }}
-              onMouseMove={(e) => {
-                const svg = e.currentTarget;
-                const rect = svg.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                
-                // Find the closest data point
-                const pointIndex = Math.round((x / 280) * (mockDataByDate.length - 1));
-                const clampedIndex = Math.max(0, Math.min(mockDataByDate.length - 1, pointIndex));
-                const value = mockDataByDate[clampedIndex];
-                const scaledValue = value * (selectedRouteId ? 0.5 : 0.05);
-                const lineX = (clampedIndex / (mockDataByDate.length - 1)) * 280;
-                
-                setChartTooltip({
-                  show: true,
-                  value: Math.round(scaledValue).toLocaleString(),
-                  label: `Day ${clampedIndex + 1}`,
-                  x: rect.left + lineX,
-                  y: rect.top,
-                  lineX: lineX,
-                  lineHeight: 120
-                });
-              }}
-              onMouseLeave={() => {
-                setChartTooltip(null);
-              }}
-            >
-              {/* Grid lines */}
-              {[0, 1, 2, 3, 4].map((i) => (
-                <line
-                  key={i}
-                  x1="0"
-                  y1={i * 30}
-                  x2="280"
-                  y2={i * 30}
-                  stroke="#F0F0F0"
-                  strokeWidth="1"
-                />
-              ))}
-              {/* Line chart - scaled to route/stop */}
-              <polyline
-                points={mockDataByDate.map((value, i) => {
-                  const x = (i / (mockDataByDate.length - 1)) * 280;
-                  const scaledValue = value * (selectedRouteId ? 0.5 : 0.05);
-                  const y = 120 - ((scaledValue - 500) / 4500) * 120;
-                  return `${x},${Math.max(0, Math.min(120, y))}`;
-                }).join(' ')}
-                fill="none"
-                stroke="#333"
-                strokeWidth="2"
-                pointerEvents="none"
-              />
-              {/* Vertical hover line */}
-              {chartTooltip && chartTooltip.lineX !== undefined && chartTooltip.lineHeight === 120 && (
-                <line
-                  x1={chartTooltip.lineX}
-                  y1="0"
-                  x2={chartTooltip.lineX}
-                  y2="120"
-                  stroke="#000"
-                  strokeWidth="1"
-                  pointerEvents="none"
-                />
-              )}
-            </svg>
-          </div>
-        </div>
-
-        {/* By Day Chart */}
-        <div style={{
-          marginBottom: '32px',
-          paddingBottom: '32px',
-          borderBottom: '1px solid #E0E0E0'
-        }}>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '400',
-            color: '#333',
-            marginBottom: '16px'
-          }}>
-            By day
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '160px'
-          }}>
-            {/* Y-axis labels */}
-            <div style={{
-              position: 'absolute',
-              left: '0',
-              top: '0',
-              bottom: '30px',
-              width: '40px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: '#999',
-              textAlign: 'right',
-              paddingRight: '12px'
-            }}>
-              <div>5K</div>
-              <div>4K</div>
-              <div>3K</div>
-              <div>2K</div>
-              <div>1K</div>
-            </div>
-            {/* Chart area */}
-            <div style={{
-              marginLeft: '40px',
-              height: '130px',
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: '12px',
-              borderBottom: '1px solid #E0E0E0',
-              position: 'relative'
-            }}>
-              {mockDataByDay.map((item) => {
-                const scaledValue = item.value * (selectedRouteId ? 0.2 : 0.02);
-                const heightPx = (scaledValue / 5000) * 130;
-                return (
-                  <div key={item.day} style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    height: '130px',
-                    justifyContent: 'flex-end'
-                  }}>
-                    <div 
-                      style={{
-                        width: '100%',
-                        height: `${heightPx}px`,
-                        backgroundColor: '#333',
-                        borderRadius: '4px 4px 0 0',
-                        cursor: 'pointer',
-                        transition: 'opacity 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setChartTooltip({
-                          show: true,
-                          value: Math.round(scaledValue).toLocaleString(),
-                          label: item.day,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top
-                        });
-                      }}
-                      onMouseLeave={() => {
-                        setChartTooltip(null);
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            {/* X-axis labels */}
-            <div style={{
-              marginLeft: '40px',
-              marginTop: '8px',
-              display: 'flex',
-              gap: '12px'
-            }}>
-              {mockDataByDay.map((item) => (
-                <div key={item.day} style={{
-                  flex: 1,
-                  textAlign: 'center',
-                  fontSize: '12px',
-                  color: '#999'
-                }}>
-                  {item.day}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+            {/* Charts */}
+            <MetricCard
+              value={selectedRouteId
+                ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0)
+                : (stopsList.find((s) => s.id === selectedStopId)?.value || 0)
+              }
+            />
+            <ByDateChart data={chartDataByDate} gradientId="colorValue" />
+            <ByDayChart data={mockDataByDay} average={averageDailyByDay} />
+            <ByPeriodChart
+              data={mockDataByPeriod}
+              colors={PERIOD_COLORS}
+              activePieIndex={activePieIndex}
+              setActivePieIndex={setActivePieIndex}
+            />
           </>
         ) : activeTab === 'system' ? (
           /* System View - Aggregated Charts */
           <>
-            {/* Header */}
-            <div style={{
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                fontSize: '16px',
-                color: '#666',
-                marginBottom: '8px'
-              }}>
-                Average daily boardings
-              </div>
-              <div style={{
-                fontSize: '28px',
-                fontWeight: '400',
-                color: '#333',
-                lineHeight: '1'
-              }}>
-                8,973
-              </div>
-            </div>
-
-        {/* By Date Chart */}
-        <div style={{
-          marginBottom: '32px',
-          paddingBottom: '32px',
-          borderBottom: '1px solid #E0E0E0'
-        }}>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '400',
-            color: '#333',
-            marginBottom: '16px'
-          }}>
-            By Date
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '120px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            {/* Y-axis labels */}
-            <div style={{
-              position: 'absolute',
-              left: '0',
-              top: '0',
-              bottom: '0',
-              width: '40px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: '#999',
-              textAlign: 'right',
-              paddingRight: '12px'
-            }}>
-              <div>25K</div>
-              <div>20K</div>
-              <div>15K</div>
-              <div>10K</div>
-              <div>5K</div>
-            </div>
-            {/* Chart area */}
-            <svg 
-              width="280" 
-              height="120" 
-              style={{ marginLeft: '40px', cursor: 'crosshair' }}
-              onMouseMove={(e) => {
-                const svg = e.currentTarget;
-                const rect = svg.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                
-                // Find the closest data point
-                const pointIndex = Math.round((x / 280) * (mockDataByDate.length - 1));
-                const clampedIndex = Math.max(0, Math.min(mockDataByDate.length - 1, pointIndex));
-                const value = mockDataByDate[clampedIndex];
-                const lineX = (clampedIndex / (mockDataByDate.length - 1)) * 280;
-                
-                setChartTooltip({
-                  show: true,
-                  value: value.toLocaleString(),
-                  label: `Day ${clampedIndex + 1}`,
-                  x: rect.left + lineX,
-                  y: rect.top,
-                  lineX: lineX,
-                  lineHeight: 120
-                });
-              }}
-              onMouseLeave={() => {
-                setChartTooltip(null);
-              }}
-            >
-              {/* Grid lines */}
-              {[0, 1, 2, 3, 4].map((i) => (
-                <line
-                  key={i}
-                  x1="0"
-                  y1={i * 30}
-                  x2="280"
-                  y2={i * 30}
-                  stroke="#F0F0F0"
-                  strokeWidth="1"
-                />
-              ))}
-              {/* Line chart */}
-              <polyline
-                points={mockDataByDate.map((value, i) => {
-                  const x = (i / (mockDataByDate.length - 1)) * 280;
-                  const y = 120 - ((value - 10000) / 15000) * 120;
-                  return `${x},${y}`;
-                }).join(' ')}
-                fill="none"
-                stroke="#333"
-                strokeWidth="2"
-                pointerEvents="none"
-              />
-              {/* Vertical hover line */}
-              {chartTooltip && chartTooltip.lineX !== undefined && chartTooltip.lineHeight === 120 && (
-                <line
-                  x1={chartTooltip.lineX}
-                  y1="0"
-                  x2={chartTooltip.lineX}
-                  y2="120"
-                  stroke="#000"
-                  strokeWidth="1"
-                  pointerEvents="none"
-                />
-              )}
-            </svg>
-          </div>
-        </div>
-
-        {/* By Day Chart */}
-        <div style={{
-          marginBottom: '32px',
-          paddingBottom: '32px',
-          borderBottom: '1px solid #E0E0E0'
-        }}>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '400',
-            color: '#333',
-            marginBottom: '16px'
-          }}>
-            By Day
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '160px'
-          }}>
-            {/* Y-axis labels */}
-            <div style={{
-              position: 'absolute',
-              left: '0',
-              top: '0',
-              bottom: '30px',
-              width: '40px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: '#999',
-              textAlign: 'right',
-              paddingRight: '12px'
-            }}>
-              <div>25K</div>
-              <div>20K</div>
-              <div>15K</div>
-              <div>10K</div>
-              <div>5K</div>
-            </div>
-            {/* Chart area */}
-            <div style={{
-              marginLeft: '40px',
-              height: '130px',
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: '12px',
-              borderBottom: '1px solid #E0E0E0',
-              position: 'relative'
-            }}>
-              {mockDataByDay.map((item) => {
-                const heightPx = (item.value / 25000) * 130;
-                return (
-                  <div key={item.day} style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    height: '130px',
-                    justifyContent: 'flex-end'
-                  }}>
-                    <div 
-                      style={{
-                        width: '100%',
-                        height: `${heightPx}px`,
-                        backgroundColor: '#333',
-                        borderRadius: '4px 4px 0 0',
-                        cursor: 'pointer',
-                        transition: 'opacity 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setChartTooltip({
-                          show: true,
-                          value: item.value.toLocaleString(),
-                          label: item.day,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top
-                        });
-                      }}
-                      onMouseLeave={() => {
-                        setChartTooltip(null);
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            {/* X-axis labels */}
-            <div style={{
-              marginLeft: '40px',
-              marginTop: '8px',
-              display: 'flex',
-              gap: '12px'
-            }}>
-              {mockDataByDay.map((item) => (
-                <div key={item.day} style={{
-                  flex: 1,
-                  textAlign: 'center',
-                  fontSize: '12px',
-                  color: '#999'
-                }}>
-                  {item.day}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* By Period Chart */}
-        <div>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '400',
-            color: '#333',
-            marginBottom: '16px'
-          }}>
-            By Period
-          </div>
-          <div style={{
-            position: 'relative',
-            height: '200px'
-          }}>
-            {/* Y-axis labels */}
-            <div style={{
-              position: 'absolute',
-              left: '0',
-              top: '0',
-              bottom: '50px',
-              width: '40px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: '#999',
-              textAlign: 'right',
-              paddingRight: '12px'
-            }}>
-              <div>25K</div>
-              <div>20K</div>
-              <div>15K</div>
-              <div>10K</div>
-              <div>5K</div>
-            </div>
-            {/* Chart area */}
-            <div style={{
-              marginLeft: '40px',
-              height: '150px',
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: '12px',
-              borderBottom: '1px solid #E0E0E0',
-              position: 'relative'
-            }}>
-              {mockDataByPeriod.map((item) => {
-                const heightPx = (item.value / 25000) * 150;
-                return (
-                  <div key={item.period} style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    height: '150px',
-                    justifyContent: 'flex-end'
-                  }}>
-                    <div 
-                      style={{
-                        width: '100%',
-                        height: `${heightPx}px`,
-                        backgroundColor: '#333',
-                        borderRadius: '4px 4px 0 0',
-                        cursor: 'pointer',
-                        transition: 'opacity 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setChartTooltip({
-                          show: true,
-                          value: item.value.toLocaleString(),
-                          label: item.period,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top
-                        });
-                      }}
-                      onMouseLeave={() => {
-                        setChartTooltip(null);
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            {/* X-axis labels */}
-            <div style={{
-              marginLeft: '40px',
-              marginTop: '8px',
-              display: 'flex',
-              gap: '12px'
-            }}>
-              {mockDataByPeriod.map((item) => (
-                <div key={item.period} style={{
-                  flex: 1,
-                  textAlign: 'center',
-                  fontSize: '11px',
-                  color: '#999',
-                  transform: 'rotate(-45deg)',
-                  transformOrigin: 'center',
-                  marginTop: '20px'
-                }}>
-                  {item.period}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+            {/* Charts */}
+            <MetricCard value="8,973" />
+            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" />
+            <ByDayChart data={mockDataByDay} average={averageDailyByDay} />
+            <ByPeriodChart
+              data={mockDataByPeriod}
+              colors={PERIOD_COLORS}
+              activePieIndex={activePieIndex}
+              setActivePieIndex={setActivePieIndex}
+            />
           </>
         ) : activeTab === 'components' ? (
           /* Components View - Showcase */
