@@ -9,3 +9,6 @@ export type { InputProps } from './Input';
 
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
+
+export { SortButton } from './SortButton';
+export type { SortButtonProps, SortOption } from './SortButton';

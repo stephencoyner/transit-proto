@@ -1,4 +1,4 @@
-export default function MetricCard({ value }: { value: string | number }) {
+export default function MetricCard({ value, title = 'Average daily boardings' }: { value: string | number; title?: string }) {
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',
@@ -12,7 +12,7 @@ export default function MetricCard({ value }: { value: string | number }) {
         color: 'var(--text-tertiary)',
         marginBottom: 'var(--space-1)'
       }}>
-        Average daily boardings
+        {title}
       </div>
       <div style={{
         fontSize: 'var(--data-large-size)',

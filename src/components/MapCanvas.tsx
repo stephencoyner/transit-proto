@@ -7,7 +7,7 @@ import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
-import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
+import { Button, Card, Input, Select, StatefulButton, SortButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 
@@ -121,6 +121,10 @@ export default function MapCanvas() {
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
+
+  // Sorting state for routes/stops list
+  const [sortBy, setSortBy] = useState<'route' | 'metric'>('route');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Pattern filtering state
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null); // headsign
@@ -302,13 +306,25 @@ export default function MapCanvas() {
       setRouteMockValues(newMockValues);
     }
 
-    return Object.values(uniqueRoutes).sort((a, b) => {
-      // Sort by route number (convert to number for proper numeric sorting)
-      const aNum = parseInt(a.id, 10);
-      const bNum = parseInt(b.id, 10);
-      return aNum - bNum;
+    const routes = Object.values(uniqueRoutes);
+
+    // Apply sorting based on sortBy and sortOrder
+    return routes.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortBy === 'route') {
+        // Sort by route number (convert to number for proper numeric sorting)
+        const aNum = parseInt(a.id, 10);
+        const bNum = parseInt(b.id, 10);
+        comparison = aNum - bNum;
+      } else {
+        // Sort by metric value
+        comparison = a.value - b.value;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [shapes, routeMockValues]);
+  }, [shapes, routeMockValues, sortBy, sortOrder]);
 
   // Extract stops data with mock values
   const stopsList = React.useMemo(() => {
@@ -2480,21 +2496,19 @@ export default function MapCanvas() {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              marginBottom: '24px',
+              marginTop: '-4px',
+              marginBottom: '16px',
               cursor: 'pointer'
             }}
             onClick={() => {
               setSelectedRouteId(null);
               setSelectedStopId(null);
             }}>
-              <div style={{
-                fontSize: '24px',
-                color: '#333'
-              }}>←</div>
-              <div style={{
-                fontSize: '28px',
-                fontWeight: '400',
-                color: '#333'
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10.1231 1.32543C10.5503 0.891944 11.2429 0.891752 11.67 1.32543C12.097 1.75919 12.097 2.46299 11.67 2.89672L6.64658 7.99633L11.6778 13.1047C12.1045 13.5384 12.1045 14.2414 11.6778 14.675C11.2507 15.1088 10.5581 15.1087 10.131 14.675L4.42001 8.87719C4.3857 8.84984 4.35203 8.82043 4.3204 8.78832C4.10691 8.57146 4.0001 8.28736 4.00009 8.00317C3.99644 7.71413 4.10225 7.4239 4.31943 7.20336C4.35442 7.16784 4.39152 7.13541 4.42978 7.10571L10.1231 1.32543Z" fill="currentColor"/>
+              </svg>
+              <div className="heading-1" style={{
+                color: 'var(--text-primary)'
               }}>
                 {selectedRouteId ? `Route ${selectedRouteId}` : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
               </div>
@@ -2503,20 +2517,31 @@ export default function MapCanvas() {
             {/* Summary/Trips/Grid Tabs */}
             <div style={{
               display: 'flex',
-              gap: '8px',
-              marginBottom: '24px'
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '24px',
+              padding: '4px',
+              marginBottom: '16px'
             }}>
               {['Summary', 'Trips', 'Grid'].map(tab => (
-                <button key={tab} style={{
-                  padding: '8px 16px',
-                  backgroundColor: tab === 'Summary' ? '#333' : '#FFFFFF',
-                  color: tab === 'Summary' ? '#FFFFFF' : '#333',
-                  border: 'none',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '14px'
-                }}>
+                <button
+                  key={tab}
+                  type="button"
+                  style={{
+                    flex: '1 1 0',
+                    padding: '8px 0',
+                    backgroundColor: tab === 'Summary' ? 'var(--bg-elevated)' : 'transparent',
+                    border: tab === 'Summary' ? 'var(--border-width) solid var(--border-default)' : 'none',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--button-small-size)',
+                    fontWeight: 'var(--button-small-weight)',
+                    color: tab === 'Summary' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                    lineHeight: 'var(--button-small-line-height)',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'center'
+                  }}
+                >
                   {tab}
                 </button>
               ))}
@@ -2643,27 +2668,22 @@ export default function MapCanvas() {
         ) : (
           /* Routes/Stops View - List */
           <>
-            {/* Sort and Filter Buttons */}
-            <div style={{
+            {/* Sort and Filter Buttons - DISABLED FOR NOW */}
+            {/* <div style={{
               display: 'flex',
               gap: '8px',
               marginBottom: '24px'
             }}>
-              <button style={{
-                padding: '8px 20px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D9D9D9',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-                color: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                Sort ▼
-              </button>
+              <SortButton
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                options={[
+                  { value: 'route', label: 'Route' },
+                  { value: 'metric', label: selectedMetric }
+                ]}
+                onSortByChange={(value) => setSortBy(value as 'route' | 'metric')}
+                onSortOrderToggle={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              />
               <button style={{
                 padding: '8px 20px',
                 backgroundColor: '#FFFFFF',
@@ -2679,7 +2699,7 @@ export default function MapCanvas() {
               }}>
                 + Filter
               </button>
-            </div>
+            </div> */}
 
             {/* List Items */}
             <div style={{
@@ -2689,7 +2709,7 @@ export default function MapCanvas() {
             }}>
               {(activeTab === 'routes' ? routesList : stopsList).map((item) => (
                 <div
-                  key={item.id} 
+                  key={item.id}
                   onClick={() => {
                     if (activeTab === 'routes') {
                       setSelectedRouteId(item.id);
@@ -2698,28 +2718,9 @@ export default function MapCanvas() {
                     }
                   }}
                   style={{
-                    padding: '16px 0',
-                    borderBottom: '1px solid #F0F0F0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
                     cursor: 'pointer'
                   }}>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#666',
-                    fontFamily: 'Inter, sans-serif'
-                  }}>
-                    {item.name}
-                  </div>
-                  <div style={{
-                    fontSize: '28px',
-                    fontWeight: '400',
-                    color: '#333',
-                    fontFamily: 'Inter, sans-serif'
-                  }}>
-                    {item.value.toLocaleString()}
-                  </div>
+                  <MetricCard value={item.value} title={item.name} />
                 </div>
               ))}
             </div>

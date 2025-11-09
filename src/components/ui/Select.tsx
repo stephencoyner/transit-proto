@@ -19,6 +19,7 @@ export interface SelectOption {
   label: string;
   description?: string; // Secondary text below label
   disabled?: boolean;
+  isDivider?: boolean; // Render as a divider line
 }
 
 export interface SelectProps {
@@ -32,10 +33,11 @@ export interface SelectProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  multiCheck?: string[]; // Additional values to show checkmarks for (for multi-state selections)
 }
 
 export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
-  ({ label, error, helperText, options, placeholder, value, onChange, disabled, className = '', id }, ref) => {
+  ({ label, error, helperText, options, placeholder, value, onChange, disabled, className = '', id, multiCheck = [] }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedValue, setSelectedValue] = useState(value || '');
     const [isHovered, setIsHovered] = useState(false);
@@ -231,7 +233,20 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             role="listbox"
           >
             {options.map((option, index) => {
-              const isSelected = selectedValue === option.value;
+              // Render divider
+              if (option.isDivider) {
+                return (
+                  <div
+                    key={`divider-${index}`}
+                    style={{
+                      borderTop: 'var(--border-width) solid var(--border-default)',
+                      margin: '8px 0'
+                    }}
+                  />
+                );
+              }
+
+              const isSelected = selectedValue === option.value || multiCheck.includes(option.value);
               const isItemHovered = hoveredItemIndex === index;
 
               return (
@@ -249,7 +264,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                     alignItems: option.description ? 'flex-start' : 'center',
                     gap: '12px',
                     transition: 'background-color 0.2s ease',
-                    backgroundColor: isItemHovered && !option.disabled ? 'color-mix(in srgb, var(--btn-secondary) 50%, transparent)' : 'transparent',
+                    backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-primary)' : 'transparent',
                     margin: index === 0 ? '12px 0 4px 0' : (index === options.length - 1 ? '4px 0 12px 0' : '4px 0'),
                     opacity: option.disabled ? 0.5 : 1
                   }}
