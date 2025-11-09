@@ -178,11 +178,29 @@ export default function MapCanvas() {
     lineHeight?: number;
   } | null>(null);
 
-  // Date picker state
+  // Date picker state - Applied state (what's actually being used)
+  const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
+  const [appliedQuickPick, setAppliedQuickPick] = useState<string | null>(null);
+  const [appliedStartDate, setAppliedStartDate] = useState<Date | null>(null);
+  const [appliedEndDate, setAppliedEndDate] = useState<Date | null>(null);
+
+  // Staged state (temporary changes in the picker)
   const [datePickerMode, setDatePickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
   const [selectedYear, setSelectedYear] = useState(2025);
-  const [selectedSeason, setSelectedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
-  const [selectedQuickPick, setSelectedQuickPick] = useState<string | null>(null);
+  const [stagedSeason, setStagedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
+  const [stagedQuickPick, setStagedQuickPick] = useState<string | null>(null);
+  const [calendarStartMonth, setCalendarStartMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth());
+  });
+  const [stagedStartDate, setStagedStartDate] = useState<Date | null>(null);
+  const [stagedEndDate, setStagedEndDate] = useState<Date | null>(null);
+
+  // Original state when picker was opened (for Reset)
+  const [originalSeason, setOriginalSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
+  const [originalQuickPick, setOriginalQuickPick] = useState<string | null>(null);
+  const [originalStartDate, setOriginalStartDate] = useState<Date | null>(null);
+  const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
 
   // Mock data for the data panel
   const mockDataByDay = [
@@ -560,22 +578,66 @@ export default function MapCanvas() {
     }
   };
 
-  // Compute the display text for the date filter button
+  // Compute the display text for the date filter button (using applied state)
   const getDateFilterText = () => {
-    if (selectedQuickPick) {
-      return getQuickPickDateRange(selectedQuickPick);
+    if (appliedQuickPick) {
+      return getQuickPickDateRange(appliedQuickPick);
     }
-    if (selectedSeason) {
+    if (appliedSeason) {
       const seasonLabels = {
         winter: 'Winter',
         spring: 'Spring',
         summer: 'Summer',
         fall: 'Fall'
       };
-      return `${seasonLabels[selectedSeason.season]} Service ${selectedSeason.year}`;
+      return `${seasonLabels[appliedSeason.season]} Service ${appliedSeason.year}`;
+    }
+    if (appliedStartDate && appliedEndDate) {
+      return `${formatDate(appliedStartDate)} - ${formatDate(appliedEndDate)}`;
     }
     return 'Select Date Range';
   };
+
+  // When date picker opens, capture the current applied state as both original and staged
+  useEffect(() => {
+    if (openFilter === 'date') {
+      // Capture original state for Reset
+      setOriginalSeason(appliedSeason);
+      setOriginalQuickPick(appliedQuickPick);
+      setOriginalStartDate(appliedStartDate);
+      setOriginalEndDate(appliedEndDate);
+
+      // Initialize staged state from applied state
+      setStagedSeason(appliedSeason);
+      setStagedQuickPick(appliedQuickPick);
+      setStagedStartDate(appliedStartDate);
+      setStagedEndDate(appliedEndDate);
+    }
+  }, [openFilter, appliedSeason, appliedQuickPick, appliedStartDate, appliedEndDate]);
+
+  // Handle Apply button - copy staged state to applied state and close picker
+  const handleApplyDateFilter = () => {
+    setAppliedSeason(stagedSeason);
+    setAppliedQuickPick(stagedQuickPick);
+    setAppliedStartDate(stagedStartDate);
+    setAppliedEndDate(stagedEndDate);
+    setOpenFilter(null); // Close the picker
+  };
+
+  // Handle Reset button - restore original state to staged
+  const handleResetDateFilter = () => {
+    setStagedSeason(originalSeason);
+    setStagedQuickPick(originalQuickPick);
+    setStagedStartDate(originalStartDate);
+    setStagedEndDate(originalEndDate);
+  };
+
+  // Check if there are changes (for enabling/disabling Reset button)
+  const hasChanges =
+    JSON.stringify(stagedSeason) !== JSON.stringify(originalSeason) ||
+    stagedQuickPick !== originalQuickPick ||
+    stagedStartDate?.getTime() !== originalStartDate?.getTime() ||
+    stagedEndDate?.getTime() !== originalEndDate?.getTime();
 
   // Function to update panel position based on which filter is open
   const updatePanelPosition = useCallback(() => {
@@ -1300,7 +1362,7 @@ export default function MapCanvas() {
                   style={{
                     padding: '8px 32px',
                     backgroundColor: datePickerMode === 'shortcuts' ? 'var(--bg-elevated)' : 'transparent',
-                    border: 'none',
+                    border: datePickerMode === 'shortcuts' ? 'var(--border-width) solid var(--border-default)' : 'none',
                     borderRadius: '20px',
                     cursor: 'pointer',
                     fontFamily: 'Inter, sans-serif',
@@ -1319,7 +1381,7 @@ export default function MapCanvas() {
                   style={{
                     padding: '8px 32px',
                     backgroundColor: datePickerMode === 'custom' ? 'var(--bg-elevated)' : 'transparent',
-                    border: 'none',
+                    border: datePickerMode === 'custom' ? 'var(--border-width) solid var(--border-default)' : 'none',
                     borderRadius: '20px',
                     cursor: 'pointer',
                     fontFamily: 'Inter, sans-serif',
@@ -1335,14 +1397,15 @@ export default function MapCanvas() {
               </div>
 
               {datePickerMode === 'shortcuts' ? (
-                <>
+                <div style={{ paddingBottom: '24px' }}>
                   {/* Year Selector */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '16px',
-                    marginBottom: '24px'
+                    justifyContent: 'space-between',
+                    marginBottom: '24px',
+                    paddingLeft: '124px',
+                    paddingRight: '124px'
                   }}>
                     <button
                       type="button"
@@ -1374,12 +1437,12 @@ export default function MapCanvas() {
                       fontSize: 'var(--heading-3-size)',
                       fontWeight: 'var(--heading-3-weight)',
                       color: 'var(--text-primary)',
-                      minWidth: '120px',
+                      minWidth: '200px',
                       textAlign: 'center',
                       lineHeight: 'var(--heading-3-line-height)',
                       letterSpacing: 'var(--heading-3-letter-spacing)'
                     }}>
-                      {selectedYear} Service
+                      Service {selectedYear}
                     </div>
                     <button
                       type="button"
@@ -1462,8 +1525,10 @@ export default function MapCanvas() {
                         key={season.key}
                         type="button"
                         onClick={() => {
-                          setSelectedSeason({ season: season.key as 'winter' | 'spring' | 'summer' | 'fall', year: displayYear });
-                          setSelectedQuickPick(null);
+                          setStagedSeason({ season: season.key as 'winter' | 'spring' | 'summer' | 'fall', year: displayYear });
+                          setStagedQuickPick(null);
+                          setStagedStartDate(null);
+                          setStagedEndDate(null);
                         }}
                         onMouseEnter={() => setHoveredSeason(season.key)}
                         onMouseLeave={() => setHoveredSeason(null)}
@@ -1472,8 +1537,8 @@ export default function MapCanvas() {
                           paddingBottom: '20px',
                           paddingLeft: '12px',
                           paddingRight: '12px',
-                          backgroundColor: selectedSeason?.season === season.key && selectedSeason?.year === displayYear ? 'var(--bg-secondary)' : (hoveredSeason === season.key ? 'var(--bg-primary)' : 'var(--bg-elevated)'),
-                          border: selectedSeason?.season === season.key && selectedSeason?.year === displayYear ? '0.5px solid var(--border-focus)' : '0.5px solid var(--border-default)',
+                          backgroundColor: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? 'var(--bg-primary)' : (hoveredSeason === season.key ? 'var(--bg-primary)' : 'var(--bg-elevated)'),
+                          border: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? '0.5px solid var(--border-focus)' : '0.5px solid var(--border-default)',
                           borderRadius: '20px',
                           cursor: 'pointer',
                           display: 'flex',
@@ -1541,14 +1606,16 @@ export default function MapCanvas() {
                         {['Last 7 days', 'Last 4 weeks', 'Last 3 months', 'Last 12 months'].map((pick) => (
                           <StatefulButton
                             key={pick}
-                            size="small"
-                            selected={selectedQuickPick === pick}
+                            size="medium"
+                            selected={stagedQuickPick === pick}
                             onToggle={(selected) => {
                               if (selected) {
-                                setSelectedQuickPick(pick);
-                                setSelectedSeason(null);
+                                setStagedQuickPick(pick);
+                                setStagedSeason(null);
+                                setStagedStartDate(null);
+                                setStagedEndDate(null);
                               } else {
-                                setSelectedQuickPick(null);
+                                setStagedQuickPick(null);
                               }
                             }}
                             style={{ whiteSpace: 'nowrap' }}
@@ -1561,14 +1628,16 @@ export default function MapCanvas() {
                         {['Month to date', 'Quarter to date', 'Year to date'].map((pick) => (
                           <StatefulButton
                             key={pick}
-                            size="small"
-                            selected={selectedQuickPick === pick}
+                            size="medium"
+                            selected={stagedQuickPick === pick}
                             onToggle={(selected) => {
                               if (selected) {
-                                setSelectedQuickPick(pick);
-                                setSelectedSeason(null);
+                                setStagedQuickPick(pick);
+                                setStagedSeason(null);
+                                setStagedStartDate(null);
+                                setStagedEndDate(null);
                               } else {
-                                setSelectedQuickPick(null);
+                                setStagedQuickPick(null);
                               }
                             }}
                             style={{ whiteSpace: 'nowrap' }}
@@ -1579,16 +1648,391 @@ export default function MapCanvas() {
                       </div>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
-                <div style={{
-                  padding: '40px',
-                  textAlign: 'center',
-                  color: 'var(--text-secondary)'
-                }}>
-                  Custom date picker coming soon...
+                // Custom Date Picker
+                <div style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '24px' }}>
+                  {/* Calendar Navigation */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '24px',
+                    paddingLeft: '100px',
+                    paddingRight: '100px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setCalendarStartMonth(new Date(calendarStartMonth.getFullYear(), calendarStartMonth.getMonth() - 1))}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '0.5px solid var(--border-default)',
+                        backgroundColor: 'var(--bg-elevated)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0
+                      }}
+                    >
+                      <img
+                        src={ChevronLeftIcon.src}
+                        alt="Previous month"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          filter: 'brightness(0)'
+                        }}
+                      />
+                    </button>
+                    <div style={{
+                      fontSize: 'var(--heading-3-size)',
+                      fontWeight: 'var(--heading-3-weight)',
+                      color: 'var(--text-primary)',
+                      minWidth: '200px',
+                      textAlign: 'center',
+                      lineHeight: 'var(--heading-3-line-height)',
+                      letterSpacing: 'var(--heading-3-letter-spacing)'
+                    }}>
+                      {calendarStartMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const currentMonth = now.getMonth();
+                        const currentYear = now.getFullYear();
+                        const calendarMonth = calendarStartMonth.getMonth();
+                        const calendarYear = calendarStartMonth.getFullYear();
+
+                        if (calendarYear < currentYear || (calendarYear === currentYear && calendarMonth < currentMonth)) {
+                          setCalendarStartMonth(new Date(calendarStartMonth.getFullYear(), calendarStartMonth.getMonth() + 1));
+                        }
+                      }}
+                      disabled={(() => {
+                        const now = new Date();
+                        const currentMonth = now.getMonth();
+                        const currentYear = now.getFullYear();
+                        const calendarMonth = calendarStartMonth.getMonth();
+                        const calendarYear = calendarStartMonth.getFullYear();
+                        return calendarYear === currentYear && calendarMonth === currentMonth;
+                      })()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '0.5px solid var(--border-default)',
+                        backgroundColor: (() => {
+                          const now = new Date();
+                          const currentMonth = now.getMonth();
+                          const currentYear = now.getFullYear();
+                          const calendarMonth = calendarStartMonth.getMonth();
+                          const calendarYear = calendarStartMonth.getFullYear();
+                          const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
+                          return isDisabled ? '#F5F5F5' : 'var(--bg-elevated)';
+                        })(),
+                        cursor: (() => {
+                          const now = new Date();
+                          const currentMonth = now.getMonth();
+                          const currentYear = now.getFullYear();
+                          const calendarMonth = calendarStartMonth.getMonth();
+                          const calendarYear = calendarStartMonth.getFullYear();
+                          const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
+                          return isDisabled ? 'not-allowed' : 'pointer';
+                        })(),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                        opacity: (() => {
+                          const now = new Date();
+                          const currentMonth = now.getMonth();
+                          const currentYear = now.getFullYear();
+                          const calendarMonth = calendarStartMonth.getMonth();
+                          const calendarYear = calendarStartMonth.getFullYear();
+                          const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
+                          return isDisabled ? 0.5 : 1;
+                        })()
+                      }}
+                    >
+                      <img
+                        src={ChevronRightIcon.src}
+                        alt="Next month"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          filter: (() => {
+                            const now = new Date();
+                            const currentMonth = now.getMonth();
+                            const currentYear = now.getFullYear();
+                            const calendarMonth = calendarStartMonth.getMonth();
+                            const calendarYear = calendarStartMonth.getFullYear();
+                            const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
+                            return isDisabled ? 'none' : 'brightness(0)';
+                          })()
+                        }}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Single Month Calendar */}
+                  <div>
+                    {(() => {
+                      const year = calendarStartMonth.getFullYear();
+                      const month = calendarStartMonth.getMonth();
+
+                      // Get days in month
+                      const daysInMonth = new Date(year, month + 1, 0).getDate();
+                      const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+                      const days: (Date | null)[] = [];
+                      for (let i = 0; i < firstDayOfMonth; i++) {
+                        days.push(null);
+                      }
+                      for (let i = 1; i <= daysInMonth; i++) {
+                        days.push(new Date(year, month, i));
+                      }
+
+                      return (
+                        <div>
+                          {/* Weekday headers */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(7, 48px)',
+                            columnGap: '0',
+                            marginBottom: '8px',
+                            marginTop: '8px',
+                            justifyContent: 'center'
+                          }}>
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  fontSize: 'var(--label-size)',
+                                  fontWeight: 'var(--label-weight)',
+                                  color: 'var(--text-tertiary)',
+                                  textAlign: 'center',
+                                  padding: '8px 0',
+                                  letterSpacing: 'var(--label-letter-spacing)'
+                                }}
+                              >
+                                {day}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Calendar days */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(7, 48px)',
+                            rowGap: '4px',
+                            columnGap: '0',
+                            justifyContent: 'center'
+                          }}>
+                            {days.map((day, idx) => {
+                              if (!day) {
+                                return <div key={`empty-${idx}`} />;
+                              }
+
+                              const isStart = stagedStartDate && day.getTime() === stagedStartDate.getTime();
+                              const isEnd = stagedEndDate && day.getTime() === stagedEndDate.getTime();
+                              const isInRange = stagedStartDate && stagedEndDate &&
+                                day.getTime() > stagedStartDate.getTime() &&
+                                day.getTime() < stagedEndDate.getTime();
+                              const isSelected = isStart || isEnd;
+                              const isToday = day.toDateString() === new Date().toDateString();
+
+                              // Check if this date is at the start or end of a week row
+                              const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
+                              const isRowStart = dayOfWeek === 0; // Sunday
+                              const isRowEnd = dayOfWeek === 6; // Saturday
+
+                              // Check if previous/next day is also selected or in range
+                              const prevDaySelected = idx > 0 && days[idx - 1] && stagedStartDate && stagedEndDate && (
+                                (days[idx - 1]!.getTime() >= stagedStartDate.getTime() && days[idx - 1]!.getTime() <= stagedEndDate.getTime())
+                              );
+                              const nextDaySelected = idx < days.length - 1 && days[idx + 1] && stagedStartDate && stagedEndDate && (
+                                (days[idx + 1]!.getTime() >= stagedStartDate.getTime() && days[idx + 1]!.getTime() <= stagedEndDate.getTime())
+                              );
+
+                              // Determine border radius for wrapper background
+                              let wrapperBorderRadius = '0';
+                              let buttonBorderRadius = '8px';
+                              const isActive = isSelected || isInRange;
+
+                              // Check if adjacent to selected dates
+                              const prevIsSelected = idx > 0 && days[idx - 1] && stagedStartDate && stagedEndDate && (
+                                days[idx - 1]!.getTime() === stagedStartDate.getTime() ||
+                                days[idx - 1]!.getTime() === stagedEndDate.getTime()
+                              );
+                              const nextIsSelected = idx < days.length - 1 && days[idx + 1] && stagedStartDate && stagedEndDate && (
+                                days[idx + 1]!.getTime() === stagedStartDate.getTime() ||
+                                days[idx + 1]!.getTime() === stagedEndDate.getTime()
+                              );
+
+                              // Margins to extend backgrounds into adjacent cells
+                              let wrapperMarginLeft = '0';
+                              let wrapperMarginRight = '0';
+                              let backgroundZIndex = 0;
+
+                              if (isActive) {
+                                if (isSelected) {
+                                  // Selected dates (start/end) are always circles
+                                  wrapperBorderRadius = '50%';
+                                  buttonBorderRadius = '50%';
+                                  backgroundZIndex = 2; // Higher z-index so circles appear above in-range backgrounds
+                                } else if (isInRange) {
+                                  // In-range dates form continuous rectangle
+                                  // Extend background to overlap with adjacent selected dates
+                                  if (prevIsSelected) {
+                                    wrapperMarginLeft = '-24px'; // Extend left to cover half of previous cell
+                                  }
+                                  if (nextIsSelected) {
+                                    wrapperMarginRight = '-24px'; // Extend right to cover half of next cell
+                                  }
+
+                                  // Only round edges at row boundaries
+                                  const roundLeft = isRowStart;
+                                  const roundRight = isRowEnd;
+
+                                  if (roundLeft && roundRight) {
+                                    wrapperBorderRadius = '8px';
+                                  } else if (roundLeft) {
+                                    wrapperBorderRadius = '8px 0 0 8px';
+                                  } else if (roundRight) {
+                                    wrapperBorderRadius = '0 8px 8px 0';
+                                  }
+                                  buttonBorderRadius = '8px';
+                                  backgroundZIndex = 1; // Lower z-index so in-range backgrounds go behind circles
+                                }
+                              }
+
+                              return (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: '48px'
+                                  }}
+                                >
+                                  {/* Background layer */}
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: wrapperMarginLeft,
+                                    right: wrapperMarginRight,
+                                    bottom: 0,
+                                    background: isSelected ? 'var(--btn-primary)' : (isInRange ? 'var(--bg-primary)' : 'transparent'),
+                                    borderRadius: wrapperBorderRadius,
+                                    zIndex: backgroundZIndex
+                                  }} />
+                                  <button
+                                    onClick={() => {
+                                      // Clear quick pick when custom dates are selected
+                                      setStagedQuickPick(null);
+                                      setStagedSeason(null);
+
+                                      if (!stagedStartDate || (stagedStartDate && stagedEndDate)) {
+                                        setStagedStartDate(day);
+                                        setStagedEndDate(null);
+                                      } else if (day.getTime() > stagedStartDate.getTime()) {
+                                        setStagedEndDate(day);
+                                      } else {
+                                        setStagedEndDate(stagedStartDate);
+                                        setStagedStartDate(day);
+                                      }
+                                    }}
+                                    style={{
+                                      position: 'relative',
+                                      zIndex: 3,
+                                      background: isSelected ? 'var(--btn-primary)' : 'transparent',
+                                      border: 'none',
+                                      borderRadius: buttonBorderRadius,
+                                      color: isSelected ? 'var(--text-on-primary)' : 'var(--text-primary)',
+                                      cursor: 'pointer',
+                                      width: '48px',
+                                      height: '48px',
+                                      fontSize: 'var(--body-regular-size)',
+                                      fontWeight: 'var(--body-regular-weight)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!isSelected && !isInRange) {
+                                        e.currentTarget.style.background = 'var(--bg-secondary)';
+                                        e.currentTarget.style.borderRadius = '50%';
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (!isSelected && !isInRange) {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.borderRadius = buttonBorderRadius;
+                                      }
+                                    }}
+                                  >
+                                    {day.getDate()}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
+
+              {/* Divider */}
+              <div style={{
+                borderTop: 'var(--border-width) solid var(--border-default)',
+                marginTop: '24px',
+                marginLeft: '-24px',
+                marginRight: '-24px'
+              }} />
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                padding: '20px 0 0 0',
+                justifyContent: 'flex-end'
+              }}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  onClick={handleResetDateFilter}
+                  disabled={!hasChanges}
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasChanges) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleApplyDateFilter}
+                  disabled={!hasChanges}
+                >
+                  Apply
+                </Button>
+              </div>
             </div>
           ) : openFilter === 'days' ? (
             <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
