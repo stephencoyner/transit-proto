@@ -1787,7 +1787,7 @@ export default function MapCanvas() {
                       const daysInMonth = new Date(year, month + 1, 0).getDate();
                       const firstDayOfMonth = new Date(year, month, 1).getDay();
 
-                      const days = [];
+                      const days: (Date | null)[] = [];
                       for (let i = 0; i < firstDayOfMonth; i++) {
                         days.push(null);
                       }
