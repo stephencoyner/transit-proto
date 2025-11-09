@@ -8,6 +8,7 @@ import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, 
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 
 // Type for bounds
@@ -157,6 +158,11 @@ export default function MapCanvas() {
   const metricTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const metricTextRef = useRef<HTMLSpanElement | null>(null);
 
+  // Tooltip state for days filter
+  const [showDaysTooltip, setShowDaysTooltip] = useState(false);
+  const daysTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const daysTextRef = useRef<HTMLSpanElement | null>(null);
+
   // Suppress unused variable warnings for future use
   void isCompareHovered;
   void setIsCompareHovered;
@@ -201,6 +207,24 @@ export default function MapCanvas() {
   const [originalQuickPick, setOriginalQuickPick] = useState<string | null>(null);
   const [originalStartDate, setOriginalStartDate] = useState<Date | null>(null);
   const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
+
+  // Day/Time period picker state - Applied state (what's actually being used)
+  const [appliedDaysMode, setAppliedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
+  const [appliedCustomDays, setAppliedCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [appliedTimeMode, setAppliedTimeMode] = useState<'all' | 'custom'>('all');
+  const [appliedTimePeriods, setAppliedTimePeriods] = useState<string[]>([]);
+
+  // Staged state (temporary changes in the picker)
+  const [stagedDaysMode, setStagedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
+  const [stagedCustomDays, setStagedCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [stagedTimeMode, setStagedTimeMode] = useState<'all' | 'custom'>('all');
+  const [stagedTimePeriods, setStagedTimePeriods] = useState<string[]>([]);
+
+  // Original state when picker was opened (for Reset)
+  const [originalDaysMode, setOriginalDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
+  const [originalCustomDays, setOriginalCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [originalTimeMode, setOriginalTimeMode] = useState<'all' | 'custom'>('all');
+  const [originalTimePeriods, setOriginalTimePeriods] = useState<string[]>([]);
 
   // Mock data for the data panel
   const mockDataByDay = [
@@ -499,6 +523,31 @@ export default function MapCanvas() {
     setShowDateTooltip(false);
   };
 
+  // Handlers for days filter tooltip
+  const handleDaysFilterMouseEnter = () => {
+    setIsDaysHovered(true);
+    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
+    daysTooltipTimerRef.current = setTimeout(() => {
+      // Check if text is overflowing
+      if (daysTextRef.current) {
+        const isOverflowing = daysTextRef.current.scrollWidth > daysTextRef.current.clientWidth;
+        if (isOverflowing) {
+          setShowDaysTooltip(true);
+        }
+      }
+    }, 500);
+  };
+
+  const handleDaysFilterMouseLeave = () => {
+    setIsDaysHovered(false);
+    // Clear timer and hide tooltip instantly
+    if (daysTooltipTimerRef.current) {
+      clearTimeout(daysTooltipTimerRef.current);
+      daysTooltipTimerRef.current = null;
+    }
+    setShowDaysTooltip(false);
+  };
+
   // Handlers for metric filter tooltip
   // const handleMetricFilterMouseEnter = () => {
   //   setIsMetricHovered(true);
@@ -598,6 +647,52 @@ export default function MapCanvas() {
     return 'Select Date Range';
   };
 
+  // Compute the display text for the days/time filter button (using applied state)
+  const getDaysFilterText = () => {
+    let daysText = '';
+    let timeText = '';
+
+    // Days text
+    if (appliedDaysMode === 'all') {
+      daysText = 'All Days';
+    } else if (appliedDaysMode === 'weekdays') {
+      daysText = 'Weekdays';
+    } else if (appliedDaysMode === 'weekends') {
+      daysText = 'Weekends';
+    } else if (appliedDaysMode === 'custom') {
+      if (appliedCustomDays.length === 7) {
+        daysText = 'All Days';
+      } else if (appliedCustomDays.length === 0) {
+        daysText = 'No Days';
+      } else {
+        // Sort days in the correct order: Mon, Tue, Wed, Thu, Fri, Sat, Sun
+        const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const sortedDays = appliedCustomDays.sort((a, b) => {
+          return dayOrder.indexOf(a) - dayOrder.indexOf(b);
+        });
+        daysText = sortedDays.map(day => {
+          const shortDay = day === 'Mon' ? 'M' : day === 'Tue' ? 'T' : day === 'Wed' ? 'W' : day === 'Thu' ? 'Th' : day === 'Fri' ? 'F' : day === 'Sat' ? 'Sa' : 'Su';
+          return shortDay;
+        }).join(', ');
+      }
+    }
+
+    // Time text
+    if (appliedTimeMode === 'all') {
+      timeText = 'All Day';
+    } else if (appliedTimeMode === 'custom') {
+      if (appliedTimePeriods.length === 0) {
+        timeText = 'No Times';
+      } else if (appliedTimePeriods.length === 6) {
+        timeText = 'All Day';
+      } else {
+        timeText = appliedTimePeriods.join(', ');
+      }
+    }
+
+    return `${daysText} • ${timeText}`;
+  };
+
   // When date picker opens, capture the current applied state as both original and staged
   useEffect(() => {
     if (openFilter === 'date') {
@@ -638,6 +733,47 @@ export default function MapCanvas() {
     stagedQuickPick !== originalQuickPick ||
     stagedStartDate?.getTime() !== originalStartDate?.getTime() ||
     stagedEndDate?.getTime() !== originalEndDate?.getTime();
+
+  // When days/time picker opens, capture the current applied state as both original and staged
+  useEffect(() => {
+    if (openFilter === 'days') {
+      // Capture original state for Reset
+      setOriginalDaysMode(appliedDaysMode);
+      setOriginalCustomDays(appliedCustomDays);
+      setOriginalTimeMode(appliedTimeMode);
+      setOriginalTimePeriods(appliedTimePeriods);
+
+      // Initialize staged state from applied state
+      setStagedDaysMode(appliedDaysMode);
+      setStagedCustomDays(appliedCustomDays);
+      setStagedTimeMode(appliedTimeMode);
+      setStagedTimePeriods(appliedTimePeriods);
+    }
+  }, [openFilter, appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods]);
+
+  // Handle Apply button - copy staged state to applied state and close picker
+  const handleApplyDaysFilter = () => {
+    setAppliedDaysMode(stagedDaysMode);
+    setAppliedCustomDays(stagedCustomDays);
+    setAppliedTimeMode(stagedTimeMode);
+    setAppliedTimePeriods(stagedTimePeriods);
+    setOpenFilter(null); // Close the picker
+  };
+
+  // Handle Reset button - restore original state to staged
+  const handleResetDaysFilter = () => {
+    setStagedDaysMode(originalDaysMode);
+    setStagedCustomDays(originalCustomDays);
+    setStagedTimeMode(originalTimeMode);
+    setStagedTimePeriods(originalTimePeriods);
+  };
+
+  // Check if there are changes for days/time picker
+  const hasDaysChanges =
+    stagedDaysMode !== originalDaysMode ||
+    JSON.stringify(stagedCustomDays) !== JSON.stringify(originalCustomDays) ||
+    stagedTimeMode !== originalTimeMode ||
+    JSON.stringify(stagedTimePeriods) !== JSON.stringify(originalTimePeriods);
 
   // Function to update panel position based on which filter is open
   const updatePanelPosition = useCallback(() => {
@@ -1180,7 +1316,7 @@ export default function MapCanvas() {
             <label className="label text-text-tertiary block mb-1">Date-time</label>
 
             {/* Date Range Filter */}
-            <div ref={dateRef} style={{ marginBottom: '8px' }}>
+            <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
               <div
                 onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
                 onMouseEnter={handleDateFilterMouseEnter}
@@ -1199,18 +1335,23 @@ export default function MapCanvas() {
                 >
                   {getDateFilterText()}
                 </span>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)' }}>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                   <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                 </svg>
               </div>
+              {showDateTooltip && (
+                <Tooltip text={getDateFilterText()}>
+                  {null}
+                </Tooltip>
+              )}
             </div>
 
             {/* Days of Week Filter */}
-            <div ref={daysRef}>
+            <div ref={daysRef} style={{ position: 'relative' }}>
               <div
                 onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
-                onMouseEnter={() => setIsDaysHovered(true)}
-                onMouseLeave={() => setIsDaysHovered(false)}
+                onMouseEnter={handleDaysFilterMouseEnter}
+                onMouseLeave={handleDaysFilterMouseLeave}
                 className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                 style={{
                   borderWidth: 'var(--border-width)',
@@ -1219,13 +1360,21 @@ export default function MapCanvas() {
                   color: 'var(--text-secondary)'
                 }}
               >
-                <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
-                  Weekdays • All Day
+                <span
+                  ref={daysTextRef}
+                  className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                >
+                  {getDaysFilterText()}
                 </span>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)' }}>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                   <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                 </svg>
               </div>
+              {showDaysTooltip && (
+                <Tooltip text={getDaysFilterText()}>
+                  {null}
+                </Tooltip>
+              )}
             </div>
 
             {/* Compare Button */}
@@ -1341,7 +1490,7 @@ export default function MapCanvas() {
             color: 'var(--text-primary)',
             zIndex: 2000,
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            width: openFilter === 'date' ? '620px' : '300px',
+            width: openFilter === 'date' ? '620px' : openFilter === 'days' ? '452px' : '300px',
           }}
         >
           {openFilter === 'date' ? (
@@ -2035,8 +2184,224 @@ export default function MapCanvas() {
               </div>
             </div>
           ) : openFilter === 'days' ? (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-              Days Filter Open
+            <div>
+              {/* Days of the week section */}
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{
+                  fontSize: 'var(--heading-3-size)',
+                  fontWeight: 'var(--heading-3-weight)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '16px',
+                  lineHeight: 'var(--heading-3-line-height)',
+                  letterSpacing: 'var(--heading-3-letter-spacing)',
+                  textAlign: 'center'
+                }}>
+                  Days of the week
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <StatefulButton
+                    size="medium"
+                    selected={stagedDaysMode === 'all'}
+                    onToggle={() => setStagedDaysMode('all')}
+                  >
+                    All
+                  </StatefulButton>
+                  <StatefulButton
+                    size="medium"
+                    selected={stagedDaysMode === 'weekdays'}
+                    onToggle={() => {
+                      setStagedDaysMode('weekdays');
+                      setStagedCustomDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+                    }}
+                  >
+                    Weekdays
+                  </StatefulButton>
+                  <StatefulButton
+                    size="medium"
+                    selected={stagedDaysMode === 'weekends'}
+                    onToggle={() => {
+                      setStagedDaysMode('weekends');
+                      setStagedCustomDays(['Sat', 'Sun']);
+                    }}
+                  >
+                    Weekends
+                  </StatefulButton>
+                  <StatefulButton
+                    size="medium"
+                    selected={stagedDaysMode === 'custom'}
+                    onToggle={() => setStagedDaysMode('custom')}
+                  >
+                    Custom
+                  </StatefulButton>
+                </div>
+
+                {/* Custom day selector */}
+                {stagedDaysMode === 'custom' && (
+                  <>
+                    {/* Divider */}
+                    <div style={{
+                      borderTop: 'var(--border-width) solid var(--border-default)',
+                      marginTop: '12px',
+                      marginBottom: '12px'
+                    }} />
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                      const isSelected = stagedCustomDays.includes(day);
+                      const shortDay = day === 'Mon' ? 'M' : day === 'Tue' ? 'T' : day === 'Wed' ? 'W' : day === 'Thu' ? 'T' : day === 'Fri' ? 'F' : day === 'Sat' ? 'Sa' : 'Su';
+                      return (
+                        <StatefulButton
+                          key={day}
+                          size="medium"
+                          selected={isSelected}
+                          onToggle={() => {
+                            if (isSelected) {
+                              setStagedCustomDays(stagedCustomDays.filter(d => d !== day));
+                            } else {
+                              setStagedCustomDays([...stagedCustomDays, day]);
+                            }
+                          }}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            padding: 0
+                          }}
+                        >
+                          {shortDay}
+                        </StatefulButton>
+                      );
+                    })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Time of day section */}
+              <div>
+                <div style={{
+                  fontSize: 'var(--heading-3-size)',
+                  fontWeight: 'var(--heading-3-weight)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '16px',
+                  lineHeight: 'var(--heading-3-line-height)',
+                  letterSpacing: 'var(--heading-3-letter-spacing)',
+                  textAlign: 'center'
+                }}>
+                  Time of day
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', justifyContent: 'center' }}>
+                  <StatefulButton
+                    size="medium"
+                    selected={stagedTimeMode === 'all'}
+                    onToggle={() => {
+                      setStagedTimeMode('all');
+                      setStagedTimePeriods([]);
+                    }}
+                  >
+                    All
+                  </StatefulButton>
+                  <StatefulButton
+                    size="medium"
+                    selected={stagedTimeMode === 'custom'}
+                    onToggle={() => setStagedTimeMode('custom')}
+                  >
+                    Custom
+                  </StatefulButton>
+                </div>
+
+                {/* Custom time periods */}
+                {stagedTimeMode === 'custom' && (
+                  <>
+                    {/* Divider */}
+                    <div style={{
+                      borderTop: 'var(--border-width) solid var(--border-default)',
+                      marginTop: '12px',
+                      marginBottom: '12px'
+                    }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                    {[
+                      { label: 'Early AM', time: '12AM - 6AM' },
+                      { label: 'AM Peak', time: '6AM - 9AM' },
+                      { label: 'Midday', time: '9AM - 3PM' },
+                      { label: 'PM Peak', time: '3PM - 7PM' },
+                      { label: 'Evening', time: '7PM - 10PM' },
+                      { label: 'Night', time: '10PM - 12AM' }
+                    ].map(({ label, time }) => {
+                      const isSelected = stagedTimePeriods.includes(label);
+                      return (
+                        <StatefulButton
+                          key={label}
+                          size="medium"
+                          selected={isSelected}
+                          onToggle={() => {
+                            if (isSelected) {
+                              setStagedTimePeriods(stagedTimePeriods.filter(p => p !== label));
+                            } else {
+                              setStagedTimePeriods([...stagedTimePeriods, label]);
+                            }
+                          }}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderRadius: '100px',
+                            textAlign: 'left',
+                            width: '100%'
+                          }}
+                        >
+                          <span>{label}</span>
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>{time}</span>
+                        </StatefulButton>
+                      );
+                    })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div style={{
+                borderTop: 'var(--border-width) solid var(--border-default)',
+                marginTop: '24px',
+                marginLeft: '-24px',
+                marginRight: '-24px'
+              }} />
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                padding: '20px 0 0 0',
+                justifyContent: 'flex-end'
+              }}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  onClick={handleResetDaysFilter}
+                  disabled={!hasDaysChanges}
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasDaysChanges) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleApplyDaysFilter}
+                  disabled={!hasDaysChanges}
+                >
+                  Apply
+                </Button>
+              </div>
             </div>
           ) : null}
         </div>
