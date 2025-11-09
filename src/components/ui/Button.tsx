@@ -21,7 +21,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const sizeClasses = {
       small: 'button-small h-7 px-4',
-      medium: 'button-medium h-10 px-6',
+      medium: 'button-medium h-10 px-5',
     };
 
     const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`.trim();
@@ -50,15 +50,15 @@ export interface StatefulButtonProps extends Omit<React.ButtonHTMLAttributes<HTM
 
 export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButtonProps>(
   ({ size = 'small', selected = false, onToggle, className = '', children, ...props }, ref) => {
-    const baseClasses = 'rounded-full transition-colors duration-200 cursor-pointer font-medium border';
+    const baseClasses = 'button-small rounded-full transition-colors duration-200 cursor-pointer border';
 
     const stateClasses = selected
-      ? 'bg-bg-secondary text-text-primary border-border-focus'
-      : 'bg-bg-elevated text-text-primary border-border-default hover:bg-bg-primary';
+      ? 'bg-bg-primary text-text-primary border-border-focus'
+      : 'bg-bg-elevated text-text-primary hover:bg-bg-primary border-border-default';
 
     const sizeClasses = {
-      small: 'button-small h-7 px-4',
-      medium: 'button-medium h-10 px-6',
+      small: 'h-7 px-4',
+      medium: 'h-10 px-5',
     };
 
     const classes = `${baseClasses} ${stateClasses} ${sizeClasses[size]} ${className}`.trim();
@@ -71,7 +71,6 @@ export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButton
 
     const style = {
       borderWidth: 'var(--border-width)',
-      borderColor: selected ? 'var(--border-focus)' : 'var(--border-default)',
       ...props.style
     };
 
