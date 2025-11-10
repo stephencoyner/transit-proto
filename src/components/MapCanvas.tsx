@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
-import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo } from '@/lib/data/loaders';
+import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton, SortButton } from '@/components/ui';
@@ -108,6 +108,16 @@ const getUIPadding = (isFiltersPanelOpen: boolean) => {
 const MAX_ZOOM = 16;
 const MIN_ZOOM = 8;
 
+// Helper function to format time from HH:MM:SS to 12-hour format
+function formatTime12Hour(time24: string): string {
+  const [hourStr, minuteStr] = time24.split(':');
+  const hour = parseInt(hourStr, 10);
+  const minute = minuteStr;
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${hour12}:${minute} ${ampm}`;
+}
+
 export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
@@ -118,6 +128,7 @@ export default function MapCanvas() {
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
@@ -130,6 +141,10 @@ export default function MapCanvas() {
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null); // headsign
   const [patternLookup, setPatternLookup] = useState<{ [shapeId: string]: PatternInfo }>({});
   const [routePatterns, setRoutePatterns] = useState<{ [routeId: string]: RoutePatternInfo }>({});
+
+  // Trip data state
+  const [allTripsData, setAllTripsData] = useState<{ [routeId: string]: Trip[] }>({});
+  const [routeTrips, setRouteTrips] = useState<TripsByPattern[]>([]);
   
   // Refs for the filter elements and panel
   const dateRef = useRef<HTMLDivElement | null>(null);
@@ -187,6 +202,12 @@ export default function MapCanvas() {
     lineX?: number;
     lineHeight?: number;
   } | null>(null);
+
+  // State to track which trip is being hovered (format: "groupIndex-tripIndex")
+  const [hoveredTrip, setHoveredTrip] = useState<string | null>(null);
+
+  // Ref for trips scroll container
+  const tripsScrollRef = useRef<HTMLDivElement>(null);
 
   // Date picker state - Applied state (what's actually being used)
   const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
@@ -287,7 +308,8 @@ export default function MapCanvas() {
     const newMockValues: { [key: string]: number } = { ...routeMockValues };
 
     shapes.forEach(shape => {
-      const routeId = shape.properties.route_short_name || shape.properties.route_id;
+      const routeId = shape.properties.route_id; // Use actual route_id, not short_name
+      const routeShortName = shape.properties.route_short_name || routeId;
       if (!uniqueRoutes[routeId]) {
         // Use existing mock value or generate new one only if it doesn't exist
         if (!newMockValues[routeId]) {
@@ -295,7 +317,7 @@ export default function MapCanvas() {
         }
         uniqueRoutes[routeId] = {
           id: routeId,
-          name: `Route ${routeId}`,
+          name: `Route ${routeShortName}`,
           value: newMockValues[routeId]
         };
       }
@@ -355,8 +377,7 @@ export default function MapCanvas() {
   const filteredShapes = React.useMemo(() => {
     if (selectedRouteId) {
       let filtered = shapes.filter(shape => {
-        const routeId = shape.properties.route_short_name || shape.properties.route_id;
-        return routeId === selectedRouteId;
+        return shape.properties.route_id === selectedRouteId;
       });
 
       // Apply pattern filter by headsign
@@ -410,15 +431,9 @@ export default function MapCanvas() {
     }
 
     if (selectedRouteId) {
-      // Find the actual route_id
-      const matchingShape = shapes.find(shape =>
-        (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
-      );
-      const actualRouteId = matchingShape?.properties.route_id;
-
       // If a pattern is selected, use pattern's stop_ids
-      if (selectedPattern && actualRouteId && routePatterns[actualRouteId]) {
-        const patternInfo = routePatterns[actualRouteId].patterns.find(
+      if (selectedPattern && routePatterns[selectedRouteId]) {
+        const patternInfo = routePatterns[selectedRouteId].patterns.find(
           p => p.headsign === selectedPattern
         );
 
@@ -429,11 +444,7 @@ export default function MapCanvas() {
       }
 
       // Otherwise show all stops for the route
-      let routeStopIds = routeStopsMap[selectedRouteId];
-
-      if (!routeStopIds && actualRouteId) {
-        routeStopIds = routeStopsMap[actualRouteId];
-      }
+      const routeStopIds = routeStopsMap[selectedRouteId];
 
       if (routeStopIds) {
         return stops.filter(stop => routeStopIds.has(stop.properties.stop_id));
@@ -863,6 +874,8 @@ export default function MapCanvas() {
         const routeStopsData = await fetchRouteStopsMap();
         const patternLookupData = await fetchPatternLookup();
         const routePatternsData = await fetchRoutePatterns();
+        const tripsData = await fetchRouteTrips();
+        console.log('Loaded trips data for routes:', Object.keys(tripsData).length);
 
         const routeFeatures = shapesFC.features as RouteFeature[];
         const stopFeatures = stopsFC.features as StopFeature[];
@@ -871,6 +884,7 @@ export default function MapCanvas() {
         setRouteStopsMap(routeStopsData);
         setPatternLookup(patternLookupData);
         setRoutePatterns(routePatternsData);
+        setAllTripsData(tripsData);
 
         if (routeFeatures.length > 0) {
           // get container size
@@ -891,10 +905,35 @@ export default function MapCanvas() {
     })();
   }, [fitToBounds]);
 
-  // Reset pattern filter when route changes
+  // Reset pattern filter and tab when route changes
   useEffect(() => {
     setSelectedPattern(null);
+    setSelectedRouteTab('Summary');
   }, [selectedRouteId]);
+
+  // Reset trips scroll position when route or pattern changes
+  useEffect(() => {
+    if (tripsScrollRef.current) {
+      tripsScrollRef.current.scrollTop = 0;
+    }
+  }, [selectedRouteId, selectedPattern]);
+
+  // Organize trips by pattern when a route is selected
+  useEffect(() => {
+    if (selectedRouteId && routePatterns[selectedRouteId] && allTripsData[selectedRouteId]) {
+      console.log('Organizing trips for route:', selectedRouteId);
+      console.log('All trips for route:', allTripsData[selectedRouteId]?.length);
+      const organizedTrips = organizeTripsbyPattern(
+        allTripsData[selectedRouteId],
+        routePatterns[selectedRouteId]
+      );
+      console.log('Organized trips by pattern:', organizedTrips);
+      setRouteTrips(organizedTrips);
+    } else {
+      console.log('Cannot organize trips:', { selectedRouteId, hasPatterns: !!routePatterns[selectedRouteId], hasTrips: !!allTripsData[selectedRouteId] });
+      setRouteTrips([]);
+    }
+  }, [selectedRouteId, routePatterns, allTripsData]);
 
   // Update view state when route or stop is selected
   useEffect(() => {
@@ -1429,12 +1468,8 @@ export default function MapCanvas() {
 
           {/* Route and Pattern Filters - Only show in route detail view */}
           {selectedRouteId && (() => {
-            // Find the actual route_id from the selected route (might be route_short_name)
-            const matchingShape = shapes.find(shape =>
-              (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
-            );
-            const actualRouteId = matchingShape?.properties.route_id;
-            const routePatternInfo = actualRouteId ? routePatterns[actualRouteId] : null;
+            // selectedRouteId is now the actual route_id, so we can use it directly
+            const routePatternInfo = routePatterns[selectedRouteId];
 
             if (!routePatternInfo) return null;
 
@@ -2479,26 +2514,28 @@ export default function MapCanvas() {
         width: '360px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
-        padding: '24px 12px',
+        padding: '24px 12px 0 12px',
         fontFamily: 'Inter, sans-serif',
         zIndex: 1001,
-        overflowY: 'auto',
         overflowX: 'hidden',
         transition: 'left 300ms ease-in-out',
         border: '0.5px solid var(--border-default)',
-        borderLeft: 'none'
+        borderLeft: 'none',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
         {selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Back Button and Header */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
               marginTop: '-4px',
-              marginBottom: '16px',
-              cursor: 'pointer'
+              marginBottom: '4px',
+              cursor: 'pointer',
+              flexShrink: 0
             }}
             onClick={() => {
               setSelectedRouteId(null);
@@ -2510,62 +2547,261 @@ export default function MapCanvas() {
               <div className="heading-1" style={{
                 color: 'var(--text-primary)'
               }}>
-                {selectedRouteId ? `Route ${selectedRouteId}` : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
+                {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
               </div>
             </div>
 
             {/* Summary/Trips/Grid Tabs */}
             <div style={{
-              display: 'flex',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: '24px',
-              padding: '4px',
-              marginBottom: '16px'
+              position: 'relative',
+              marginLeft: '-12px',
+              marginRight: '-12px',
+              flexShrink: 0
             }}>
-              {['Summary', 'Trips', 'Grid'].map(tab => (
-                <button
-                  key={tab}
-                  type="button"
-                  style={{
-                    flex: '1 1 0',
-                    padding: '8px 0',
-                    backgroundColor: tab === 'Summary' ? 'var(--bg-elevated)' : 'transparent',
-                    border: tab === 'Summary' ? 'var(--border-width) solid var(--border-default)' : 'none',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--button-small-size)',
-                    fontWeight: 'var(--button-small-weight)',
-                    color: tab === 'Summary' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                    lineHeight: 'var(--button-small-line-height)',
-                    transition: 'all 0.2s ease',
-                    textAlign: 'center'
-                  }}
-                >
-                  {tab}
-                </button>
-              ))}
+              {/* Horizontal divider line */}
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '1px',
+                backgroundColor: 'var(--border-default)'
+              }} />
+
+              {/* Tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '24px',
+                paddingLeft: '12px'
+              }}>
+                {(['Summary', 'Trips', 'Grid'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setSelectedRouteTab(tab)}
+                    style={{
+                      position: 'relative',
+                      padding: '12px 0',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 'var(--button-small-size)',
+                      fontWeight: selectedRouteTab === tab ? 'var(--button-small-weight)' : '400',
+                      color: selectedRouteTab === tab ? 'var(--text-primary)' : 'var(--text-disabled)',
+                      lineHeight: 'var(--button-small-line-height)',
+                      transition: 'color 0.2s ease'
+                    }}
+                  >
+                    {tab}
+                    {/* Underline indicator for selected tab */}
+                    {selectedRouteTab === tab && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '0',
+                        left: 0,
+                        right: 0,
+                        height: '2px',
+                        backgroundColor: 'var(--text-primary)',
+                        borderTopLeftRadius: '2px',
+                        borderTopRightRadius: '2px'
+                      }} />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Charts */}
-            <MetricCard
-              value={selectedRouteId
-                ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0)
-                : (stopsList.find((s) => s.id === selectedStopId)?.value || 0)
-              }
-            />
-            <ByDateChart data={chartDataByDate} gradientId="colorValue" />
-            <ByDayChart data={mockDataByDay} average={averageDailyByDay} />
-            <ByPeriodChart
-              data={mockDataByPeriod}
-              colors={PERIOD_COLORS}
-              activePieIndex={activePieIndex}
-              setActivePieIndex={setActivePieIndex}
-            />
-          </>
+            {/* Tab Content */}
+            {selectedRouteTab === 'Summary' ? (
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px' }}>
+                <MetricCard
+                  value={selectedRouteId
+                    ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0)
+                    : (stopsList.find((s) => s.id === selectedStopId)?.value || 0)
+                  }
+                />
+                <ByDateChart data={chartDataByDate} gradientId="colorValue" />
+                <ByDayChart data={mockDataByDay} average={averageDailyByDay} />
+                <ByPeriodChart
+                  data={mockDataByPeriod}
+                  colors={PERIOD_COLORS}
+                  activePieIndex={activePieIndex}
+                  setActivePieIndex={setActivePieIndex}
+                />
+              </div>
+            ) : selectedRouteTab === 'Trips' ? (
+              /* Trips View */
+              <div
+                ref={tripsScrollRef}
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  paddingBottom: '24px'
+                }}
+              >
+                {routeTrips.length === 0 ? (
+                  <div style={{
+                    padding: '24px',
+                    textAlign: 'center',
+                    color: 'var(--text-tertiary)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--body-size)'
+                  }}>
+                    No trips available for this route
+                  </div>
+                ) : (
+                  routeTrips
+                    .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
+                    .map((patternGroup, groupIndex) => {
+                      const maxRidership = Math.max(...patternGroup.trips.map(t => t.ridership));
+
+                      return (
+                        <div key={groupIndex} style={{ marginTop: groupIndex > 0 ? '16px' : 0 }}>
+                          {/* Pattern Title - Sticky */}
+                          <div className="data-small" style={{
+                            position: 'sticky',
+                            top: 0,
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
+                            paddingTop: '12px',
+                            paddingBottom: '12px',
+                            zIndex: 10
+                          }}>
+                            {patternGroup.headsign}
+                          </div>
+
+                          {/* Trips List */}
+                          <div style={{ position: 'relative' }}>
+                            {/* Grid Lines Background */}
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              bottom: 0,
+                              left: '68px', // 60px (time label width) + 8px (gap)
+                              right: 0,
+                              display: 'flex',
+                              pointerEvents: 'none',
+                              zIndex: 0
+                            }}>
+                              {[0, 20, 40, 60, 80, 100].map((percent, i) => (
+                                <div
+                                  key={i}
+                                  style={{
+                                    position: 'absolute',
+                                    left: `${percent}%`,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: '1px',
+                                    backgroundColor: 'var(--border-default)',
+                                    opacity: 0.5
+                                  }}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Trips */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingBottom: '8px', position: 'relative', zIndex: 1 }}>
+                              {patternGroup.trips.map((trip, tripIndex) => {
+                                const barWidth = (trip.ridership / maxRidership) * 100;
+                                const tripKey = `${groupIndex}-${tripIndex}`;
+                                const showTooltip = hoveredTrip === tripKey;
+
+                                return (
+                                  <div
+                                    key={tripIndex}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px'
+                                    }}
+                                  >
+                                    {/* Time Label */}
+                                    <div className="caption" style={{
+                                      color: 'var(--text-tertiary)',
+                                      minWidth: '60px',
+                                      flexShrink: 0
+                                    }}>
+                                      {formatTime12Hour(trip.start_time)}
+                                    </div>
+
+                                    {/* Bar with Tooltip */}
+                                    <div
+                                      style={{
+                                        position: 'relative',
+                                        height: '24px',
+                                        width: `${barWidth}%`,
+                                      }}
+                                      onMouseEnter={() => setHoveredTrip(tripKey)}
+                                      onMouseLeave={() => setHoveredTrip(null)}
+                                    >
+                                      <div
+                                        style={{
+                                          height: '100%',
+                                          backgroundColor: 'var(--border-hover)',
+                                          borderRadius: '4px',
+                                          transition: 'width 0.3s ease',
+                                          cursor: 'pointer'
+                                        }}
+                                      />
+                                      {showTooltip && (
+                                        <div
+                                          className="label"
+                                          style={{
+                                            position: 'absolute',
+                                            bottom: 'calc(100% + 8px)',
+                                            left: '0',
+                                            backgroundColor: 'var(--btn-primary)',
+                                            color: 'var(--text-btn-primary)',
+                                            padding: '8px 12px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            whiteSpace: 'nowrap',
+                                            zIndex: 9999,
+                                            boxShadow: 'var(--shadow-lg)',
+                                            pointerEvents: 'none'
+                                          }}
+                                        >
+                                          <div>{formatTime12Hour(trip.start_time)}</div>
+                                          <div>{trip.ridership} average daily boardings</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            ) : (
+              /* Grid View - Placeholder */
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                paddingBottom: '24px'
+              }}>
+                <div style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  color: 'var(--text-tertiary)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 'var(--body-size)'
+                }}>
+                  Grid view coming soon
+                </div>
+              </div>
+            )}
+          </div>
         ) : activeTab === 'system' ? (
           /* System View - Aggregated Charts */
-          <>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
             {/* Charts */}
             <MetricCard value="8,973" />
             <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" />
@@ -2576,10 +2812,10 @@ export default function MapCanvas() {
               activePieIndex={activePieIndex}
               setActivePieIndex={setActivePieIndex}
             />
-          </>
+          </div>
         ) : activeTab === 'components' ? (
           /* Components View - Showcase */
-          <>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
             <div style={{ marginBottom: '32px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: '500', marginBottom: '24px', color: 'var(--text-primary)' }}>
                 UI Components
@@ -2664,10 +2900,10 @@ export default function MapCanvas() {
                 </div>
               </div>
             </div>
-          </>
+          </div>
         ) : (
           /* Routes/Stops View - List */
-          <>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
             {/* Sort and Filter Buttons - DISABLED FOR NOW */}
             {/* <div style={{
               display: 'flex',
@@ -2724,7 +2960,7 @@ export default function MapCanvas() {
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
 

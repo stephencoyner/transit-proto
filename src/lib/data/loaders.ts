@@ -60,3 +60,65 @@ export async function fetchRoutePatterns(): Promise<{ [routeId: string]: RoutePa
   if (!res.ok) throw new Error('Failed to load route_patterns.json');
   return res.json();
 }
+
+// Trip data types
+export interface Trip {
+  trip_id: string;
+  route_id: string;
+  shape_id: string;
+  headsign: string;
+  direction_id: string;
+  start_time: string; // HH:MM:SS format
+  ridership: number; // Placeholder for now, will be real data later
+}
+
+export interface TripsByPattern {
+  headsign: string;
+  direction_id: string;
+  trips: Trip[];
+}
+
+// Fetch all route trips from GTFS
+export async function fetchRouteTrips(): Promise<{ [routeId: string]: Trip[] }> {
+  const res = await fetch('/data/route_trips.json', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load route_trips.json');
+  const data = await res.json() as { [routeId: string]: Trip[] };
+
+  // Add placeholder ridership to each trip (random between 50-500)
+  for (const trips of Object.values(data)) {
+    for (const trip of trips) {
+      trip.ridership = Math.floor(Math.random() * 450) + 50;
+    }
+  }
+
+  return data;
+}
+
+// Organize trips by pattern (headsign) for a specific route
+export function organizeTripsbyPattern(
+  trips: Trip[],
+  routePatternInfo: RoutePatternInfo
+): TripsByPattern[] {
+  const tripsByPattern: TripsByPattern[] = [];
+
+  // Use the patterns from route_patterns.json to group trips
+  for (const pattern of routePatternInfo.patterns) {
+    const patternTrips = trips.filter(trip =>
+      trip.headsign === pattern.headsign &&
+      trip.direction_id === pattern.direction_id
+    );
+
+    // Sort by start time
+    patternTrips.sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+    if (patternTrips.length > 0) {
+      tripsByPattern.push({
+        headsign: pattern.headsign,
+        direction_id: pattern.direction_id,
+        trips: patternTrips
+      });
+    }
+  }
+
+  return tripsByPattern;
+}
