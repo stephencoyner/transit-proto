@@ -8,6 +8,7 @@ import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, 
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 
 // Type for bounds
@@ -344,7 +345,7 @@ export default function MapCanvas() {
 
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [shapes, routeMockValues, sortBy, sortOrder]);
+  }, [shapes, routeMockValues]);
 
   // Extract stops data with mock values
   const stopsList = React.useMemo(() => {
@@ -2040,7 +2041,7 @@ export default function MapCanvas() {
                                 day.getTime() > stagedStartDate.getTime() &&
                                 day.getTime() < stagedEndDate.getTime();
                               const isSelected = isStart || isEnd;
-                              const isToday = day.toDateString() === new Date().toDateString();
+                              // const isToday = day.toDateString() === new Date().toDateString();
 
                               // Check if this date is at the start or end of a week row
                               const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
@@ -2048,12 +2049,12 @@ export default function MapCanvas() {
                               const isRowEnd = dayOfWeek === 6; // Saturday
 
                               // Check if previous/next day is also selected or in range
-                              const prevDaySelected = idx > 0 && days[idx - 1] && stagedStartDate && stagedEndDate && (
-                                (days[idx - 1]!.getTime() >= stagedStartDate.getTime() && days[idx - 1]!.getTime() <= stagedEndDate.getTime())
-                              );
-                              const nextDaySelected = idx < days.length - 1 && days[idx + 1] && stagedStartDate && stagedEndDate && (
-                                (days[idx + 1]!.getTime() >= stagedStartDate.getTime() && days[idx + 1]!.getTime() <= stagedEndDate.getTime())
-                              );
+                              // const prevDaySelected = idx > 0 && days[idx - 1] && stagedStartDate && stagedEndDate && (
+                              //   (days[idx - 1]!.getTime() >= stagedStartDate.getTime() && days[idx - 1]!.getTime() <= stagedEndDate.getTime())
+                              // );
+                              // const nextDaySelected = idx < days.length - 1 && days[idx + 1] && stagedStartDate && stagedEndDate && (
+                              //   (days[idx + 1]!.getTime() >= stagedStartDate.getTime() && days[idx + 1]!.getTime() <= stagedEndDate.getTime())
+                              // );
 
                               // Determine border radius for wrapper background
                               let wrapperBorderRadius = '0';
