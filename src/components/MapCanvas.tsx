@@ -183,7 +183,6 @@ export default function MapCanvas() {
   // Suppress unused variable warnings for future use
   void isCompareHovered;
   void setIsCompareHovered;
-  void isMetricHovered;
   void showDateTooltip;
   void showMetricTooltip;
   void setShowMetricTooltip;
