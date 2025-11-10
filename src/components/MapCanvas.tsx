@@ -7,8 +7,7 @@ import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
-import { Button, Card, Input, Select, StatefulButton, SortButton } from '@/components/ui';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 
 // Type for bounds
@@ -133,9 +132,9 @@ export default function MapCanvas() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
 
-  // Sorting state for routes/stops list
-  const [sortBy, setSortBy] = useState<'route' | 'metric'>('route');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  // Sorting state for routes/stops list (disabled for now)
+  // const [sortBy, setSortBy] = useState<'route' | 'metric'>('route');
+  // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Pattern filtering state
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null); // headsign
@@ -161,11 +160,9 @@ export default function MapCanvas() {
   const [isDateHovered, setIsDateHovered] = useState(false);
   const [isDaysHovered, setIsDaysHovered] = useState(false);
   const [isCompareHovered, setIsCompareHovered] = useState(false);
-  const [isMetricHovered, setIsMetricHovered] = useState(false);
 
   // Add hover state tracking for date picker elements
   const [hoveredSeason, setHoveredSeason] = useState<string | null>(null);
-  const [hoveredQuickPick, setHoveredQuickPick] = useState<string | null>(null);
 
   // Tooltip state for date filter
   const [showDateTooltip, setShowDateTooltip] = useState(false);
@@ -193,6 +190,7 @@ export default function MapCanvas() {
   void metricTextRef;
 
   // Tooltip state for charts
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [chartTooltip, setChartTooltip] = useState<{
     show: boolean;
     value: string;
@@ -453,7 +451,7 @@ export default function MapCanvas() {
 
     // Only show all stops when in stops tab view
     return activeTab === 'stops' ? stops : [];
-  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, shapes]);
+  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -523,7 +521,7 @@ export default function MapCanvas() {
       bearing: 0,
       transitionDuration: 200
     };
-  }, []); // Empty dependency array - padding is calculated at call time
+  }, [isFiltersPanelOpen]);
 
   // Handlers for date filter tooltip
   const handleDateFilterMouseEnter = () => {
@@ -989,7 +987,7 @@ export default function MapCanvas() {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
-  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds]);
+  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds, isFiltersPanelOpen]);
 
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
