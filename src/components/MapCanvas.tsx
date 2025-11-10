@@ -328,21 +328,11 @@ export default function MapCanvas() {
 
     const routes = Object.values(uniqueRoutes);
 
-    // Apply sorting based on sortBy and sortOrder
+    // Sort by route number (convert to number for proper numeric sorting)
     return routes.sort((a, b) => {
-      let comparison = 0;
-
-      if (sortBy === 'route') {
-        // Sort by route number (convert to number for proper numeric sorting)
-        const aNum = parseInt(a.id, 10);
-        const bNum = parseInt(b.id, 10);
-        comparison = aNum - bNum;
-      } else {
-        // Sort by metric value
-        comparison = a.value - b.value;
-      }
-
-      return sortOrder === 'asc' ? comparison : -comparison;
+      const aNum = parseInt(a.id, 10);
+      const bNum = parseInt(b.id, 10);
+      return aNum - bNum;
     });
   }, [shapes, routeMockValues]);
 
@@ -928,7 +918,11 @@ export default function MapCanvas() {
       console.log('Organized trips by pattern:', organizedTrips);
       setRouteTrips(organizedTrips);
     } else {
-      console.log('Cannot organize trips:', { selectedRouteId, hasPatterns: !!routePatterns[selectedRouteId], hasTrips: !!allTripsData[selectedRouteId] });
+      console.log('Cannot organize trips:', {
+        selectedRouteId,
+        hasPatterns: selectedRouteId ? !!routePatterns[selectedRouteId] : false,
+        hasTrips: selectedRouteId ? !!allTripsData[selectedRouteId] : false
+      });
       setRouteTrips([]);
     }
   }, [selectedRouteId, routePatterns, allTripsData]);
