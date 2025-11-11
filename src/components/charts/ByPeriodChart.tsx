@@ -23,7 +23,7 @@ export default function ByPeriodChart({
       border: 'var(--border-width) solid var(--border-default)',
       borderRadius: 'var(--radius-default)',
       padding: '16px',
-      marginBottom: '12px'
+      marginBottom: '8px'
     }}>
       <div style={{
         fontSize: 'var(--body-regular-size)',

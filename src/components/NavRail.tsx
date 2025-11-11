@@ -85,17 +85,10 @@ const NavRail: React.FC<NavRailProps> = ({
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
     { id: 'routes' as const, label: 'Routes', Icon: RoutesIcon },
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
-    { id: 'components' as const, label: 'Components', Icon: ComponentsIcon },
   ];
 
   return (
-    <div className="flex flex-col items-center bg-bg-secondary h-full px-2 relative" style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)' }}>
-      {/* Divider Line */}
-      <div
-        className="absolute left-0 right-0 border-t border-border-default"
-        style={{ top: '64px', borderTopWidth: '0.5px' }}
-      />
-
+    <div className={`flex flex-col items-center h-full px-2 relative ${isFiltersPanelOpen ? 'bg-bg-secondary' : 'bg-bg-primary'}`} style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', transition: 'background-color 0.5s ease' }}>
       {/* Toggle Filters Button */}
       <button
         onClick={onToggleFiltersPanel}
@@ -113,7 +106,7 @@ const NavRail: React.FC<NavRailProps> = ({
       </button>
 
       {/* Navigation Items */}
-      <nav className="flex flex-col w-full flex-1" style={{ marginTop: '8px' }} aria-label="Main navigation">
+      <nav className="flex flex-col w-full flex-1" style={{ marginTop: '-4px' }} aria-label="Main navigation">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
 

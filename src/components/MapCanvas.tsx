@@ -70,7 +70,7 @@ function getColorForId(id: string): [number, number, number] {
 const INITIAL_VIEW_STATE = {
   // Gas Works Park coordinates with offset to account for nav rail and data panel
   // Original Gas Works Park: -122.3342, 47.6456
-  // Nav rail (64px) + Data panel (360px) + margins (24px) = 448px total
+  // Nav rail (72px) + Data panel (376px) + margins (24px) = 472px total
   // Offset longitude to the right to center in visible map area only
   longitude: -122.270,
   latitude: 47.6456,
@@ -82,11 +82,11 @@ const INITIAL_VIEW_STATE = {
 
 // Calculate UI padding dynamically based on visible panels
 const getUIPadding = (isFiltersPanelOpen: boolean) => {
-  // NavRail: 64px, Filters panel: 240px (when open), Data panel: 360px
+  // NavRail: 72px, Filters panel: 256px (when open), Data panel: 376px
   // Margins: 12px between panels, 12px from screen edges
-  const navRailWidth = 64;
-  const filtersPanelWidth = isFiltersPanelOpen ? 240 : 0;
-  const dataPanelWidth = 360;
+  const navRailWidth = 72;
+  const filtersPanelWidth = isFiltersPanelOpen ? 256 : 0;
+  const dataPanelWidth = 376;
   const leftMargin = 12; // margin from screen edge
   const gapBetweenPanels = 12;
 
@@ -133,6 +133,7 @@ export default function MapCanvas() {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
 
+
   // Sorting state for routes/stops list (disabled for now)
   // const [sortBy, setSortBy] = useState<'route' | 'metric'>('route');
   // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -153,9 +154,12 @@ export default function MapCanvas() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFittedViewRef = useRef<typeof INITIAL_VIEW_STATE | null>(null);
-  
+
   // State for panel position
   const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Track which pattern cards have sticky headers
+  const [stickyPatterns, setStickyPatterns] = useState<Set<number>>(new Set());
 
   // Add hover state tracking for filters and button
   const [isDateHovered, setIsDateHovered] = useState(false);
@@ -511,7 +515,7 @@ export default function MapCanvas() {
       bearing: 0,
       transitionDuration: 200
     };
-  }, [isFiltersPanelOpen]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handlers for date filter tooltip
   const handleDateFilterMouseEnter = () => {
@@ -854,6 +858,38 @@ export default function MapCanvas() {
     };
   }, [openFilter]);
 
+  // Track sticky pattern headers
+  useEffect(() => {
+    const handleScroll = () => {
+      const stickyHeaders = document.querySelectorAll('[data-pattern-index]');
+      const newStickySet = new Set<number>();
+
+      stickyHeaders.forEach((header) => {
+        const index = parseInt(header.getAttribute('data-pattern-index') || '0');
+        const rect = header.getBoundingClientRect();
+        // Check if the element is stuck at the top (top position is -13 or less)
+        if (rect.top <= -13) {
+          newStickySet.add(index);
+        }
+      });
+
+      setStickyPatterns(newStickySet);
+    };
+
+    const scrollContainer = tripsScrollRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      // Initial check
+      handleScroll();
+    }
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [routeTrips, selectedPattern]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -1137,14 +1173,9 @@ export default function MapCanvas() {
 
     // Add directional arrows when a pattern is selected
     if (selectedPattern && selectedRouteId && filteredStops.length > 1) {
-      // Get the pattern data to find the correct stop sequence
-      const matchingShape = shapes.find(shape =>
-        (shape.properties.route_short_name || shape.properties.route_id) === selectedRouteId
-      );
-      const actualRouteId = matchingShape?.properties.route_id;
-
-      if (actualRouteId && routePatterns[actualRouteId]) {
-        const patternInfo = routePatterns[actualRouteId].patterns.find(
+      // selectedRouteId is already the actual route_id (e.g., "100001")
+      if (routePatterns[selectedRouteId]) {
+        const patternInfo = routePatterns[selectedRouteId].patterns.find(
           p => p.headsign === selectedPattern
         );
 
@@ -1299,7 +1330,7 @@ export default function MapCanvas() {
         left: '12px',
         top: '12px',
         height: 'calc(100% - 24px)',
-        width: isFiltersPanelOpen ? '664px' : '424px',
+        width: isFiltersPanelOpen ? '704px' : '448px',
         boxShadow: 'var(--shadow-lg)',
         borderRadius: '28px',
         pointerEvents: 'none',
@@ -1309,7 +1340,7 @@ export default function MapCanvas() {
 
       {/* Nav Rail */}
       <div style={{
-        width: '64px',
+        width: '72px',
         height: 'calc(100% - 24px)',
         position: 'fixed',
         left: '12px',
@@ -1333,7 +1364,7 @@ export default function MapCanvas() {
       <div
         id="filters-panel"
         style={{
-          width: isFiltersPanelOpen ? '240px' : '0px',
+          width: isFiltersPanelOpen ? '256px' : '0px',
           height: 'calc(100% - 24px)',
           backgroundColor: 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
@@ -1342,7 +1373,7 @@ export default function MapCanvas() {
           display: 'flex',
           flexDirection: 'column',
           position: 'fixed',
-          left: '76px',
+          left: '84px',
           top: '12px',
           zIndex: 1000,
           overflow: 'hidden',
@@ -1351,12 +1382,12 @@ export default function MapCanvas() {
         }}>
         {/* Filter Section */}
         <div style={{
-          padding: '22px 12px 24px 12px',
+          padding: '22px 16px 24px 16px',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px', // Space between the two separate filters
-          width: '240px',
-          minWidth: '240px'
+          width: '256px',
+          minWidth: '256px'
         }}>
           {/* Date-time Section */}
           <div style={{ marginBottom: '8px' }}>
@@ -2502,11 +2533,11 @@ export default function MapCanvas() {
         position: 'fixed',
         top: '12px',
         bottom: '12px',
-        left: isFiltersPanelOpen ? '316px' : '76px',
-        width: '360px',
+        left: isFiltersPanelOpen ? '340px' : '84px',
+        width: '376px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
-        padding: '24px 12px 0 12px',
+        padding: '20px 16px 0 16px',
         fontFamily: 'Inter, sans-serif',
         zIndex: 1001,
         overflowX: 'hidden',
@@ -2546,25 +2577,16 @@ export default function MapCanvas() {
             {/* Summary/Trips/Grid Tabs */}
             <div style={{
               position: 'relative',
-              marginLeft: '-12px',
-              marginRight: '-12px',
+              marginLeft: '-16px',
+              marginRight: '-16px',
               flexShrink: 0
             }}>
-              {/* Horizontal divider line */}
-              <div style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: '1px',
-                backgroundColor: 'var(--border-default)'
-              }} />
-
               {/* Tabs */}
               <div style={{
+                position: 'relative',
                 display: 'flex',
                 gap: '24px',
-                paddingLeft: '12px'
+                paddingLeft: '16px'
               }}>
                 {(['Summary', 'Trips', 'Grid'] as const).map(tab => (
                   <button
@@ -2578,10 +2600,10 @@ export default function MapCanvas() {
                       backgroundColor: 'transparent',
                       cursor: 'pointer',
                       fontFamily: 'Inter, sans-serif',
-                      fontSize: 'var(--button-small-size)',
-                      fontWeight: selectedRouteTab === tab ? 'var(--button-small-weight)' : '400',
+                      fontSize: 'var(--data-small-size)',
+                      fontWeight: 'var(--data-small-weight)',
                       color: selectedRouteTab === tab ? 'var(--text-primary)' : 'var(--text-disabled)',
-                      lineHeight: 'var(--button-small-line-height)',
+                      lineHeight: 'var(--data-small-line-height)',
                       transition: 'color 0.2s ease'
                     }}
                   >
@@ -2590,10 +2612,10 @@ export default function MapCanvas() {
                     {selectedRouteTab === tab && (
                       <div style={{
                         position: 'absolute',
-                        bottom: '0',
+                        bottom: '1px',
                         left: 0,
                         right: 0,
-                        height: '2px',
+                        height: '2.5px',
                         backgroundColor: 'var(--text-primary)',
                         borderTopLeftRadius: '2px',
                         borderTopRightRadius: '2px'
@@ -2602,6 +2624,14 @@ export default function MapCanvas() {
                   </button>
                 ))}
               </div>
+              {/* Divider */}
+              <div style={{
+                height: '0.5px',
+                backgroundColor: 'var(--border-default)',
+                marginLeft: '16px',
+                marginRight: '16px',
+                marginTop: '-1px'
+              }} />
             </div>
 
             {/* Tab Content */}
@@ -2631,6 +2661,7 @@ export default function MapCanvas() {
                   overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',
+                  paddingTop: '12px',
                   paddingBottom: '24px'
                 }}
               >
@@ -2651,29 +2682,45 @@ export default function MapCanvas() {
                       const maxRidership = Math.max(...patternGroup.trips.map(t => t.ridership));
 
                       return (
-                        <div key={groupIndex} style={{ marginTop: groupIndex > 0 ? '16px' : 0 }}>
+                        <div
+                          key={groupIndex}
+                          style={{
+                            marginTop: groupIndex > 0 ? '8px' : 0,
+                            border: '1px solid var(--border-default)',
+                            borderRadius: '20px',
+                            backgroundColor: 'var(--bg-elevated)'
+                          }}
+                        >
                           {/* Pattern Title - Sticky */}
-                          <div className="data-small" style={{
-                            position: 'sticky',
-                            top: 0,
-                            backgroundColor: 'var(--bg-primary)',
-                            color: 'var(--text-primary)',
-                            paddingTop: '12px',
-                            paddingBottom: '12px',
-                            zIndex: 10
-                          }}>
+                          <div
+                            className="data-small"
+                            data-pattern-index={groupIndex}
+                            style={{
+                              position: 'sticky',
+                              top: '-13px',
+                              backgroundColor: 'var(--bg-elevated)',
+                              color: 'var(--text-primary)',
+                              paddingTop: '12px',
+                              paddingBottom: '11px',
+                              paddingLeft: '12px',
+                              paddingRight: '12px',
+                              zIndex: 10,
+                              borderBottom: '1px solid var(--border-default)',
+                              borderTopLeftRadius: stickyPatterns.has(groupIndex) ? '0' : '19px',
+                              borderTopRightRadius: stickyPatterns.has(groupIndex) ? '0' : '19px'
+                            }}>
                             {patternGroup.headsign}
                           </div>
 
                           {/* Trips List */}
-                          <div style={{ position: 'relative' }}>
+                          <div style={{ position: 'relative', padding: '16px', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
                             {/* Grid Lines Background */}
                             <div style={{
                               position: 'absolute',
-                              top: 0,
-                              bottom: 0,
-                              left: '68px', // 60px (time label width) + 8px (gap)
-                              right: 0,
+                              top: '16px',
+                              bottom: '16px',
+                              left: 'calc(16px + 68px)', // 16px padding + 60px (time label width) + 8px (gap)
+                              right: '16px',
                               display: 'flex',
                               pointerEvents: 'none',
                               zIndex: 0
@@ -2695,7 +2742,7 @@ export default function MapCanvas() {
                             </div>
 
                             {/* Trips */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingBottom: '8px', position: 'relative', zIndex: 1 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', zIndex: 1 }}>
                               {patternGroup.trips.map((trip, tripIndex) => {
                                 const barWidth = (trip.ridership / maxRidership) * 100;
                                 const tripKey = `${groupIndex}-${tripIndex}`;
