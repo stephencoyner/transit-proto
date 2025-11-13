@@ -40,11 +40,18 @@ const ComponentsIcon = () => (
   </svg>
 );
 
-const OpenFiltersIcon = () => (
+const OpenPanelIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect y="2" width="16" height="2" rx="1" fill="currentColor"/>
-    <rect y="7" width="16" height="2" rx="1" fill="currentColor"/>
-    <rect y="12" width="16" height="2" rx="1" fill="currentColor"/>
+    <rect x="9" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 9 6.99382e-07)" fill="currentColor"/>
+    <rect x="15" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 15 6.99382e-07)" fill="currentColor"/>
+    <rect x="3" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 3 6.99382e-07)" fill="currentColor"/>
+  </svg>
+);
+
+const ClosePanelIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 12 6.99382e-07)" fill="currentColor"/>
+    <rect x="6" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 6 6.99382e-07)" fill="currentColor"/>
   </svg>
 );
 
@@ -79,7 +86,6 @@ const NavRail: React.FC<NavRailProps> = ({
   isFiltersPanelOpen,
   onToggleFiltersPanel
 }) => {
-  const [isFilterButtonHovered, setIsFilterButtonHovered] = useState(false);
 
   const navItems = [
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
@@ -92,21 +98,16 @@ const NavRail: React.FC<NavRailProps> = ({
       {/* Toggle Filters Button */}
       <button
         onClick={onToggleFiltersPanel}
-        onMouseEnter={() => setIsFilterButtonHovered(true)}
-        onMouseLeave={() => setIsFilterButtonHovered(false)}
-        className="flex items-center justify-center w-10 h-10 rounded-default transition-colors hover:bg-btn-secondary/50 mb-3 text-text-tertiary"
+        className="flex items-center justify-center w-10 h-10 rounded-default transition-colors hover:bg-btn-secondary/50 mb-4 text-text-tertiary"
         aria-label="Toggle filters panel"
         aria-expanded={isFiltersPanelOpen}
         aria-controls="filters-panel"
       >
-        {isFilterButtonHovered
-          ? (isFiltersPanelOpen ? <CloseFilters2Icon /> : <OpenFilters2Icon />)
-          : <OpenFiltersIcon />
-        }
+        {isFiltersPanelOpen ? <CloseFilters2Icon /> : <OpenFilters2Icon />}
       </button>
 
       {/* Navigation Items */}
-      <nav className="flex flex-col w-full flex-1" style={{ marginTop: '-4px' }} aria-label="Main navigation">
+      <nav className="flex flex-col w-full flex-1" aria-label="Main navigation">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
 
@@ -120,10 +121,10 @@ const NavRail: React.FC<NavRailProps> = ({
             >
               <div
                 className={`
-                  flex items-center justify-center rounded-default transition-colors text-text-tertiary
+                  flex items-center justify-center rounded-default transition-colors
                   ${isActive
-                    ? 'bg-border-default'
-                    : 'bg-transparent hover:bg-btn-secondary/50'
+                    ? 'bg-btn-secondary text-text-tertiary'
+                    : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                   }
                 `}
                 style={{ width: '40px', height: '32px' }}

@@ -1,4 +1,5 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import CustomTooltip from './CustomTooltip';
 
 interface ChartDataPoint {
   date: string;
@@ -27,11 +28,11 @@ export default function ByDateChart({ data, gradientId }: { data: ChartDataPoint
         <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--btn-primary)" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="var(--btn-primary)" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.6} />
+              <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" vertical={false} />
+          <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
           <XAxis
             dataKey="date"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
@@ -47,20 +48,13 @@ export default function ByDateChart({ data, gradientId }: { data: ChartDataPoint
             width={40}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'var(--bg-elevated)',
-              border: 'var(--border-width) solid var(--border-default)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--caption-size)',
-              padding: 'var(--space-2) var(--space-3)'
-            }}
-            formatter={(value: number) => [value.toLocaleString(), 'Boardings']}
-            labelStyle={{ fontWeight: 'var(--font-medium)', marginBottom: 'var(--space-1)' }}
+            content={<CustomTooltip />}
+            wrapperStyle={{ zIndex: 9999 }}
           />
           <Area
             type="monotone"
             dataKey="value"
-            stroke="var(--btn-primary)"
+            stroke="var(--text-tertiary)"
             strokeWidth={2}
             fill={`url(#${gradientId})`}
             animationDuration={300}
