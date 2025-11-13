@@ -236,20 +236,20 @@ export default function MapCanvas() {
   const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
 
   // Day/Time period picker state - Applied state (what's actually being used)
-  const [appliedDaysMode, setAppliedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
-  const [appliedCustomDays, setAppliedCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [appliedDaysMode, setAppliedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [appliedCustomDays, setAppliedCustomDays] = useState<string[]>([]);
   const [appliedTimeMode, setAppliedTimeMode] = useState<'all' | 'custom'>('all');
   const [appliedTimePeriods, setAppliedTimePeriods] = useState<string[]>([]);
 
   // Staged state (temporary changes in the picker)
-  const [stagedDaysMode, setStagedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
-  const [stagedCustomDays, setStagedCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [stagedDaysMode, setStagedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [stagedCustomDays, setStagedCustomDays] = useState<string[]>([]);
   const [stagedTimeMode, setStagedTimeMode] = useState<'all' | 'custom'>('all');
   const [stagedTimePeriods, setStagedTimePeriods] = useState<string[]>([]);
 
   // Original state when picker was opened (for Reset)
-  const [originalDaysMode, setOriginalDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
-  const [originalCustomDays, setOriginalCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [originalDaysMode, setOriginalDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [originalCustomDays, setOriginalCustomDays] = useState<string[]>([]);
   const [originalTimeMode, setOriginalTimeMode] = useState<'all' | 'custom'>('all');
   const [originalTimePeriods, setOriginalTimePeriods] = useState<string[]>([]);
 
