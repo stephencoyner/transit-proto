@@ -236,20 +236,20 @@ export default function MapCanvas() {
   const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
 
   // Day/Time period picker state - Applied state (what's actually being used)
-  const [appliedDaysMode, setAppliedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
-  const [appliedCustomDays, setAppliedCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [appliedDaysMode, setAppliedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [appliedCustomDays, setAppliedCustomDays] = useState<string[]>([]);
   const [appliedTimeMode, setAppliedTimeMode] = useState<'all' | 'custom'>('all');
   const [appliedTimePeriods, setAppliedTimePeriods] = useState<string[]>([]);
 
   // Staged state (temporary changes in the picker)
-  const [stagedDaysMode, setStagedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
-  const [stagedCustomDays, setStagedCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [stagedDaysMode, setStagedDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [stagedCustomDays, setStagedCustomDays] = useState<string[]>([]);
   const [stagedTimeMode, setStagedTimeMode] = useState<'all' | 'custom'>('all');
   const [stagedTimePeriods, setStagedTimePeriods] = useState<string[]>([]);
 
   // Original state when picker was opened (for Reset)
-  const [originalDaysMode, setOriginalDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('weekdays');
-  const [originalCustomDays, setOriginalCustomDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [originalDaysMode, setOriginalDaysMode] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [originalCustomDays, setOriginalCustomDays] = useState<string[]>([]);
   const [originalTimeMode, setOriginalTimeMode] = useState<'all' | 'custom'>('all');
   const [originalTimePeriods, setOriginalTimePeriods] = useState<string[]>([]);
 
@@ -2555,21 +2555,20 @@ export default function MapCanvas() {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              marginTop: '-4px',
+              marginTop: '0px',
               marginBottom: '4px',
               cursor: 'pointer',
-              flexShrink: 0
+              flexShrink: 0,
+              color: 'var(--text-secondary)'
             }}
             onClick={() => {
               setSelectedRouteId(null);
               setSelectedStopId(null);
             }}>
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.1231 1.32543C10.5503 0.891944 11.2429 0.891752 11.67 1.32543C12.097 1.75919 12.097 2.46299 11.67 2.89672L6.64658 7.99633L11.6778 13.1047C12.1045 13.5384 12.1045 14.2414 11.6778 14.675C11.2507 15.1088 10.5581 15.1087 10.131 14.675L4.42001 8.87719C4.3857 8.84984 4.35203 8.82043 4.3204 8.78832C4.10691 8.57146 4.0001 8.28736 4.00009 8.00317C3.99644 7.71413 4.10225 7.4239 4.31943 7.20336C4.35442 7.16784 4.39152 7.13541 4.42978 7.10571L10.1231 1.32543Z" fill="currentColor"/>
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
               </svg>
-              <div className="heading-1" style={{
-                color: 'var(--text-primary)'
-              }}>
+              <div className="heading-3">
                 {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
               </div>
             </div>
@@ -2602,7 +2601,7 @@ export default function MapCanvas() {
                       fontFamily: 'Inter, sans-serif',
                       fontSize: 'var(--data-small-size)',
                       fontWeight: 'var(--data-small-weight)',
-                      color: selectedRouteTab === tab ? 'var(--text-primary)' : 'var(--text-disabled)',
+                      color: selectedRouteTab === tab ? 'var(--text-secondary)' : 'var(--text-disabled)',
                       lineHeight: 'var(--data-small-line-height)',
                       transition: 'color 0.2s ease'
                     }}
@@ -2615,8 +2614,8 @@ export default function MapCanvas() {
                         bottom: '1px',
                         left: 0,
                         right: 0,
-                        height: '2.5px',
-                        backgroundColor: 'var(--text-primary)',
+                        height: '2px',
+                        backgroundColor: 'var(--text-secondary)',
                         borderTopLeftRadius: '2px',
                         borderTopRightRadius: '2px'
                       }} />
@@ -2686,7 +2685,7 @@ export default function MapCanvas() {
                           key={groupIndex}
                           style={{
                             marginTop: groupIndex > 0 ? '8px' : 0,
-                            border: '1px solid var(--border-default)',
+                            border: '0.5px solid var(--border-default)',
                             borderRadius: '20px',
                             backgroundColor: 'var(--bg-elevated)'
                           }}
@@ -2705,7 +2704,7 @@ export default function MapCanvas() {
                               paddingLeft: '12px',
                               paddingRight: '12px',
                               zIndex: 10,
-                              borderBottom: '1px solid var(--border-default)',
+                              borderBottom: '0.5px solid var(--border-default)',
                               borderTopLeftRadius: stickyPatterns.has(groupIndex) ? '0' : '19px',
                               borderTopRightRadius: stickyPatterns.has(groupIndex) ? '0' : '19px'
                             }}>

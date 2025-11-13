@@ -1,4 +1,6 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { useState, useEffect } from 'react';
+import CustomTooltip from './CustomTooltip';
 
 interface DayDataPoint {
   day: string;
@@ -7,6 +9,15 @@ interface DayDataPoint {
 }
 
 export default function ByDayChart({ data, average }: { data: DayDataPoint[], average: number }) {
+  const [borderDefault, setBorderDefault] = useState('#D4C9BA');
+
+  useEffect(() => {
+    // Get computed CSS variable values on client side
+    if (typeof window !== 'undefined') {
+      setBorderDefault(getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim());
+    }
+  }, []);
+
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',
@@ -25,7 +36,13 @@ export default function ByDayChart({ data, average }: { data: DayDataPoint[], av
       </div>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" vertical={false} />
+          <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
+          <defs>
+            <linearGradient id="barCursor" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.1} />
+              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.1} />
+            </linearGradient>
+          </defs>
           <XAxis
             dataKey="day"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
@@ -40,25 +57,19 @@ export default function ByDayChart({ data, average }: { data: DayDataPoint[], av
             width={40}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'var(--bg-elevated)',
-              border: 'var(--border-width) solid var(--border-default)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--caption-size)',
-              padding: 'var(--space-2) var(--space-3)'
-            }}
-            formatter={(value: number) => [value.toLocaleString(), 'Boardings']}
-            labelStyle={{ fontWeight: 'var(--font-medium)', marginBottom: 'var(--space-1)' }}
+            content={<CustomTooltip />}
+            wrapperStyle={{ zIndex: 9999 }}
+            cursor={{ fill: `url(#barCursor)` }}
           />
           <Bar
             dataKey="value"
-            fill="var(--btn-primary)"
+            fill="var(--border-hover)"
             radius={[4, 4, 0, 0]}
             animationDuration={300}
           />
           <ReferenceLine
             y={average}
-            stroke="var(--border-focus)"
+            stroke="var(--text-tertiary)"
             strokeWidth={2}
             strokeDasharray="0"
           />
