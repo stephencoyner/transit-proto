@@ -127,8 +127,14 @@ interface RouteLabelData {
   routeId: string;
 }
 
+// Props for RouteLabelLayer
+interface RouteLabelLayerProps {
+  data: RouteLabelData[];
+  hoveredRouteId: string | null;
+}
+
 // Custom CompositeLayer for route labels with pill backgrounds
-class RouteLabelLayer extends CompositeLayer {
+class RouteLabelLayer extends CompositeLayer<RouteLabelLayerProps> {
   renderLayers() {
     const { data, hoveredRouteId } = this.props;
 
