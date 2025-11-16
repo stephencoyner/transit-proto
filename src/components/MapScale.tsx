@@ -60,7 +60,7 @@ const MapScale: React.FC<MapScaleProps> = ({ title, min, max }) => {
           display: 'flex',
           width: '100%',
           justifyContent: 'space-between',
-          paddingLeft: '12px',
+          paddingLeft: '8px',
           paddingRight: '12px',
         }}
       >
