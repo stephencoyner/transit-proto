@@ -55,6 +55,14 @@ const ClosePanelIcon = () => (
   </svg>
 );
 
+const OpenFiltersIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect y="2" width="16" height="2" rx="1" fill="currentColor"/>
+    <rect y="7" width="16" height="2" rx="1" fill="currentColor"/>
+    <rect y="12" width="16" height="2" rx="1" fill="currentColor"/>
+  </svg>
+);
+
 const OpenFilters2Icon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M3.80664 14.7515C3.41808 15.1432 2.79051 15.1417 2.40332 14.7485C2.01538 14.3544 2.01538 13.7159 2.40332 13.3218L7.63184 8.01319L2.44043 2.74073C2.05314 2.34727 2.05314 1.70939 2.44043 1.31593C2.82791 0.922713 3.4563 0.922669 3.84375 1.31593L9.80176 7.36671C10.0237 7.59225 10.1024 7.89924 10.0518 8.19093C10.0496 8.35257 9.98915 8.51515 9.86328 8.6421L3.80664 14.7515Z" fill="currentColor"/>
@@ -86,6 +94,9 @@ const NavRail: React.FC<NavRailProps> = ({
   isFiltersPanelOpen,
   onToggleFiltersPanel
 }) => {
+  const [isHoveringFilters, setIsHoveringFilters] = useState(false);
+  const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
+  const [hasClicked, setHasClicked] = useState(false);
 
   const navItems = [
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
@@ -93,17 +104,46 @@ const NavRail: React.FC<NavRailProps> = ({
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
   ];
 
+  const handleMouseEnter = () => {
+    if (!hasClicked) {
+      setIsHoveringFilters(true);
+      setPanelStateOnHover(isFiltersPanelOpen);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHoveringFilters(false);
+    setPanelStateOnHover(null);
+    setHasClicked(false);
+  };
+
+  const handleClick = () => {
+    onToggleFiltersPanel();
+    setIsHoveringFilters(false);
+    setPanelStateOnHover(null);
+    setHasClicked(true);
+  };
+
+  const getFiltersIcon = () => {
+    if (!isHoveringFilters) {
+      return <OpenFiltersIcon />;
+    }
+    return panelStateOnHover ? <CloseFilters2Icon /> : <OpenFilters2Icon />;
+  };
+
   return (
     <div className={`flex flex-col items-center h-full px-2 relative ${isFiltersPanelOpen ? 'bg-bg-secondary' : 'bg-bg-primary'}`} style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', transition: 'background-color 0.5s ease' }}>
       {/* Toggle Filters Button */}
       <button
-        onClick={onToggleFiltersPanel}
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className="flex items-center justify-center w-10 h-10 rounded-default transition-colors hover:bg-btn-secondary/50 mb-4 text-text-tertiary"
         aria-label="Toggle filters panel"
         aria-expanded={isFiltersPanelOpen}
         aria-controls="filters-panel"
       >
-        {isFiltersPanelOpen ? <CloseFilters2Icon /> : <OpenFilters2Icon />}
+        {getFiltersIcon()}
       </button>
 
       {/* Navigation Items */}
