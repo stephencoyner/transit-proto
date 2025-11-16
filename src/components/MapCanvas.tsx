@@ -119,6 +119,14 @@ function formatTime12Hour(time24: string): string {
   return `${hour12}:${minute} ${ampm}`;
 }
 
+// Type for route label data
+interface RouteLabelData {
+  position: [number, number];
+  text: string;
+  color: [number, number, number];
+  routeId: string;
+}
+
 // Custom CompositeLayer for route labels with pill backgrounds
 class RouteLabelLayer extends CompositeLayer {
   renderLayers() {
@@ -223,7 +231,7 @@ class RouteLabelLayer extends CompositeLayer {
         new IconLayer({
           id: `${this.props.id}-background-${routeId}`,
           data: groupData,
-          getPosition: (d: any) => d.position,
+          getPosition: (d: RouteLabelData) => d.position,
           getIcon: () => 'pill',
           getSize: 22, // Height with padding: 14 + 4 + 4
           iconAtlas,
@@ -244,10 +252,10 @@ class RouteLabelLayer extends CompositeLayer {
       new TextLayer({
         id: `${this.props.id}-text`,
         data,
-        getPosition: (d: any) => d.position,
-        getText: (d: any) => d.text,
+        getPosition: (d: RouteLabelData) => d.position,
+        getText: (d: RouteLabelData) => d.text,
         getSize: 14,
-        getColor: (d: any) => {
+        getColor: (d: RouteLabelData) => {
           // text-primary when hovered or no hover, text-disabled when another route is hovered
           if (!hoveredRouteId || d.routeId === hoveredRouteId) {
             return [26, 20, 16, 255]; // --text-primary: #1A1410
