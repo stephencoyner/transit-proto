@@ -69,20 +69,16 @@ export function getValueRange(values: number[]): { min: number; max: number } {
 }
 
 /**
- * Generate 5 evenly-spaced labels for the scale
+ * Generate 3 evenly-spaced labels for the scale
  * @param min - Minimum value
  * @param max - Maximum value
- * @returns Array of 5 label values
+ * @returns Array of 3 label values (min, middle, max)
  */
 export function getScaleLabels(min: number, max: number): number[] {
-  // Return 5 labels: min, 1/4, 1/2 (middle), 3/4, max
-  // These align with: start, between blocks 2-3, middle (between blocks 3-4), between blocks 5-6, end
   const range = max - min;
   return [
     Math.round(min),
-    Math.round(min + range / 4),
     Math.round(min + range / 2),
-    Math.round(min + (range * 3) / 4),
     Math.round(max),
   ];
 }

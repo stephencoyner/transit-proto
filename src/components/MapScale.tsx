@@ -59,24 +59,12 @@ const MapScale: React.FC<MapScaleProps> = ({ title, min, max }) => {
         style={{
           display: 'flex',
           width: '100%',
-          position: 'relative',
+          justifyContent: 'space-between',
         }}
       >
-        <span style={{ flex: 1, textAlign: 'left' }}>
-          {formatScaleValue(labels[0])}
-        </span>
-        <span style={{ position: 'absolute', left: 'calc(25% + 10px)', transform: 'translateX(-50%)' }}>
-          {formatScaleValue(labels[1])}
-        </span>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-          {formatScaleValue(labels[2])}
-        </span>
-        <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>
-          {formatScaleValue(labels[3])}
-        </span>
-        <span style={{ flex: 1, textAlign: 'right' }}>
-          {formatScaleValue(labels[4])}
-        </span>
+        <span>{formatScaleValue(labels[0])}</span>
+        <span>{formatScaleValue(labels[1])}</span>
+        <span>{formatScaleValue(labels[2])}</span>
       </div>
     </div>
   );
