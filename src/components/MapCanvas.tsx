@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
-import { ScatterplotLayer, PathLayer, TextLayer } from '@deck.gl/layers';
+import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
+import { CompositeLayer } from '@deck.gl/core';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
@@ -118,6 +119,157 @@ function formatTime12Hour(time24: string): string {
   return `${hour12}:${minute} ${ampm}`;
 }
 
+// Custom CompositeLayer for route labels with pill backgrounds
+class RouteLabelLayer extends CompositeLayer {
+  renderLayers() {
+    const { data, hoveredRouteId } = this.props;
+
+    // Create pill background icon as data URL
+    // Padding: 6px top/bottom, 10px left/right
+    const createPillIcon = (color: number[], textWidth: number, isHovered: boolean) => {
+      const paddingX = 10;
+      const paddingY = 6;
+      const borderWidth = 4;
+      const width = textWidth + (paddingX * 2);
+      const height = 14 + (paddingY * 2); // 14pt font + 6px padding top/bottom = 26px
+
+      // Account for border width in canvas size
+      const canvasWidth = width + borderWidth;
+      const canvasHeight = height + borderWidth;
+      const offset = borderWidth / 2; // Center the shape with border
+
+      const canvas = document.createElement('canvas');
+      // Use higher resolution for crisp rendering
+      canvas.width = canvasWidth * 2;
+      canvas.height = canvasHeight * 2;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return '';
+
+      // Scale context for high DPI
+      ctx.scale(2, 2);
+
+      // Draw fully rounded rectangle (pill shape) - using full radius for both inner and outer
+      const radius = height / 2;
+      ctx.beginPath();
+      ctx.moveTo(radius + offset, offset);
+      ctx.lineTo(width - radius + offset, offset);
+      ctx.quadraticCurveTo(width + offset, offset, width + offset, radius + offset);
+      ctx.lineTo(width + offset, height - radius + offset);
+      ctx.quadraticCurveTo(width + offset, height + offset, width - radius + offset, height + offset);
+      ctx.lineTo(radius + offset, height + offset);
+      ctx.quadraticCurveTo(offset, height + offset, offset, height - radius + offset);
+      ctx.lineTo(offset, radius + offset);
+      ctx.quadraticCurveTo(offset, offset, radius + offset, offset);
+      ctx.closePath();
+
+      // Fill white
+      ctx.fillStyle = 'white';
+      ctx.fill();
+
+      // Stroke with route color - full opacity if hovered, 40% if not
+      const opacity = isHovered ? 1 : 0.4;
+      ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${opacity})`;
+      ctx.lineWidth = borderWidth;
+      ctx.stroke();
+
+      return canvas.toDataURL();
+    };
+
+    // Group data by route ID to create separate icon layers (for opacity control)
+    const routeGroups: { [key: string]: any[] } = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (data as any[]).forEach((d) => {
+      const routeId = d.routeId;
+      if (!routeGroups[routeId]) {
+        routeGroups[routeId] = [];
+      }
+      routeGroups[routeId].push(d);
+    });
+
+    const layers: any[] = [];
+
+    // Measure exact text width using canvas
+    const measureTextWidth = (text: string) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return text.length * 9; // Fallback estimate
+      ctx.font = '600 14px Inter, sans-serif'; // semibold 14px
+      return ctx.measureText(text).width;
+    };
+
+    // Create one IconLayer per route for opacity control
+    Object.entries(routeGroups).forEach(([routeId, groupData]) => {
+      const color = groupData[0].color;
+      // Use first item's text to measure exact size
+      const sampleText = groupData[0].text || '00';
+      const textWidth = measureTextWidth(sampleText);
+      const isHovered = hoveredRouteId ? routeId === hoveredRouteId : true;
+      const iconAtlas = createPillIcon(color, textWidth, isHovered);
+
+      // Calculate dimensions with padding and border
+      const paddingX = 10;
+      const paddingY = 6;
+      const borderWidth = 4;
+      const width = textWidth + (paddingX * 2);
+      const height = 14 + (paddingY * 2);
+      const canvasWidth = width + borderWidth;
+      const canvasHeight = height + borderWidth;
+
+      const iconMapping = {
+        pill: { x: 0, y: 0, width: canvasWidth * 2, height: canvasHeight * 2, mask: false }
+      };
+
+      layers.push(
+        new IconLayer({
+          id: `${this.props.id}-background-${routeId}`,
+          data: groupData,
+          getPosition: (d: any) => d.position,
+          getIcon: () => 'pill',
+          getSize: 22, // Height with padding: 14 + 4 + 4
+          iconAtlas,
+          iconMapping,
+          sizeScale: 1,
+          billboard: true,
+          pickable: this.props.pickable,
+          opacity: 1, // Keep all labels at full opacity
+          updateTriggers: {
+            getIcon: [hoveredRouteId, isHovered] // Force icon recreation when hover state changes
+          }
+        })
+      );
+    });
+
+    // Add text layer on top - using text-primary color (#1A1410) and semibold (600)
+    layers.push(
+      new TextLayer({
+        id: `${this.props.id}-text`,
+        data,
+        getPosition: (d: any) => d.position,
+        getText: (d: any) => d.text,
+        getSize: 14,
+        getColor: (d: any) => {
+          // text-primary when hovered or no hover, text-disabled when another route is hovered
+          if (!hoveredRouteId || d.routeId === hoveredRouteId) {
+            return [26, 20, 16, 255]; // --text-primary: #1A1410
+          }
+          return [139, 128, 137, 255]; // --text-disabled: #8B8089
+        },
+        fontFamily: 'Inter, sans-serif',
+        fontWeight: 600, // semibold
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'center',
+        billboard: true,
+        pickable: this.props.pickable,
+      })
+    );
+
+    return layers;
+  }
+}
+
+RouteLabelLayer.layerName = 'RouteLabelLayer';
+RouteLabelLayer.defaultProps = {};
+
 export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
@@ -177,6 +329,7 @@ export default function MapCanvas() {
   // Tooltip state for metric filter
   const [showMetricTooltip, setShowMetricTooltip] = useState(false);
   const metricTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const metricTextRef = useRef<HTMLSpanElement | null>(null);
 
   // Tooltip state for days filter
@@ -1056,18 +1209,16 @@ export default function MapCanvas() {
           }
           // Otherwise use the color scheme
           const color = getColorForId(d.properties.route_id);
-          return [...color, 200]; // Add alpha for transparency
+          // If a route is hovered, reduce opacity of other routes to 40%
+          const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200; // 80 = 40% of 200
+          return [...color, opacity];
+        },
+        updateTriggers: {
+          getColor: [hoveredRoute, selectedRouteId]
         },
         widthMinPixels: 4.5,
         widthMaxPixels: 18,
         pickable: !selectedRouteId, // Disable hover in route detail view
-        onHover: (info) => {
-          if (info.object) {
-            setHoveredRoute(info.object.properties.route_id);
-          } else {
-            setHoveredRoute(null);
-          }
-        },
       })
     );
 
@@ -1083,24 +1234,24 @@ export default function MapCanvas() {
             id: 'route-glow-outer',
             data: hoveredPaths,
             getPath: (d) => d.path,
-            getWidth: 20,
+            getWidth: 30,
             getColor: [...routeColor, 40], // Very low opacity for soft glow
-            widthMinPixels: 10,
-            widthMaxPixels: 40,
+            widthMinPixels: 15,
+            widthMaxPixels: 60,
             pickable: false,
           })
         );
-        
+
         // Middle glow layer (medium width, medium transparency)
         layers.push(
           new PathLayer({
             id: 'route-glow-middle',
             data: hoveredPaths,
             getPath: (d) => d.path,
-            getWidth: 14,
+            getWidth: 24,
             getColor: [...routeColor, 80], // Medium opacity
-            widthMinPixels: 7,
-            widthMaxPixels: 28,
+            widthMinPixels: 12,
+            widthMaxPixels: 48,
             pickable: false,
           })
         );
@@ -1134,44 +1285,40 @@ export default function MapCanvas() {
         );
       }
     }
+  }
 
-    // Add route labels - only show when NOT in route detail view
-    if (!selectedRouteId) {
+  // Add route labels with pill backgrounds - only show when NOT in route detail view
+  // Labels are added here (after glow layers) to ensure they render on top
+  if (showRoutes && !selectedRouteId && filteredShapes.length > 0) {
+    const labelData = filteredShapes.map(shape => {
+      // Get the middle point of the route for label placement
+      const coords = shape.geometry.coordinates;
+      const midIndex = Math.floor(coords.length / 2);
+      const [lng, lat] = coords[midIndex];
+
+      return {
+        position: [lng, lat],
+        text: shape.properties.route_short_name || '?',
+        color: getColorForId(shape.properties.route_id),
+        routeId: shape.properties.route_id
+      };
+    });
+
+    // Always show all labels, but change border color based on hover state
+    if (labelData.length > 0) {
       layers.push(
-        new TextLayer({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        new (RouteLabelLayer as any)({
           id: 'route-labels',
-          data: filteredShapes,
-          background: true, // Enable background rendering
-          getPosition: (d) => {
-            // Get the middle point of the route for label placement
-            const coords = d.geometry.coordinates;
-            const midIndex = Math.floor(coords.length / 2);
-            return coords[midIndex];
-          },
-          getText: (d) => d.properties.route_short_name || '?',
-          getSize: 16,
-          getColor: [64, 64, 64], // dark gray text (like in the image)
-          getBackgroundColor: (d) => {
-            const color = getColorForId(d.properties.route_id);
-            return [...color, 200]; // Use route color with transparency
-          },
-          getBorderColor: (d) => {
-            const color = getColorForId(d.properties.route_id);
-            return color; // Use route color for border
-          },
-          getBorderWidth: 2,
-          getBorderRadius: 20, // high border radius for oval shape
-          getPadding: [6, 10, 6, 10], // padding around text
-          fontFamily: 'Inter, sans-serif',
-          fontWeight: 'bold',
-          sizeScale: 1,
-          sizeMinPixels: 12,
-          sizeMaxPixels: 20,
+          data: labelData,
+          pickable: true,
+          hoveredRouteId: hoveredRoute,
         })
       );
     }
+  }
 
-    // Add directional arrows when a pattern is selected
+  // Add directional arrows when a pattern is selected
     if (selectedPattern && selectedRouteId && filteredStops.length > 1) {
       // selectedRouteId is already the actual route_id (e.g., "100001")
       if (routePatterns[selectedRouteId]) {
@@ -1229,7 +1376,6 @@ export default function MapCanvas() {
         }
       }
     }
-  }
 
   // Conditionally add stops layer
   if (showStops) {
@@ -2500,7 +2646,7 @@ export default function MapCanvas() {
         controller={true}
         layers={layers}
         onHover={({ object }) => {
-          if (object) {
+          if (object && object.properties) {
             if ('route_id' in object.properties) {
               setHoveredRoute((object as RouteFeature).properties.route_id);
               setHoveredStop(null);
