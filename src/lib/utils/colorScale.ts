@@ -5,13 +5,13 @@
 
 // The 7 map colors from globals.css
 export const MAP_COLORS: [number, number, number][] = [
-  [237, 126, 34],  // --map-1: #ED7E22
-  [232, 92, 70],   // --map-2: #E85C46
-  [220, 44, 126],  // --map-3: #DC2C7E
-  [199, 127, 143], // --map-4: #C77F8F
-  [160, 16, 132],  // --map-5: #A01084
-  [127, 26, 163],  // --map-6: #7F1AA3
-  [92, 18, 118],   // --map-7: #5C1276
+  [230, 126, 34],   // --map-1: #E67E22
+  [233, 92, 70],    // --map-2: #E95C46
+  [220, 44, 126],   // --map-3: #DC2C7E
+  [199, 31, 143],   // --map-4: #C71F8F
+  [160, 16, 180],   // --map-5: #A010B4
+  [127, 26, 163],   // --map-6: #7F1AA3
+  [92, 18, 118],    // --map-7: #5C1276
 ];
 
 /**
@@ -69,18 +69,20 @@ export function getValueRange(values: number[]): { min: number; max: number } {
 }
 
 /**
- * Generate 4 evenly-spaced labels for the scale
+ * Generate 5 evenly-spaced labels for the scale
  * @param min - Minimum value
  * @param max - Maximum value
- * @returns Array of 4 label values
+ * @returns Array of 5 label values
  */
 export function getScaleLabels(min: number, max: number): number[] {
-  // Always return 4 labels at fixed positions: min, 1/3, 2/3, max
+  // Return 5 labels: min, 1/4, 1/2 (middle), 3/4, max
+  // These align with: start, between blocks 2-3, middle (between blocks 3-4), between blocks 5-6, end
   const range = max - min;
   return [
     Math.round(min),
-    Math.round(min + range / 3),
-    Math.round(min + (range * 2) / 3),
+    Math.round(min + range / 4),
+    Math.round(min + range / 2),
+    Math.round(min + (range * 3) / 4),
     Math.round(max),
   ];
 }

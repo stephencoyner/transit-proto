@@ -12,17 +12,14 @@ interface MapScaleProps {
 const MapScale: React.FC<MapScaleProps> = ({ title, min, max }) => {
   const labels = getScaleLabels(min, max);
 
-  // Create gradient string from the 7 colors
-  const gradientColors = MAP_COLORS.map(color => `rgb(${color[0]}, ${color[1]}, ${color[2]})`).join(', ');
-
   return (
     <div
       className="absolute bg-bg-elevated"
       style={{
         bottom: '12px',
         right: '12px',
-        padding: '16px 20px',
-        borderRadius: 'var(--radius-large)',
+        padding: '12px',
+        borderRadius: '20px',
         border: '0.5px solid var(--border-default)',
         minWidth: '280px',
         maxWidth: '400px',
@@ -30,33 +27,56 @@ const MapScale: React.FC<MapScaleProps> = ({ title, min, max }) => {
       }}
     >
       {/* Title */}
-      <div className="body-regular text-text-primary mb-3">
+      <div className="button-small text-text-primary mb-3">
         {title}
       </div>
 
-      {/* Gradient Bar */}
+      {/* Color Blocks */}
       <div
         style={{
+          display: 'flex',
           width: '100%',
           height: '16px',
           borderRadius: '8px',
-          background: `linear-gradient(to right, ${gradientColors})`,
+          overflow: 'hidden',
           marginBottom: '8px',
         }}
-      />
+      >
+        {MAP_COLORS.map((color, index) => (
+          <div
+            key={index}
+            style={{
+              flex: 1,
+              backgroundColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+            }}
+          />
+        ))}
+      </div>
 
       {/* Labels */}
       <div
-        className="body-small text-text-secondary"
+        className="nav-label text-text-tertiary"
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
           width: '100%',
+          position: 'relative',
         }}
       >
-        {labels.map((label, index) => (
-          <span key={index}>{formatScaleValue(label)}</span>
-        ))}
+        <span style={{ flex: 1, textAlign: 'left' }}>
+          {formatScaleValue(labels[0])}
+        </span>
+        <span style={{ position: 'absolute', left: 'calc(25% + 10px)', transform: 'translateX(-50%)' }}>
+          {formatScaleValue(labels[1])}
+        </span>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          {formatScaleValue(labels[2])}
+        </span>
+        <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>
+          {formatScaleValue(labels[3])}
+        </span>
+        <span style={{ flex: 1, textAlign: 'right' }}>
+          {formatScaleValue(labels[4])}
+        </span>
       </div>
     </div>
   );

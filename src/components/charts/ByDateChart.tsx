@@ -57,7 +57,7 @@ export default function ByDateChart({ data, gradientId }: { data: ChartDataPoint
             stroke="var(--text-tertiary)"
             strokeWidth={2}
             fill={`url(#${gradientId})`}
-            animationDuration={300}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

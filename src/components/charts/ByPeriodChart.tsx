@@ -45,7 +45,7 @@ export default function ByPeriodChart({
               dataKey="value"
               onMouseEnter={(_, index) => setActivePieIndex(index)}
               onMouseLeave={() => setActivePieIndex(null)}
-              animationDuration={300}
+              isAnimationActive={false}
             >
               {data.map((entry, index) => (
                 <Cell
