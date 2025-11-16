@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
-import { CompositeLayer } from '@deck.gl/core';
+import { CompositeLayer, Layer } from '@deck.gl/core';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
@@ -184,9 +184,8 @@ class RouteLabelLayer extends CompositeLayer {
     };
 
     // Group data by route ID to create separate icon layers (for opacity control)
-    const routeGroups: { [key: string]: any[] } = {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data as any[]).forEach((d) => {
+    const routeGroups: { [key: string]: RouteLabelData[] } = {};
+    (data as RouteLabelData[]).forEach((d) => {
       const routeId = d.routeId;
       if (!routeGroups[routeId]) {
         routeGroups[routeId] = [];
@@ -194,7 +193,7 @@ class RouteLabelLayer extends CompositeLayer {
       routeGroups[routeId].push(d);
     });
 
-    const layers: any[] = [];
+    const layers: Layer[] = [];
 
     // Measure exact text width using canvas
     const measureTextWidth = (text: string) => {
