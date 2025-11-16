@@ -292,6 +292,7 @@ export default function MapCanvas() {
   const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
+  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null); // Index of hovered segment
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -615,11 +616,140 @@ export default function MapCanvas() {
     return activeTab === 'stops' ? stops : [];
   }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab]);
 
+  // Check if we should show segment-based coloring (for load metrics in route detail view)
+  const isLoadMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
+  const showSegmentColoring = selectedRouteId && isLoadMetric;
+
+  // Generate segments between consecutive stops with mock load values (needed before value range calculation)
+  const segmentGeoms = React.useMemo(() => {
+    if (!showSegmentColoring || !routePatterns[selectedRouteId]) {
+      return [];
+    }
+
+    // Get patterns to process - either selected pattern or all patterns
+    const patternsToProcess = selectedPattern
+      ? [routePatterns[selectedRouteId].patterns.find(p => p.headsign === selectedPattern)].filter(Boolean)
+      : routePatterns[selectedRouteId].patterns; // Show ALL patterns when none selected
+
+    if (patternsToProcess.length === 0) {
+      return [];
+    }
+
+    // Create a map of stop_id -> coordinates
+    const stopCoords = new Map<string, [number, number]>();
+    filteredStops.forEach(stop => {
+      const coords = stop.geometry.coordinates as [number, number];
+      stopCoords.set(stop.properties.stop_id, coords);
+    });
+
+    // Helper function to find the closest point on the shape to a stop
+    const findClosestPointIndex = (stopCoord: [number, number], shapeCoords: number[][]): number => {
+      let minDist = Infinity;
+      let closestIndex = 0;
+
+      shapeCoords.forEach((coord, index) => {
+        const dx = coord[0] - stopCoord[0];
+        const dy = coord[1] - stopCoord[1];
+        const dist = dx * dx + dy * dy; // squared distance is fine for comparison
+
+        if (dist < minDist) {
+          minDist = dist;
+          closestIndex = index;
+        }
+      });
+
+      return closestIndex;
+    };
+
+    // Generate segments for all patterns
+    const segments: Array<{
+      path: number[][];
+      fromStopId: string;
+      toStopId: string;
+      loadValue: number;
+      properties: RouteFeature['properties'];
+      patternHeadsign: string;
+    }> = [];
+
+    patternsToProcess.forEach(patternInfo => {
+      if (!patternInfo || !patternInfo.stop_ids || patternInfo.stop_ids.length < 2) {
+        return;
+      }
+
+      // Get the shape for this pattern (use the first shape_id)
+      const patternShapeId = patternInfo.shape_ids?.[0];
+      const patternShape = filteredShapes.find(s => s.properties.shape_id === patternShapeId);
+
+      if (!patternShape || patternShape.geometry.type !== 'LineString') {
+        return;
+      }
+
+      const shapeCoords = patternShape.geometry.coordinates as number[][];
+
+      for (let i = 0; i < patternInfo.stop_ids.length - 1; i++) {
+        const fromStopId = patternInfo.stop_ids[i];
+        const toStopId = patternInfo.stop_ids[i + 1];
+
+        const fromCoords = stopCoords.get(fromStopId);
+        const toCoords = stopCoords.get(toStopId);
+
+        if (fromCoords && toCoords) {
+          // Find the closest points on the shape to these stops
+          const fromIndex = findClosestPointIndex(fromCoords, shapeCoords);
+          const toIndex = findClosestPointIndex(toCoords, shapeCoords);
+
+          // Extract the portion of the shape between these two stops
+          let segmentPath: number[][];
+          if (fromIndex < toIndex) {
+            segmentPath = shapeCoords.slice(fromIndex, toIndex + 1);
+            // Replace first and last coordinates with exact stop positions
+            segmentPath[0] = fromCoords;
+            segmentPath[segmentPath.length - 1] = toCoords;
+          } else {
+            // Handle reverse direction (shouldn't normally happen, but just in case)
+            segmentPath = [fromCoords, toCoords];
+          }
+
+          // Generate deterministic mock load value based on segment (20-100 for passenger load)
+          const hash = (fromStopId + toStopId).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const loadValue = 20 + (hash % 81); // Range 20-100
+
+          segments.push({
+            path: segmentPath,
+            fromStopId,
+            toStopId,
+            loadValue,
+            properties: patternShape.properties,
+            patternHeadsign: patternInfo.headsign
+          });
+        }
+      }
+    });
+
+    return segments;
+  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes]);
+
+  // Calculate value range for segments
+  const segmentValueRange = React.useMemo(() => {
+    if (segmentGeoms.length === 0) return { min: 0, max: 100 };
+    const values = segmentGeoms.map(s => s.loadValue);
+    return getValueRange(values);
+  }, [segmentGeoms]);
+
   // Calculate value ranges for the color scale
   // This needs to be based on what's currently visible on the map
   const { routeValueRange, stopValueRange, scaleTitle } = React.useMemo(() => {
     // Determine which data to show based on view
     if (selectedRouteId || activeTab === 'stops') {
+      // If showing segment coloring, use segment range
+      if (showSegmentColoring) {
+        return {
+          routeValueRange: { min: 0, max: 0 },
+          stopValueRange: segmentValueRange,
+          scaleTitle: selectedMetric,
+        };
+      }
+
       // Route detail view OR stops tab - show stop data
       const visibleStopIds = new Set(filteredStops.map(s => s.properties.stop_id));
       const visibleStopValues = stopsList
@@ -644,7 +774,7 @@ export default function MapCanvas() {
         scaleTitle: selectedMetric,
       };
     }
-  }, [selectedRouteId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric]);
+  }, [selectedRouteId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric, showSegmentColoring, segmentValueRange]);
 
   // Create lookup maps for values
   const routeValueMap = React.useMemo(() => {
@@ -1241,53 +1371,118 @@ export default function MapCanvas() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
     const stopId = d.properties.stop_id;
+
+    // When showing segment coloring (load metrics), use white border
+    if (showSegmentColoring) {
+      return [255, 255, 255, 255] as [number, number, number, number];
+    }
+
+    // Otherwise use data-driven color
     const value = stopValueMap.get(stopId) || 0;
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const isSelected = selectedStopId === stopId;
     const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId, stopValueMap, stopValueRange]);
+  }, [selectedStopId, stopValueMap, stopValueRange, showSegmentColoring]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
+    // When showing segment coloring (load metrics), use black center
+    if (showSegmentColoring) {
+      return [0, 0, 0, 255] as [number, number, number, number];
+    }
+
+    // Otherwise use white center
     const isSelected = selectedStopId === d.properties.stop_id;
     const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
     return [255, 255, 255, alpha] as [number, number, number, number];
-  }, [selectedStopId]);
+  }, [selectedStopId, showSegmentColoring]);
 
   const layers = [];
 
   // Conditionally add route layer
   if (showRoutes) {
-    // Base route layer
-    layers.push(
-      new PathLayer({
-        id: 'routes',
-        data: pathGeoms,
-        getPath: (d) => d.path,
-        getWidth: 9,
-        getColor: (d) => {
-          // If a route is selected (detail view), use hardcoded light gray
-          if (selectedRouteId) {
-            return [186, 177, 169, 255]; // #BAB1A9 at full opacity
-          }
-          // Otherwise use data-driven color from value
-          const value = routeValueMap.get(d.properties.route_id) || 0;
-          const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
-          const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200;
-          return [...color, opacity];
-        },
-        updateTriggers: {
-          getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange]
-        },
-        widthMinPixels: 4.5,
-        widthMaxPixels: 18,
-        pickable: !selectedRouteId, // Disable hover in route detail view
-      })
-    );
+    // If showing segment coloring (load metrics in route detail view) AND we have segments
+    if (showSegmentColoring && segmentGeoms.length > 0) {
+      // Add index to each segment for hover tracking
+      const segmentsWithIndex = segmentGeoms.map((seg, idx) => ({ ...seg, index: idx }));
 
-    // Hovered route layer (glowing effect)
-    if (hoveredRoute) {
+      // If there's a hovered segment, render a single glow layer for just that segment
+      if (hoveredSegment !== null) {
+        const hoveredSeg = segmentsWithIndex[hoveredSegment];
+        if (hoveredSeg) {
+          const segColor = valueToColor(hoveredSeg.loadValue, segmentValueRange.min, segmentValueRange.max);
+
+          // Single glow layer
+          layers.push(
+            new PathLayer({
+              id: 'segment-glow',
+              data: [hoveredSeg],
+              getPath: (d) => d.path,
+              getWidth: 32,
+              getColor: [...segColor, 80],
+              widthMinPixels: 16,
+              widthMaxPixels: 64,
+              pickable: false,
+              rounded: true, // Round the line caps to wrap around stops
+            })
+          );
+        }
+      }
+
+      // Render all segments with base styling
+      layers.push(
+        new PathLayer({
+          id: 'route-segments',
+          data: segmentsWithIndex,
+          getPath: (d) => d.path,
+          getWidth: 10,
+          getColor: (d) => {
+            const color = valueToColor(d.loadValue, segmentValueRange.min, segmentValueRange.max);
+            // Reduce opacity of non-hovered segments when hovering
+            const alpha = hoveredSegment !== null && d.index !== hoveredSegment ? 102 : 255; // 40% opacity = 102/255
+            return [...color, alpha];
+          },
+          updateTriggers: {
+            getColor: [segmentValueRange, hoveredSegment]
+          },
+          widthMinPixels: 5,
+          widthMaxPixels: 20,
+          pickable: true,
+          onHover: ({ object }) => setHoveredSegment(object ? object.index : null),
+        })
+      );
+    } else {
+      // Base route layer (default behavior)
+      layers.push(
+        new PathLayer({
+          id: 'routes',
+          data: pathGeoms,
+          getPath: (d) => d.path,
+          getWidth: 9,
+          getColor: (d) => {
+            // If a route is selected (detail view), use hardcoded light gray
+            if (selectedRouteId) {
+              return [186, 177, 169, 255]; // #BAB1A9 at full opacity
+            }
+            // Otherwise use data-driven color from value
+            const value = routeValueMap.get(d.properties.route_id) || 0;
+            const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
+            const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200;
+            return [...color, opacity];
+          },
+          updateTriggers: {
+            getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange]
+          },
+          widthMinPixels: 4.5,
+          widthMaxPixels: 18,
+          pickable: !selectedRouteId, // Disable hover in route detail view
+        })
+      );
+    }
+
+    // Hovered route layer (glowing effect) - only in system/routes view, NOT in segment coloring mode
+    if (hoveredRoute && !showSegmentColoring) {
       const hoveredPaths = pathGeoms.filter(p => p.properties.route_id === hoveredRoute);
       if (hoveredPaths.length) {
         const value = routeValueMap.get(hoveredRoute) || 0;
@@ -1471,7 +1666,8 @@ export default function MapCanvas() {
     }
 
     // Hovered stop halo (same style as selected stop, render before base layers)
-    if (hoveredStop && hoveredStop !== selectedStopId) {
+    // Don't show halo when in segment coloring mode
+    if (hoveredStop && hoveredStop !== selectedStopId && !showSegmentColoring) {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === hoveredStop);
       if (hoveredStopData.length > 0) {
         const value = stopValueMap.get(hoveredStop) || 0;
@@ -1499,12 +1695,17 @@ export default function MapCanvas() {
           id: 'stops-border',
           data: filteredStops,
           getPosition: getStopPosition,
-          getRadius: 12, // Outer radius (8px border + 4px white center)
+          getRadius: showSegmentColoring ? 11 : 12, // Smaller in segment mode (3px border + 8px), normal size otherwise
           getFillColor: getStopBorderColor,
-          radiusMinPixels: 6,
-          radiusMaxPixels: 24,
-          pickable: true, // Enable hover and click detection
-          onHover: ({ object }) => setHoveredStop(object ? (object as StopFeature).properties.stop_id : null),
+          radiusMinPixels: showSegmentColoring ? 6.5 : 6,
+          radiusMaxPixels: showSegmentColoring ? 22 : 24,
+          pickable: !showSegmentColoring, // Disable hover in segment coloring mode
+          visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
+          onHover: ({ object }) => {
+            if (!showSegmentColoring) {
+              setHoveredStop(object ? (object as StopFeature).properties.stop_id : null);
+            }
+          },
           onClick: ({ object }) => {
             if (object) {
               setSelectedStopId((object as StopFeature).properties.stop_id);
@@ -1512,20 +1713,26 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId] // Force recalculation when selectedStopId changes
+            getFillColor: [selectedStopId, showSegmentColoring], // Force recalculation when selection or coloring mode changes
+            getRadius: [showSegmentColoring] // Update radius when mode changes
           }
         }),
-        // White center layer (inner circle)
+        // Black/white center layer (inner circle)
         new ScatterplotLayer({
           id: 'stops-center',
           data: filteredStops,
           getPosition: getStopPosition,
-          getRadius: 4, // Inner radius (white center stays same)
+          getRadius: showSegmentColoring ? 8 : 4, // Larger in segment mode (8px black), smaller otherwise (4px white)
           getFillColor: getStopCenterColor,
-          radiusMinPixels: 2,
-          radiusMaxPixels: 8,
-          pickable: true, // Enable hover and click detection
-          onHover: ({ object }) => setHoveredStop(object ? (object as StopFeature).properties.stop_id : null),
+          radiusMinPixels: showSegmentColoring ? 4 : 2,
+          radiusMaxPixels: showSegmentColoring ? 16 : 8,
+          pickable: !showSegmentColoring, // Disable hover in segment coloring mode
+          visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
+          onHover: ({ object }) => {
+            if (!showSegmentColoring) {
+              setHoveredStop(object ? (object as StopFeature).properties.stop_id : null);
+            }
+          },
           onClick: ({ object }) => {
             if (object) {
               setSelectedStopId((object as StopFeature).properties.stop_id);
@@ -1533,7 +1740,8 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId] // Force recalculation when selectedStopId changes
+            getFillColor: [selectedStopId, showSegmentColoring], // Force recalculation when selection or coloring mode changes
+            getRadius: [showSegmentColoring] // Update radius when mode changes
           }
         })
     );
