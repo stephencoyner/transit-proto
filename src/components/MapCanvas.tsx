@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
-import Map from 'react-map-gl/mapbox';
+import MapboxMap from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer, Layer } from '@deck.gl/core';
@@ -11,6 +11,8 @@ import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
+import MapScale from '@/components/MapScale';
+import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -613,6 +615,50 @@ export default function MapCanvas() {
     return activeTab === 'stops' ? stops : [];
   }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab]);
 
+  // Calculate value ranges for the color scale
+  // This needs to be based on what's currently visible on the map
+  const { routeValueRange, stopValueRange, scaleTitle } = React.useMemo(() => {
+    // Determine which data to show based on view
+    if (selectedRouteId) {
+      // Route detail view - show stop data
+      const visibleStopIds = new Set(filteredStops.map(s => s.properties.stop_id));
+      const visibleStopValues = stopsList
+        .filter(stop => visibleStopIds.has(stop.id))
+        .map(stop => stop.value);
+
+      return {
+        routeValueRange: { min: 0, max: 0 },
+        stopValueRange: getValueRange(visibleStopValues),
+        scaleTitle: selectedMetric,
+      };
+    } else {
+      // System view - show route data
+      const visibleRouteIds = new Set(filteredShapes.map(s => s.properties.route_id));
+      const visibleRouteValues = routesList
+        .filter(route => visibleRouteIds.has(route.id))
+        .map(route => route.value);
+
+      return {
+        routeValueRange: getValueRange(visibleRouteValues),
+        stopValueRange: { min: 0, max: 0 },
+        scaleTitle: selectedMetric,
+      };
+    }
+  }, [selectedRouteId, filteredShapes, filteredStops, routesList, stopsList, selectedMetric]);
+
+  // Create lookup maps for values
+  const routeValueMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    routesList.forEach(route => map.set(route.id, route.value));
+    return map;
+  }, [routesList]);
+
+  const stopValueMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    stopsList.forEach(stop => map.set(stop.id, stop.value));
+    return map;
+  }, [stopsList]);
+
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
     const out: Array<{ path: number[][]; properties: RouteFeature['properties'] }> = [];
@@ -1191,11 +1237,13 @@ export default function MapCanvas() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
-    const color = getColorForId(d.properties.stop_id);
-    const isSelected = selectedStopId === d.properties.stop_id;
+    const stopId = d.properties.stop_id;
+    const value = stopValueMap.get(stopId) || 0;
+    const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
+    const isSelected = selectedStopId === stopId;
     const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId]);
+  }, [selectedStopId, stopValueMap, stopValueRange]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
@@ -1220,14 +1268,14 @@ export default function MapCanvas() {
           if (selectedRouteId) {
             return [186, 177, 169, 255]; // #BAB1A9 at full opacity
           }
-          // Otherwise use the color scheme
-          const color = getColorForId(d.properties.route_id);
-          // If a route is hovered, reduce opacity of other routes to 40%
-          const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200; // 80 = 40% of 200
+          // Otherwise use data-driven color from value
+          const value = routeValueMap.get(d.properties.route_id) || 0;
+          const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
+          const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200;
           return [...color, opacity];
         },
         updateTriggers: {
-          getColor: [hoveredRoute, selectedRouteId]
+          getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange]
         },
         widthMinPixels: 4.5,
         widthMaxPixels: 18,
@@ -1239,8 +1287,9 @@ export default function MapCanvas() {
     if (hoveredRoute) {
       const hoveredPaths = pathGeoms.filter(p => p.properties.route_id === hoveredRoute);
       if (hoveredPaths.length) {
-        const routeColor = getColorForId(hoveredRoute);
-        
+        const value = routeValueMap.get(hoveredRoute) || 0;
+        const routeColor = valueToColor(value, routeValueRange.min, routeValueRange.max);
+
         // Outer glow layer (very wide, very transparent)
         layers.push(
           new PathLayer({
@@ -1396,7 +1445,8 @@ export default function MapCanvas() {
     if (selectedStopId) {
       const selectedStopData = filteredStops.filter(stop => stop.properties.stop_id === selectedStopId);
       if (selectedStopData.length > 0) {
-        const selectedStopColor = getColorForId(selectedStopId);
+        const value = stopValueMap.get(selectedStopId) || 0;
+        const selectedStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
         // Halo layer (12px larger than the stop, 50% opacity)
         layers.push(
@@ -1417,7 +1467,8 @@ export default function MapCanvas() {
     if (hoveredStop && hoveredStop !== selectedStopId) {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === hoveredStop);
       if (hoveredStopData.length > 0) {
-        const hoveredStopColor = getColorForId(hoveredStop);
+        const value = stopValueMap.get(hoveredStop) || 0;
+        const hoveredStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
         // Halo layer (12px larger than the stop, 50% opacity)
         layers.push(
@@ -2674,7 +2725,7 @@ export default function MapCanvas() {
         }}
         style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
       >
-        <Map
+        <MapboxMap
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/stephencoynerseattle/cmgifl16g001u01s6699hg7iv"
           style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
@@ -2686,6 +2737,15 @@ export default function MapCanvas() {
           }}
         />
       </DeckGL>
+
+      {/* Map Scale */}
+      {(routeValueRange.max > 0 || stopValueRange.max > 0) && (
+        <MapScale
+          title={scaleTitle}
+          min={selectedRouteId ? stopValueRange.min : routeValueRange.min}
+          max={selectedRouteId ? stopValueRange.max : routeValueRange.max}
+        />
+      )}
 
       {/* Data Panel */}
       <div style={{
