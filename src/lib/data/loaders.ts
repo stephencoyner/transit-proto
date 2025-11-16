@@ -31,6 +31,7 @@ export interface PatternInfo {
   direction_id: string;
   trip_count: number;
   route_id: string;
+  shape_length?: number;
 }
 
 export interface RoutePattern {

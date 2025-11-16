@@ -65,7 +65,7 @@ export default function ByDayChart({ data, average }: { data: DayDataPoint[], av
             dataKey="value"
             fill="var(--border-hover)"
             radius={[4, 4, 0, 0]}
-            animationDuration={300}
+            isAnimationActive={false}
           />
           <ReferenceLine
             y={average}

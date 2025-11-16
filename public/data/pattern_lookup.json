@@ -1,2684 +1,3131 @@
 {
-  "11001004": {
-    "headsign": "Kinnear Seattle Center W",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "100001"
-  },
-  "20001002": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 138,
-    "route_id": "100001"
-  },
-  "11001003": {
-    "headsign": "Kinnear Seattle Center W",
-    "direction_id": "0",
-    "trip_count": 135,
-    "route_id": "100001"
-  },
-  "20001005": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100001"
-  },
-  "20010004": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 155,
-    "route_id": "100002"
-  },
-  "11010006": {
-    "headsign": "Capitol Hill Via 15th Ave E",
-    "direction_id": "0",
-    "trip_count": 155,
-    "route_id": "100002"
-  },
-  "10101004": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 115,
-    "route_id": "100003"
-  },
-  "21101006": {
-    "headsign": "S Renton P&R",
-    "direction_id": "0",
-    "trip_count": 121,
-    "route_id": "100003"
-  },
-  "20105004": {
-    "headsign": "Renton Renton Tech Coll",
-    "direction_id": "1",
-    "trip_count": 119,
-    "route_id": "100004"
-  },
-  "11105005": {
-    "headsign": "Renton Highlands",
-    "direction_id": "0",
-    "trip_count": 113,
-    "route_id": "100004"
-  },
-  "10106002": {
-    "headsign": "International District Chinatown Station Rainier Beach Station",
-    "direction_id": "1",
-    "trip_count": 197,
-    "route_id": "100005"
-  },
-  "21106108": {
-    "headsign": "Renton Rainier Beach Station",
-    "direction_id": "0",
-    "trip_count": 202,
-    "route_id": "100005"
-  },
-  "10106003": {
-    "headsign": "International District Chinatown Station",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100005"
-  },
-  "21107005": {
-    "headsign": "Renton Transit Center Rainier Beach Station",
-    "direction_id": "0",
-    "trip_count": 166,
-    "route_id": "100006"
-  },
-  "21107003": {
-    "headsign": "Renton Transit Center Rainier Beach Station",
-    "direction_id": "0",
-    "trip_count": 53,
-    "route_id": "100006"
-  },
-  "10107002": {
-    "headsign": "Beacon Hill Station Rainier Beach Station",
-    "direction_id": "1",
-    "trip_count": 213,
-    "route_id": "100006"
-  },
-  "20011009": {
-    "headsign": "Downtown Seattle Capitol Hill Station",
-    "direction_id": "1",
-    "trip_count": 161,
-    "route_id": "100009"
-  },
-  "11011010": {
-    "headsign": "Madison Park Capitol Hill Station",
-    "direction_id": "0",
-    "trip_count": 161,
-    "route_id": "100009"
-  },
-  "10111002": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 8,
-    "route_id": "100011"
-  },
-  "21111003": {
-    "headsign": "Lake Kathleen Via I-90",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "100011"
-  },
-  "10113006": {
-    "headsign": "Downtown Seattle White Center",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100012"
-  },
-  "21113008": {
-    "headsign": "Shorewood White Center",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100012"
-  },
-  "10118005": {
-    "headsign": "Ferry Terminal Via Shuttle",
-    "direction_id": "1",
-    "trip_count": 6,
-    "route_id": "100016"
-  },
-  "21118002": {
-    "headsign": "Tahlequah",
-    "direction_id": "0",
-    "trip_count": 24,
-    "route_id": "100016"
-  },
-  "10118008": {
-    "headsign": "Ferry Terminal Via Shuttle",
-    "direction_id": "1",
-    "trip_count": 20,
-    "route_id": "100016"
-  },
-  "21118003": {
-    "headsign": "Burton",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "100016"
-  },
-  "10118010": {
-    "headsign": "Ferry Terminal Via Shuttle",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100016"
-  },
-  "21118004": {
-    "headsign": "Vashon Island Shuttle",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100016"
-  },
-  "10118013": {
-    "headsign": "Ferry Terminal Via Shuttle",
-    "direction_id": "1",
-    "trip_count": 5,
-    "route_id": "100016"
-  },
-  "21119008": {
-    "headsign": "Dockton",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100017"
-  },
-  "10119005": {
-    "headsign": "Ferry Terminal Via Shuttle",
-    "direction_id": "1",
-    "trip_count": 5,
-    "route_id": "100017"
-  },
-  "10119009": {
-    "headsign": "Ferry Terminal Via Shuttle",
-    "direction_id": "1",
-    "trip_count": 2,
-    "route_id": "100017"
-  },
-  "21119010": {
-    "headsign": "Dockton",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100017"
-  },
-  "20012005": {
-    "headsign": "Downtown Seattle Via Pine St",
-    "direction_id": "1",
-    "trip_count": 154,
-    "route_id": "100018"
-  },
-  "11012004": {
-    "headsign": "Interlaken Park Via 19th Ave",
-    "direction_id": "0",
-    "trip_count": 154,
-    "route_id": "100018"
-  },
-  "10124001": {
-    "headsign": "Downtown Seattle Georgetown",
-    "direction_id": "1",
-    "trip_count": 123,
-    "route_id": "100023"
-  },
-  "21124051": {
-    "headsign": "Tukwila Link Station Georgetown",
-    "direction_id": "0",
-    "trip_count": 125,
-    "route_id": "100023"
-  },
-  "21124050": {
-    "headsign": "Tukwila Link Station Georgetown",
-    "direction_id": "0",
-    "trip_count": 18,
-    "route_id": "100023"
-  },
-  "10124002": {
-    "headsign": "Downtown Seattle Georgetown",
-    "direction_id": "1",
-    "trip_count": 19,
-    "route_id": "100023"
-  },
-  "10124004": {
-    "headsign": "Downtown Seattle Georgetown",
-    "direction_id": "1",
-    "trip_count": 6,
-    "route_id": "100023"
-  },
-  "21124059": {
-    "headsign": "Seattle Tacoma International Airport Georgetown",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "100023"
-  },
-  "21124060": {
-    "headsign": "Seattle Tacoma International Airport Georgetown",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100023"
-  },
-  "10125013": {
-    "headsign": "Downtown Seattle South Seattle College",
-    "direction_id": "1",
-    "trip_count": 39,
-    "route_id": "100024"
-  },
-  "21125001": {
-    "headsign": "Downtown Seattle South Seattle College",
-    "direction_id": "0",
-    "trip_count": 97,
-    "route_id": "100024"
-  },
-  "10125009": {
-    "headsign": "Downtown Seattle South Seattle College",
-    "direction_id": "1",
-    "trip_count": 58,
-    "route_id": "100024"
-  },
-  "11128008": {
-    "headsign": "Admiral District White Center",
-    "direction_id": "0",
-    "trip_count": 45,
-    "route_id": "100026"
-  },
-  "20128011": {
-    "headsign": "Southcenter White Center",
-    "direction_id": "1",
-    "trip_count": 48,
-    "route_id": "100026"
-  },
-  "11128009": {
-    "headsign": "Admiral District White Center",
-    "direction_id": "0",
-    "trip_count": 78,
-    "route_id": "100026"
-  },
-  "20128010": {
-    "headsign": "Southcenter White Center",
-    "direction_id": "1",
-    "trip_count": 76,
-    "route_id": "100026"
-  },
-  "11013009": {
-    "headsign": "Seattle Pacific University Seattle Center W",
-    "direction_id": "0",
-    "trip_count": 71,
-    "route_id": "100028"
-  },
-  "20013011": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 68,
-    "route_id": "100028"
-  },
-  "11013013": {
-    "headsign": "Seattle Pacific University Seattle Center W",
-    "direction_id": "0",
-    "trip_count": 45,
-    "route_id": "100028"
-  },
-  "20013012": {
-    "headsign": "Downtown Only",
-    "direction_id": "1",
-    "trip_count": 46,
-    "route_id": "100028"
-  },
-  "21131007": {
-    "headsign": "Burien Transit Center Highland Park",
-    "direction_id": "0",
-    "trip_count": 102,
-    "route_id": "100030"
-  },
-  "21131002": {
-    "headsign": "Burien Transit Center Highland Park",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "100030"
-  },
-  "10131005": {
-    "headsign": "Downtown Seattle Highland Park",
-    "direction_id": "1",
-    "trip_count": 82,
-    "route_id": "100030"
-  },
-  "10131004": {
-    "headsign": "Downtown Seattle Highland Park",
-    "direction_id": "1",
-    "trip_count": 27,
-    "route_id": "100030"
-  },
-  "10132002": {
-    "headsign": "Downtown Seattle South Park",
-    "direction_id": "1",
-    "trip_count": 6,
-    "route_id": "100031"
-  },
-  "10132006": {
-    "headsign": "Downtown Seattle South Park",
-    "direction_id": "1",
-    "trip_count": 112,
-    "route_id": "100031"
-  },
-  "21132003": {
-    "headsign": "Burien Transit Center South Park",
-    "direction_id": "0",
-    "trip_count": 87,
-    "route_id": "100031"
-  },
-  "21132007": {
-    "headsign": "Burien Transit Center South Park",
-    "direction_id": "0",
-    "trip_count": 24,
-    "route_id": "100031"
-  },
-  "10014002": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 135,
-    "route_id": "100039"
-  },
-  "21014013": {
-    "headsign": "Mount Baker Mount Baker Transit Center",
-    "direction_id": "0",
-    "trip_count": 131,
-    "route_id": "100039"
-  },
-  "21014011": {
-    "headsign": "Mount Baker Mount Baker Transit Center",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "100039"
-  },
-  "10014005": {
-    "headsign": "International District Chinatown Station",
-    "direction_id": "1",
-    "trip_count": 5,
-    "route_id": "100039"
-  },
-  "21014006": {
-    "headsign": "Mount Baker Transit Center S Jackson St",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "100039"
-  },
-  "10014007": {
-    "headsign": "Downtown Seattle Via 3rd Ave",
-    "direction_id": "1",
-    "trip_count": 3,
-    "route_id": "100039"
-  },
-  "21014008": {
-    "headsign": "Mount Baker Transit Center S Jackson St",
-    "direction_id": "0",
-    "trip_count": 3,
-    "route_id": "100039"
-  },
-  "21148004": {
-    "headsign": "Fairwood S Renton P&R",
-    "direction_id": "0",
-    "trip_count": 54,
-    "route_id": "100042"
-  },
-  "10148005": {
-    "headsign": "Renton S Renton P&R",
-    "direction_id": "1",
-    "trip_count": 55,
-    "route_id": "100042"
-  },
-  "10150004": {
-    "headsign": "Downtown Seattle Southcenter",
-    "direction_id": "1",
-    "trip_count": 177,
-    "route_id": "100045"
-  },
-  "10150005": {
-    "headsign": "Downtown Seattle Southcenter",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100045"
-  },
-  "21150002": {
-    "headsign": "Kent Southcenter",
-    "direction_id": "0",
-    "trip_count": 183,
-    "route_id": "100045"
-  },
-  "21150007": {
-    "headsign": "Kent Southcenter",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100045"
-  },
-  "10153002": {
-    "headsign": "Renton",
-    "direction_id": "1",
-    "trip_count": 28,
-    "route_id": "100048"
-  },
-  "21153003": {
-    "headsign": "Kent",
-    "direction_id": "0",
-    "trip_count": 27,
-    "route_id": "100048"
-  },
-  "41168003": {
-    "headsign": "Maple Valley Via SE 256th St",
-    "direction_id": "0",
-    "trip_count": 36,
-    "route_id": "100060"
-  },
-  "30168005": {
-    "headsign": "Kent Via SE 256th St",
-    "direction_id": "1",
-    "trip_count": 109,
-    "route_id": "100060"
-  },
-  "41168002": {
-    "headsign": "Maple Valley Via SE 256th St",
-    "direction_id": "0",
-    "trip_count": 68,
-    "route_id": "100060"
-  },
-  "20017002": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100062"
-  },
-  "11017003": {
-    "headsign": "Sunset Hill",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100062"
-  },
-  "10177006": {
-    "headsign": "Downtown Seattle Via I-5",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100068"
-  },
-  "10177007": {
-    "headsign": "Downtown Seattle Via I-5",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100068"
-  },
-  "21177004": {
-    "headsign": "Federal Way 320th P&R Downtown Federal Way Station",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100068"
-  },
-  "41181008": {
-    "headsign": "Green River Coll Auburn Station",
-    "direction_id": "0",
-    "trip_count": 94,
-    "route_id": "100072"
-  },
-  "30181007": {
-    "headsign": "Twin Lakes P&R Auburn Station",
-    "direction_id": "1",
-    "trip_count": 94,
-    "route_id": "100072"
-  },
-  "41181009": {
-    "headsign": "Auburn Station",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100072"
-  },
-  "30181010": {
-    "headsign": "Twin Lakes P&R",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100072"
-  },
-  "10182005": {
-    "headsign": "Downtown Federal Way Station",
-    "direction_id": "1",
-    "trip_count": 45,
-    "route_id": "100073"
-  },
-  "21182006": {
-    "headsign": "NE Tacoma Via SW 356th St",
-    "direction_id": "0",
-    "trip_count": 44,
-    "route_id": "100073"
-  },
-  "10183002": {
-    "headsign": "Kent",
-    "direction_id": "1",
-    "trip_count": 23,
-    "route_id": "100074"
-  },
-  "10183007": {
-    "headsign": "Kent",
-    "direction_id": "1",
-    "trip_count": 27,
-    "route_id": "100074"
-  },
-  "21183006": {
-    "headsign": "Downtown Federal Way Station",
-    "direction_id": "0",
-    "trip_count": 49,
-    "route_id": "100074"
-  },
-  "21002008": {
-    "headsign": "Madrona Park Via E Union St",
-    "direction_id": "0",
-    "trip_count": 70,
-    "route_id": "100089"
-  },
   "10002005": {
     "headsign": "Downtown Seattle",
     "direction_id": "1",
     "trip_count": 103,
-    "route_id": "100089"
+    "route_id": "100089",
+    "shape_length": 36200
   },
   "10002006": {
     "headsign": "Downtown Seattle",
     "direction_id": "1",
     "trip_count": 71,
-    "route_id": "100089"
-  },
-  "10002019": {
-    "headsign": "Downtown Only",
-    "direction_id": "1",
-    "trip_count": 2,
-    "route_id": "100089"
-  },
-  "21002013": {
-    "headsign": "Downtown Only",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100089"
+    "route_id": "100089",
+    "shape_length": 16056
   },
   "10002017": {
     "headsign": "W Queen Anne Seattle Center W",
     "direction_id": "1",
     "trip_count": 7,
-    "route_id": "100089"
+    "route_id": "100089",
+    "shape_length": 22162
   },
-  "21002004": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 106,
-    "route_id": "100089"
-  },
-  "30208005": {
-    "headsign": "Issaquah Snoqualmie Ridge",
+  "10002019": {
+    "headsign": "Downtown Only",
     "direction_id": "1",
-    "trip_count": 16,
-    "route_id": "100099"
-  },
-  "41208004": {
-    "headsign": "North Bend Snoqualmie Ridge",
-    "direction_id": "0",
-    "trip_count": 16,
-    "route_id": "100099"
-  },
-  "10021007": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100101"
-  },
-  "21021008": {
-    "headsign": "Arbor Heights",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100101"
-  },
-  "21021004": {
-    "headsign": "Westwood Village Via 35th Ave SW",
-    "direction_id": "0",
-    "trip_count": 149,
-    "route_id": "100101"
-  },
-  "10021372": {
-    "headsign": "Downtown Seattle Via 35th Ave SW",
-    "direction_id": "1",
-    "trip_count": 147,
-    "route_id": "100101"
-  },
-  "10021002": {
-    "headsign": "Downtown Seattle Via 35th Ave SW",
-    "direction_id": "1",
-    "trip_count": 5,
-    "route_id": "100101"
-  },
-  "21021005": {
-    "headsign": "Westwood Village Via 35th Ave SW",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100101"
-  },
-  "41212006": {
-    "headsign": "Eastgate Factoria",
-    "direction_id": "0",
-    "trip_count": 3,
-    "route_id": "100104"
-  },
-  "41212005": {
-    "headsign": "Eastgate P&R",
-    "direction_id": "0",
-    "trip_count": 10,
-    "route_id": "100104"
-  },
-  "30212007": {
-    "headsign": "Downtown Seattle Factoria",
-    "direction_id": "1",
-    "trip_count": 3,
-    "route_id": "100104"
-  },
-  "30212008": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 11,
-    "route_id": "100104"
-  },
-  "10022007": {
-    "headsign": "Alaska Junction Gatewood",
-    "direction_id": "1",
-    "trip_count": 13,
-    "route_id": "100111"
-  },
-  "21022005": {
-    "headsign": "Arbor Heights Gatewood",
-    "direction_id": "0",
-    "trip_count": 13,
-    "route_id": "100111"
-  },
-  "10022002": {
-    "headsign": "26th Ave Sw/Sw 100th St Only",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100111"
-  },
-  "20024005": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 89,
-    "route_id": "100132"
-  },
-  "11024006": {
-    "headsign": "West Magnolia",
-    "direction_id": "0",
-    "trip_count": 85,
-    "route_id": "100132"
-  },
-  "20024001": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100132"
-  },
-  "11024009": {
-    "headsign": "Magnolia",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "100132"
-  },
-  "20024004": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 9,
-    "route_id": "100132"
-  },
-  "11024007": {
-    "headsign": "Magnolia",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "100132"
-  },
-  "10240005": {
-    "headsign": "Bellevue Transit Center South Bellevue Station",
-    "direction_id": "1",
-    "trip_count": 113,
-    "route_id": "100133"
-  },
-  "21240008": {
-    "headsign": "Renton",
-    "direction_id": "0",
-    "trip_count": 115,
-    "route_id": "100133"
-  },
-  "10245012": {
-    "headsign": "Kirkland Transit Center Crossroads",
-    "direction_id": "1",
-    "trip_count": 59,
-    "route_id": "100136"
-  },
-  "21245017": {
-    "headsign": "Eastgate P&R Crossroads",
-    "direction_id": "0",
-    "trip_count": 60,
-    "route_id": "100136"
-  },
-  "10245002": {
-    "headsign": "Kirkland Transit Center Crossroads",
-    "direction_id": "1",
-    "trip_count": 60,
-    "route_id": "100136"
-  },
-  "21245016": {
-    "headsign": "Eastgate P&R Crossroads",
-    "direction_id": "0",
-    "trip_count": 59,
-    "route_id": "100136"
-  },
-  "30255008": {
-    "headsign": "University District Kirkland",
-    "direction_id": "1",
-    "trip_count": 186,
-    "route_id": "100146"
-  },
-  "41255002": {
-    "headsign": "Totem Lake Transit Center Kirkland",
-    "direction_id": "0",
-    "trip_count": 189,
-    "route_id": "100146"
-  },
-  "21269007": {
-    "headsign": "Issaquah Transit Center Sammamish",
-    "direction_id": "0",
-    "trip_count": 26,
-    "route_id": "100160"
-  },
-  "10269008": {
-    "headsign": "Marymoor Village Station Sammamish",
-    "direction_id": "1",
-    "trip_count": 24,
-    "route_id": "100160"
-  },
-  "21027034": {
-    "headsign": "Colman Park Yesler",
-    "direction_id": "0",
-    "trip_count": 41,
-    "route_id": "100161"
-  },
-  "21027002": {
-    "headsign": "Colman Park Yesler",
-    "direction_id": "0",
-    "trip_count": 31,
-    "route_id": "100161"
-  },
-  "10027004": {
-    "headsign": "Downtown Seattle Yesler",
-    "direction_id": "1",
-    "trip_count": 32,
-    "route_id": "100161"
-  },
-  "10027005": {
-    "headsign": "Downtown Seattle Yesler",
-    "direction_id": "1",
-    "trip_count": 40,
-    "route_id": "100161"
-  },
-  "41271018": {
-    "headsign": "Eastgate Bellevue",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "100162"
-  },
-  "41271017": {
-    "headsign": "Eastgate P&R Bellevue",
-    "direction_id": "0",
-    "trip_count": 29,
-    "route_id": "100162"
-  },
-  "41271019": {
-    "headsign": "Issaquah Transit Center Bellevue",
-    "direction_id": "0",
-    "trip_count": 19,
-    "route_id": "100162"
-  },
-  "41271020": {
-    "headsign": "Issaquah Bellevue",
-    "direction_id": "0",
-    "trip_count": 9,
-    "route_id": "100162"
-  },
-  "41271021": {
-    "headsign": "Issaquah Bellevue",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100162"
-  },
-  "30271028": {
-    "headsign": "University District Bellevue",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100162"
-  },
-  "30271026": {
-    "headsign": "University District Bellevue",
-    "direction_id": "1",
-    "trip_count": 35,
-    "route_id": "100162"
-  },
-  "30271027": {
-    "headsign": "University District Bellevue",
-    "direction_id": "1",
-    "trip_count": 23,
-    "route_id": "100162"
-  },
-  "30271029": {
-    "headsign": "University District",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100162"
-  },
-  "30271030": {
-    "headsign": "University District Bellevue",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100162"
-  },
-  "41271001": {
-    "headsign": "Issaquah Bellevue",
-    "direction_id": "0",
-    "trip_count": 49,
-    "route_id": "100162"
-  },
-  "30271031": {
-    "headsign": "University District Bellevue",
-    "direction_id": "1",
-    "trip_count": 48,
-    "route_id": "100162"
-  },
-  "20028004": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 95,
-    "route_id": "100169"
-  },
-  "11028002": {
-    "headsign": "Carkeek Park",
-    "direction_id": "0",
-    "trip_count": 94,
-    "route_id": "100169"
+    "trip_count": 2,
+    "route_id": "100089",
+    "shape_length": 18663
   },
   "10003020": {
     "headsign": "Downtown Seattle",
     "direction_id": "1",
     "trip_count": 44,
-    "route_id": "100173"
-  },
-  "21003021": {
-    "headsign": "Madrona and 34th Ave Via E Cherry St",
-    "direction_id": "0",
-    "trip_count": 42,
-    "route_id": "100173"
-  },
-  "21003027": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 3,
-    "route_id": "100173"
-  },
-  "21003022": {
-    "headsign": "Madrona and 34th Ave Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 71,
-    "route_id": "100173"
+    "route_id": "100173",
+    "shape_length": 17801
   },
   "10003023": {
     "headsign": "Summit Downtown Seattle",
     "direction_id": "1",
     "trip_count": 72,
-    "route_id": "100173"
+    "route_id": "100173",
+    "shape_length": 24727
   },
   "10003026": {
     "headsign": "Summit",
     "direction_id": "1",
     "trip_count": 2,
-    "route_id": "100173"
-  },
-  "11303006": {
-    "headsign": "Aurora Village Transit Center I-5/Northgate Station",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "100177"
-  },
-  "20303003": {
-    "headsign": "First Hill I-5/Northgate Station",
-    "direction_id": "1",
-    "trip_count": 6,
-    "route_id": "100177"
-  },
-  "40031005": {
-    "headsign": "Seattle Childrens Hospital U-District Station",
-    "direction_id": "1",
-    "trip_count": 98,
-    "route_id": "100184"
-  },
-  "31031006": {
-    "headsign": "Central Magnolia Fremont",
-    "direction_id": "0",
-    "trip_count": 99,
-    "route_id": "100184"
-  },
-  "40032001": {
-    "headsign": "Seattle Childrens Hospital U-District Station",
-    "direction_id": "1",
-    "trip_count": 115,
-    "route_id": "100193"
-  },
-  "31032002": {
-    "headsign": "Seattle Center Fremont",
-    "direction_id": "0",
-    "trip_count": 115,
-    "route_id": "100193"
-  },
-  "20033002": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 64,
-    "route_id": "100194"
-  },
-  "11033004": {
-    "headsign": "E Magnolia",
-    "direction_id": "0",
-    "trip_count": 26,
-    "route_id": "100194"
-  },
-  "11033005": {
-    "headsign": "E Magnolia",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100194"
-  },
-  "20033008": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 5,
-    "route_id": "100194"
-  },
-  "11033006": {
-    "headsign": "E Magnolia",
-    "direction_id": "0",
-    "trip_count": 33,
-    "route_id": "100194"
-  },
-  "11033003": {
-    "headsign": "E Magnolia",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "100194"
-  },
-  "20033007": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100194"
-  },
-  "41331010": {
-    "headsign": "Kenmore P&R Mountlake Terrace Station",
-    "direction_id": "0",
-    "trip_count": 106,
-    "route_id": "100196"
-  },
-  "30331012": {
-    "headsign": "Shoreline CC Mountlake Terrace Station",
-    "direction_id": "1",
-    "trip_count": 107,
-    "route_id": "100196"
-  },
-  "20345002": {
-    "headsign": "Northgate Station NW Hospital",
-    "direction_id": "1",
-    "trip_count": 107,
-    "route_id": "100202"
-  },
-  "11345003": {
-    "headsign": "Shoreline South 148th St Station NW Hospital",
-    "direction_id": "0",
-    "trip_count": 105,
-    "route_id": "100202"
-  },
-  "20346004": {
-    "headsign": "Shoreline South 148th St Station",
-    "direction_id": "1",
-    "trip_count": 96,
-    "route_id": "100203"
-  },
-  "11346008": {
-    "headsign": "Aurora Village Transit Center",
-    "direction_id": "0",
-    "trip_count": 96,
-    "route_id": "100203"
-  },
-  "11348016": {
-    "headsign": "Richmond Beach North City",
-    "direction_id": "0",
-    "trip_count": 108,
-    "route_id": "100205"
-  },
-  "11348017": {
-    "headsign": "Hillwood Park North City",
-    "direction_id": "0",
-    "trip_count": 31,
-    "route_id": "100205"
-  },
-  "20348018": {
-    "headsign": "Northgate Station North City",
-    "direction_id": "1",
-    "trip_count": 28,
-    "route_id": "100205"
-  },
-  "20348014": {
-    "headsign": "Northgate Station North City",
-    "direction_id": "1",
-    "trip_count": 80,
-    "route_id": "100205"
-  },
-  "20348015": {
-    "headsign": "Northgate Station North City",
-    "direction_id": "1",
-    "trip_count": 32,
-    "route_id": "100205"
-  },
-  "10036009": {
-    "headsign": "Downtown Seattle N Beacon Hill",
-    "direction_id": "1",
-    "trip_count": 313,
-    "route_id": "100210"
-  },
-  "21036003": {
-    "headsign": "Othello Station N Beacon Hill",
-    "direction_id": "0",
-    "trip_count": 24,
-    "route_id": "100210"
-  },
-  "10036012": {
-    "headsign": "International District Chinatown Station N Beacon Hill",
-    "direction_id": "1",
-    "trip_count": 23,
-    "route_id": "100210"
-  },
-  "21036002": {
-    "headsign": "Othello Station N Beacon Hill",
-    "direction_id": "0",
-    "trip_count": 312,
-    "route_id": "100210"
-  },
-  "20372015": {
-    "headsign": "U-District Station Lake City",
-    "direction_id": "1",
-    "trip_count": 64,
-    "route_id": "100214"
-  },
-  "11372013": {
-    "headsign": "UW Bothell/Cascadia College Kenmore",
-    "direction_id": "0",
-    "trip_count": 74,
-    "route_id": "100214"
-  },
-  "20372014": {
-    "headsign": "U-District Station Lake City",
-    "direction_id": "1",
-    "trip_count": 12,
-    "route_id": "100214"
-  },
-  "11372006": {
-    "headsign": "UW Bothell/Cascadia College Kenmore",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100214"
-  },
-  "11372009": {
-    "headsign": "Lake City Ravenna",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100214"
-  },
-  "11372007": {
-    "headsign": "Lake City Ravenna",
-    "direction_id": "0",
-    "trip_count": 120,
-    "route_id": "100214"
-  },
-  "20372008": {
-    "headsign": "U-District Station",
-    "direction_id": "1",
-    "trip_count": 122,
-    "route_id": "100214"
-  },
-  "10004017": {
-    "headsign": "Seattle Pacific University Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 57,
-    "route_id": "100219"
+    "route_id": "100173",
+    "shape_length": 13155
   },
   "10004004": {
     "headsign": "Downtown Seattle",
     "direction_id": "1",
     "trip_count": 28,
-    "route_id": "100219"
+    "route_id": "100219",
+    "shape_length": 23393
   },
   "10004012": {
     "headsign": "Seattle Pacific University Downtown Seattle",
     "direction_id": "1",
     "trip_count": 90,
-    "route_id": "100219"
-  },
-  "21004025": {
-    "headsign": "Judkins Park",
-    "direction_id": "0",
-    "trip_count": 28,
-    "route_id": "100219"
-  },
-  "21004007": {
-    "headsign": "Judkins Park Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 92,
-    "route_id": "100219"
-  },
-  "21004016": {
-    "headsign": "Central District Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 56,
-    "route_id": "100219"
+    "route_id": "100219",
+    "shape_length": 42165
   },
   "10004014": {
     "headsign": "Downtown Seattle",
     "direction_id": "1",
     "trip_count": 10,
-    "route_id": "100219"
-  },
-  "21004013": {
-    "headsign": "Central District",
-    "direction_id": "0",
-    "trip_count": 9,
-    "route_id": "100219"
+    "route_id": "100219",
+    "shape_length": 13625
   },
   "10004015": {
     "headsign": "Seattle Pacific University Downtown Seattle",
     "direction_id": "1",
     "trip_count": 11,
-    "route_id": "100219"
+    "route_id": "100219",
+    "shape_length": 25001
   },
-  "21004009": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 10,
-    "route_id": "100219"
-  },
-  "20043002": {
-    "headsign": "Capitol Hill University Of Washington Medical Center",
+  "10004017": {
+    "headsign": "Seattle Pacific University Downtown Seattle",
     "direction_id": "1",
-    "trip_count": 37,
-    "route_id": "100223"
-  },
-  "11043004": {
-    "headsign": "University District Montlake",
-    "direction_id": "0",
-    "trip_count": 37,
-    "route_id": "100223"
-  },
-  "20044006": {
-    "headsign": "University Of Washington Medical Center Wallingford",
-    "direction_id": "1",
-    "trip_count": 226,
-    "route_id": "100224"
-  },
-  "20044003": {
-    "headsign": "University District",
-    "direction_id": "1",
-    "trip_count": 37,
-    "route_id": "100224"
-  },
-  "11044004": {
-    "headsign": "Ballard Wallingford",
-    "direction_id": "0",
-    "trip_count": 226,
-    "route_id": "100224"
-  },
-  "11044007": {
-    "headsign": "Ballard Wallingford",
-    "direction_id": "0",
-    "trip_count": 37,
-    "route_id": "100224"
-  },
-  "40045008": {
-    "headsign": "University District Roosevelt Station",
-    "direction_id": "1",
-    "trip_count": 149,
-    "route_id": "100225"
-  },
-  "31045010": {
-    "headsign": "Loyal Heights Greenwood",
-    "direction_id": "0",
-    "trip_count": 145,
-    "route_id": "100225"
-  },
-  "40045006": {
-    "headsign": "University District Roosevelt Station",
-    "direction_id": "1",
-    "trip_count": 69,
-    "route_id": "100225"
-  },
-  "31045012": {
-    "headsign": "Loyal Heights Greenwood",
-    "direction_id": "0",
-    "trip_count": 67,
-    "route_id": "100225"
-  },
-  "20048006": {
-    "headsign": "Mount Baker Transit Center Central District",
-    "direction_id": "1",
-    "trip_count": 147,
-    "route_id": "100228"
-  },
-  "11048011": {
-    "headsign": "University District Central District",
-    "direction_id": "0",
-    "trip_count": 146,
-    "route_id": "100228"
-  },
-  "11048010": {
-    "headsign": "University District Central District",
-    "direction_id": "0",
-    "trip_count": 71,
-    "route_id": "100228"
-  },
-  "20048009": {
-    "headsign": "Mount Baker Transit Center Central District",
-    "direction_id": "1",
-    "trip_count": 70,
-    "route_id": "100228"
-  },
-  "20005010": {
-    "headsign": "Downtown Seattle Greenwood",
-    "direction_id": "1",
-    "trip_count": 154,
-    "route_id": "100229"
-  },
-  "11005003": {
-    "headsign": "Shoreline Greenwood",
-    "direction_id": "0",
-    "trip_count": 136,
-    "route_id": "100229"
-  },
-  "11005004": {
-    "headsign": "Shoreline Greenwood",
-    "direction_id": "0",
-    "trip_count": 15,
-    "route_id": "100229"
-  },
-  "30050002": {
-    "headsign": "West Seattle South Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 129,
-    "route_id": "100230"
-  },
-  "41050004": {
-    "headsign": "Othello Station South Downtown Seattle",
-    "direction_id": "0",
-    "trip_count": 126,
-    "route_id": "100230"
-  },
-  "11522016": {
-    "headsign": "Woodinville",
-    "direction_id": "0",
-    "trip_count": 125,
-    "route_id": "100232"
-  },
-  "11522017": {
-    "headsign": "Bothell",
-    "direction_id": "0",
-    "trip_count": 81,
-    "route_id": "100232"
-  },
-  "20522004": {
-    "headsign": "Roosevelt Station",
-    "direction_id": "1",
-    "trip_count": 117,
-    "route_id": "100232"
-  },
-  "20522005": {
-    "headsign": "Roosevelt Station",
-    "direction_id": "1",
-    "trip_count": 89,
-    "route_id": "100232"
-  },
-  "30545007": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 141,
-    "route_id": "100236"
-  },
-  "41545006": {
-    "headsign": "Redmond",
-    "direction_id": "0",
-    "trip_count": 116,
-    "route_id": "100236"
-  },
-  "41545002": {
-    "headsign": "Redmond",
-    "direction_id": "0",
-    "trip_count": 26,
-    "route_id": "100236"
-  },
-  "30550001": {
-    "headsign": "Seattle",
-    "direction_id": "1",
-    "trip_count": 186,
-    "route_id": "100239"
-  },
-  "41550018": {
-    "headsign": "Bellevue",
-    "direction_id": "0",
-    "trip_count": 193,
-    "route_id": "100239"
-  },
-  "30550002": {
-    "headsign": "Seattle",
-    "direction_id": "1",
-    "trip_count": 3,
-    "route_id": "100239"
-  },
-  "41554009": {
-    "headsign": "Issaquah",
-    "direction_id": "0",
-    "trip_count": 95,
-    "route_id": "100240"
-  },
-  "41554011": {
-    "headsign": "Sammamish Issaquah",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100240"
-  },
-  "30554006": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 98,
-    "route_id": "100240"
-  },
-  "30554007": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 2,
-    "route_id": "100240"
-  },
-  "21056005": {
-    "headsign": "Alki Via SR-99",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100242"
-  },
-  "10056004": {
-    "headsign": "Downtown Seattle Via SR-99",
-    "direction_id": "1",
-    "trip_count": 3,
-    "route_id": "100242"
-  },
-  "21057006": {
-    "headsign": "Alaska Junction Via SR-99",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100246"
-  },
-  "10057005": {
-    "headsign": "Downtown Seattle Via SR-99",
-    "direction_id": "1",
-    "trip_count": 3,
-    "route_id": "100246"
-  },
-  "10060003": {
-    "headsign": "Broadway First Hill",
-    "direction_id": "1",
-    "trip_count": 213,
-    "route_id": "100249"
-  },
-  "21060004": {
-    "headsign": "Westwood Village N Beacon Hill",
-    "direction_id": "0",
-    "trip_count": 208,
-    "route_id": "100249"
-  },
-  "11062008": {
-    "headsign": "Sand Point East Green Lake",
-    "direction_id": "0",
-    "trip_count": 48,
-    "route_id": "100252"
-  },
-  "11062010": {
-    "headsign": "Sand Point East Green Lake",
-    "direction_id": "0",
-    "trip_count": 163,
-    "route_id": "100252"
-  },
-  "20062014": {
-    "headsign": "Downtown Seattle Fremont",
-    "direction_id": "1",
-    "trip_count": 53,
-    "route_id": "100252"
-  },
-  "20062015": {
-    "headsign": "Downtown Seattle Fremont",
-    "direction_id": "1",
-    "trip_count": 158,
-    "route_id": "100252"
-  },
-  "11065007": {
-    "headsign": "Shoreline South 148th St Station Lake City",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100254"
-  },
-  "11065008": {
-    "headsign": "Shoreline South 148th St Station Lake City",
-    "direction_id": "0",
-    "trip_count": 209,
-    "route_id": "100254"
-  },
-  "20065009": {
-    "headsign": "University District Wedgwood",
-    "direction_id": "1",
-    "trip_count": 208,
-    "route_id": "100254"
-  },
-  "20067004": {
-    "headsign": "University District Roosevelt",
-    "direction_id": "1",
-    "trip_count": 209,
-    "route_id": "100259"
-  },
-  "11067005": {
-    "headsign": "Northgate Station Roosevelt Station",
-    "direction_id": "0",
-    "trip_count": 208,
-    "route_id": "100259"
-  },
-  "21007003": {
-    "headsign": "Rainier Beach Via Rainier Ave S",
-    "direction_id": "0",
-    "trip_count": 209,
-    "route_id": "100263"
-  },
-  "21007015": {
-    "headsign": "Prentice St Via Rainier Ave S",
-    "direction_id": "0",
-    "trip_count": 86,
-    "route_id": "100263"
+    "trip_count": 57,
+    "route_id": "100219",
+    "shape_length": 32397
   },
   "10007006": {
     "headsign": "Downtown Seattle Via Rainier Ave S",
     "direction_id": "1",
     "trip_count": 276,
-    "route_id": "100263"
-  },
-  "10007014": {
-    "headsign": "Downtown Seattle Via Rainier Ave S",
-    "direction_id": "1",
-    "trip_count": 34,
-    "route_id": "100263"
-  },
-  "21007008": {
-    "headsign": "Rainier Beach Via Rainier Ave S",
-    "direction_id": "0",
-    "trip_count": 27,
-    "route_id": "100263"
+    "route_id": "100263",
+    "shape_length": 45442
   },
   "10007012": {
     "headsign": "S Jackson St",
     "direction_id": "1",
     "trip_count": 21,
-    "route_id": "100263"
+    "route_id": "100263",
+    "shape_length": 39567
   },
-  "21007016": {
-    "headsign": "Prentice St Via Rainier Ave S",
-    "direction_id": "0",
-    "trip_count": 9,
-    "route_id": "100263"
-  },
-  "20070005": {
-    "headsign": "Downtown Seattle Fairview",
+  "10007014": {
+    "headsign": "Downtown Seattle Via Rainier Ave S",
     "direction_id": "1",
-    "trip_count": 30,
-    "route_id": "100264"
-  },
-  "11070002": {
-    "headsign": "U-District Station Eastlake",
-    "direction_id": "0",
-    "trip_count": 231,
-    "route_id": "100264"
-  },
-  "20070001": {
-    "headsign": "Downtown Seattle Fairview",
-    "direction_id": "1",
-    "trip_count": 223,
-    "route_id": "100264"
-  },
-  "11070003": {
-    "headsign": "U-District Station Eastlake",
-    "direction_id": "0",
-    "trip_count": 22,
-    "route_id": "100264"
-  },
-  "20075007": {
-    "headsign": "University District Lake City",
-    "direction_id": "1",
-    "trip_count": 212,
-    "route_id": "100269"
-  },
-  "11075002": {
-    "headsign": "Northgate Station Sand Point",
-    "direction_id": "0",
-    "trip_count": 218,
-    "route_id": "100269"
-  },
-  "11773004": {
-    "headsign": "Seacrest Marina",
-    "direction_id": "0",
-    "trip_count": 75,
-    "route_id": "100272"
-  },
-  "20773002": {
-    "headsign": "Alaska Junction",
-    "direction_id": "1",
-    "trip_count": 78,
-    "route_id": "100272"
-  },
-  "20773005": {
-    "headsign": "Alaska Junction",
-    "direction_id": "1",
-    "trip_count": 12,
-    "route_id": "100272"
-  },
-  "11773006": {
-    "headsign": "Seacrest Marina",
-    "direction_id": "0",
-    "trip_count": 10,
-    "route_id": "100272"
-  },
-  "11773001": {
-    "headsign": "Seacrest Marina",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100272"
-  },
-  "31008007": {
-    "headsign": "Seattle Center",
-    "direction_id": "0",
-    "trip_count": 204,
-    "route_id": "100275"
-  },
-  "40008005": {
-    "headsign": "Mount Baker Transit Center",
-    "direction_id": "1",
-    "trip_count": 207,
-    "route_id": "100275"
+    "trip_count": 34,
+    "route_id": "100263",
+    "shape_length": 43836
   },
   "10009006": {
     "headsign": "Broadway Express",
     "direction_id": "1",
     "trip_count": 6,
-    "route_id": "100289"
+    "route_id": "100289",
+    "shape_length": 44534
   },
-  "21009002": {
-    "headsign": "Rainier Beach Station Express",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100289"
-  },
-  "10901003": {
-    "headsign": "Mirror Lake",
+  "10014002": {
+    "headsign": "Downtown Seattle",
     "direction_id": "1",
-    "trip_count": 67,
-    "route_id": "100290"
+    "trip_count": 135,
+    "route_id": "100039",
+    "shape_length": 18944
   },
-  "21901004": {
-    "headsign": "Downtown Federal Way Station",
-    "direction_id": "0",
-    "trip_count": 67,
-    "route_id": "100290"
+  "10014005": {
+    "headsign": "International District Chinatown Station",
+    "direction_id": "1",
+    "trip_count": 5,
+    "route_id": "100039",
+    "shape_length": 21926
   },
-  "21903003": {
-    "headsign": "Twin Lakes",
-    "direction_id": "0",
-    "trip_count": 37,
-    "route_id": "100292"
+  "10014007": {
+    "headsign": "Downtown Seattle Via 3rd Ave",
+    "direction_id": "1",
+    "trip_count": 3,
+    "route_id": "100039",
+    "shape_length": 24486
   },
-  "10903004": {
-    "headsign": "Downtown Federal Way Station",
+  "10021002": {
+    "headsign": "Downtown Seattle Via 35th Ave SW",
+    "direction_id": "1",
+    "trip_count": 5,
+    "route_id": "100101",
+    "shape_length": 47585
+  },
+  "10021007": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100101",
+    "shape_length": 65013
+  },
+  "10021372": {
+    "headsign": "Downtown Seattle Via 35th Ave SW",
+    "direction_id": "1",
+    "trip_count": 147,
+    "route_id": "100101",
+    "shape_length": 43495
+  },
+  "10022002": {
+    "headsign": "26th Ave Sw/Sw 100th St Only",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100111",
+    "shape_length": 19816
+  },
+  "10022007": {
+    "headsign": "Alaska Junction Gatewood",
+    "direction_id": "1",
+    "trip_count": 13,
+    "route_id": "100111",
+    "shape_length": 45048
+  },
+  "10027004": {
+    "headsign": "Downtown Seattle Yesler",
+    "direction_id": "1",
+    "trip_count": 32,
+    "route_id": "100161",
+    "shape_length": 22205
+  },
+  "10027005": {
+    "headsign": "Downtown Seattle Yesler",
     "direction_id": "1",
     "trip_count": 40,
-    "route_id": "100292"
+    "route_id": "100161",
+    "shape_length": 18033
   },
-  "41914001": {
-    "headsign": "Kent East Hill",
-    "direction_id": "0",
+  "10036009": {
+    "headsign": "Downtown Seattle N Beacon Hill",
+    "direction_id": "1",
+    "trip_count": 313,
+    "route_id": "100210",
+    "shape_length": 35394
+  },
+  "10036012": {
+    "headsign": "International District Chinatown Station N Beacon Hill",
+    "direction_id": "1",
     "trip_count": 23,
-    "route_id": "100297"
+    "route_id": "100210",
+    "shape_length": 31126
   },
-  "41914021": {
-    "headsign": "Downtown Kent",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100297"
-  },
-  "10917002": {
-    "headsign": "Auburn Station",
+  "10056004": {
+    "headsign": "Downtown Seattle Via SR-99",
     "direction_id": "1",
-    "trip_count": 6,
-    "route_id": "100300"
+    "trip_count": 3,
+    "route_id": "100242",
+    "shape_length": 39059
   },
-  "10917006": {
-    "headsign": "Auburn Station",
+  "10057005": {
+    "headsign": "Downtown Seattle Via SR-99",
     "direction_id": "1",
-    "trip_count": 37,
-    "route_id": "100300"
+    "trip_count": 3,
+    "route_id": "100246",
+    "shape_length": 45271
   },
-  "21917007": {
-    "headsign": "Pacific",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100300"
-  },
-  "21917008": {
-    "headsign": "Pacific",
-    "direction_id": "0",
-    "trip_count": 38,
-    "route_id": "100300"
-  },
-  "40973001": {
-    "headsign": "Downtown Seattle Water Taxi",
+  "10060003": {
+    "headsign": "Broadway First Hill",
     "direction_id": "1",
-    "trip_count": 67,
-    "route_id": "100336"
+    "trip_count": 213,
+    "route_id": "100249",
+    "shape_length": 62337
   },
-  "31973002": {
-    "headsign": "West Seattle Water Taxi",
-    "direction_id": "0",
-    "trip_count": 67,
-    "route_id": "100336"
-  },
-  "10975001": {
-    "headsign": "Downtown Seattle Water Taxi",
-    "direction_id": "1",
-    "trip_count": 20,
-    "route_id": "100337"
-  },
-  "21975002": {
-    "headsign": "Vashon Island Water Taxi",
-    "direction_id": "0",
-    "trip_count": 20,
-    "route_id": "100337"
-  },
-  "11098001": {
-    "headsign": "Lake Union",
-    "direction_id": "0",
-    "trip_count": 163,
-    "route_id": "100340"
-  },
-  "11098003": {
-    "headsign": "Lake Union",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "100340"
-  },
-  "11098004": {
-    "headsign": "Lake Union",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "100340"
-  },
-  "20098020": {
+  "10101004": {
     "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 170,
-    "route_id": "100340"
-  },
-  "41982005": {
-    "headsign": "Bear Creek P&R Special",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100341"
-  },
-  "30982006": {
-    "headsign": "Haller Lake Special",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100341"
-  },
-  "40986003": {
-    "headsign": "Kirkland Special",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100344"
-  },
-  "31986007": {
-    "headsign": "Haller Lake Special",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100344"
-  },
-  "10987005": {
-    "headsign": "Haller Lake",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100345"
-  },
-  "21987004": {
-    "headsign": "South Park Special",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100345"
-  },
-  "10988002": {
-    "headsign": "Haller Lake Special",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100346"
-  },
-  "21988004": {
-    "headsign": "Madrona Special",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100346"
-  },
-  "40989004": {
-    "headsign": "Factoria Special",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "100347"
-  },
-  "31989005": {
-    "headsign": "Haller Lake Special",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100347"
-  },
-  "11049009": {
-    "headsign": "U-District Station Capitol Hill",
-    "direction_id": "0",
-    "trip_count": 194,
-    "route_id": "100447"
-  },
-  "20049008": {
-    "headsign": "Downtown Seattle Broadway",
-    "direction_id": "1",
-    "trip_count": 173,
-    "route_id": "100447"
-  },
-  "20049013": {
-    "headsign": "Downtown Seattle Broadway",
-    "direction_id": "1",
-    "trip_count": 21,
-    "route_id": "100447"
-  },
-  "40556005": {
-    "headsign": "Issaquah",
-    "direction_id": "1",
-    "trip_count": 8,
-    "route_id": "100451"
-  },
-  "31556009": {
-    "headsign": "U-District Station",
-    "direction_id": "0",
-    "trip_count": 10,
-    "route_id": "100451"
-  },
-  "41218003": {
-    "headsign": "Issaquah Highlands",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "100459"
-  },
-  "30218001": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 5,
-    "route_id": "100459"
-  },
-  "41981003": {
-    "headsign": "Mercer Island Special",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "100473"
-  },
-  "11775001": {
-    "headsign": "Alki",
-    "direction_id": "0",
-    "trip_count": 104,
-    "route_id": "100481"
-  },
-  "20775004": {
-    "headsign": "Seacrest Marina",
     "direction_id": "1",
     "trip_count": 115,
-    "route_id": "100481"
-  },
-  "11775007": {
-    "headsign": "Alki",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "100481"
-  },
-  "11775005": {
-    "headsign": "Alki",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "100481"
-  },
-  "10102008": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "100487"
+    "route_id": "100003",
+    "shape_length": 75537
   },
   "10102007": {
     "headsign": "Downtown Seattle S Renton P&R",
     "direction_id": "1",
     "trip_count": 5,
-    "route_id": "100487"
+    "route_id": "100487",
+    "shape_length": 126299
   },
-  "21102010": {
-    "headsign": "Fairwood S Renton P&R",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "100487"
-  },
-  "21102011": {
-    "headsign": "S Renton P&R",
-    "direction_id": "0",
-    "trip_count": 2,
-    "route_id": "100487"
-  },
-  "40156002": {
-    "headsign": "Southcenter Sea Tac",
+  "10102008": {
+    "headsign": "Downtown Seattle",
     "direction_id": "1",
-    "trip_count": 69,
-    "route_id": "100489"
-  },
-  "31156003": {
-    "headsign": "Highline College Sea Tac",
-    "direction_id": "0",
-    "trip_count": 70,
-    "route_id": "100489"
-  },
-  "21193004": {
-    "headsign": "Federal Way Express",
-    "direction_id": "0",
-    "trip_count": 9,
-    "route_id": "100495"
-  },
-  "10193005": {
-    "headsign": "First Hill Express",
-    "direction_id": "1",
-    "trip_count": 8,
-    "route_id": "100495"
-  },
-  "41930003": {
-    "headsign": "Redmond",
-    "direction_id": "0",
-    "trip_count": 58,
-    "route_id": "100496"
-  },
-  "30930002": {
-    "headsign": "Kingsgate P&R",
-    "direction_id": "1",
-    "trip_count": 58,
-    "route_id": "100496"
-  },
-  "41542004": {
-    "headsign": "Redmond",
-    "direction_id": "0",
-    "trip_count": 94,
-    "route_id": "100511"
-  },
-  "30542005": {
-    "headsign": "U-District Station",
-    "direction_id": "1",
-    "trip_count": 93,
-    "route_id": "100511"
-  },
-  "10671006": {
-    "headsign": "Tukwila Link Station International Boulevard",
-    "direction_id": "1",
-    "trip_count": 96,
-    "route_id": "100512"
-  },
-  "10671005": {
-    "headsign": "Tukwila Link Station International Boulevard",
-    "direction_id": "1",
-    "trip_count": 205,
-    "route_id": "100512"
-  },
-  "21671007": {
-    "headsign": "Downtown Federal Way Station",
-    "direction_id": "0",
-    "trip_count": 304,
-    "route_id": "100512"
-  },
-  "30672005": {
-    "headsign": "Bellevue Transit Center Crossroads",
-    "direction_id": "1",
-    "trip_count": 227,
-    "route_id": "102548"
-  },
-  "41672006": {
-    "headsign": "Downtown Redmond Station Crossroads",
-    "direction_id": "0",
-    "trip_count": 224,
-    "route_id": "102548"
-  },
-  "10226013": {
-    "headsign": "Bellevue Transit Center Bellevue Redmond Road",
-    "direction_id": "1",
-    "trip_count": 51,
-    "route_id": "102552"
-  },
-  "10226014": {
-    "headsign": "Bellevue Transit Center Bellevue Redmond Road",
-    "direction_id": "1",
-    "trip_count": 37,
-    "route_id": "102552"
-  },
-  "21226012": {
-    "headsign": "South Bellevue Station Eastgate",
-    "direction_id": "0",
-    "trip_count": 50,
-    "route_id": "102552"
-  },
-  "21226015": {
-    "headsign": "South Bellevue Station Eastgate",
-    "direction_id": "0",
-    "trip_count": 38,
-    "route_id": "102552"
-  },
-  "11893003": {
-    "headsign": "Forbes Creek",
-    "direction_id": "0",
     "trip_count": 4,
-    "route_id": "102555"
+    "route_id": "100487",
+    "shape_length": 69705
   },
-  "20893005": {
-    "headsign": "Lake Washington High School",
+  "10106002": {
+    "headsign": "International District Chinatown Station Rainier Beach Station",
+    "direction_id": "1",
+    "trip_count": 197,
+    "route_id": "100005",
+    "shape_length": 61331
+  },
+  "10106003": {
+    "headsign": "International District Chinatown Station",
     "direction_id": "1",
     "trip_count": 1,
-    "route_id": "102555"
+    "route_id": "100005",
+    "shape_length": 35510
   },
-  "30915003": {
-    "headsign": "Auburn",
+  "10107002": {
+    "headsign": "Beacon Hill Station Rainier Beach Station",
+    "direction_id": "1",
+    "trip_count": 213,
+    "route_id": "100006",
+    "shape_length": 71573
+  },
+  "10111002": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 8,
+    "route_id": "100011",
+    "shape_length": 138376
+  },
+  "10113006": {
+    "headsign": "Downtown Seattle White Center",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100012",
+    "shape_length": 50500
+  },
+  "10118005": {
+    "headsign": "Ferry Terminal Via Shuttle",
+    "direction_id": "1",
+    "trip_count": 6,
+    "route_id": "100016",
+    "shape_length": 46437
+  },
+  "10118008": {
+    "headsign": "Ferry Terminal Via Shuttle",
+    "direction_id": "1",
+    "trip_count": 20,
+    "route_id": "100016",
+    "shape_length": 71965
+  },
+  "10118010": {
+    "headsign": "Ferry Terminal Via Shuttle",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100016",
+    "shape_length": 46256
+  },
+  "10118013": {
+    "headsign": "Ferry Terminal Via Shuttle",
+    "direction_id": "1",
+    "trip_count": 5,
+    "route_id": "100016",
+    "shape_length": 71784
+  },
+  "10119005": {
+    "headsign": "Ferry Terminal Via Shuttle",
+    "direction_id": "1",
+    "trip_count": 5,
+    "route_id": "100017",
+    "shape_length": 72787
+  },
+  "10119009": {
+    "headsign": "Ferry Terminal Via Shuttle",
+    "direction_id": "1",
+    "trip_count": 2,
+    "route_id": "100017",
+    "shape_length": 66908
+  },
+  "10124001": {
+    "headsign": "Downtown Seattle Georgetown",
+    "direction_id": "1",
+    "trip_count": 123,
+    "route_id": "100023",
+    "shape_length": 55914
+  },
+  "10124002": {
+    "headsign": "Downtown Seattle Georgetown",
     "direction_id": "1",
     "trip_count": 19,
-    "route_id": "102557"
+    "route_id": "100023",
+    "shape_length": 65314
   },
-  "41915006": {
-    "headsign": "Enumclaw High School",
-    "direction_id": "0",
-    "trip_count": 17,
-    "route_id": "102557"
-  },
-  "41915007": {
-    "headsign": "Enumclaw",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "102557"
-  },
-  "30915008": {
-    "headsign": "Auburn",
+  "10124004": {
+    "headsign": "Downtown Seattle Georgetown",
     "direction_id": "1",
     "trip_count": 6,
-    "route_id": "102557"
+    "route_id": "100023",
+    "shape_length": 73533
   },
-  "30931004": {
-    "headsign": "UW Bothell/Cascadia College",
+  "10125009": {
+    "headsign": "Downtown Seattle South Seattle College",
     "direction_id": "1",
-    "trip_count": 14,
-    "route_id": "102558"
+    "trip_count": 58,
+    "route_id": "100024",
+    "shape_length": 21213
   },
-  "41931003": {
-    "headsign": "Duvall",
-    "direction_id": "0",
-    "trip_count": 14,
-    "route_id": "102558"
+  "10125013": {
+    "headsign": "Downtown Seattle South Seattle College",
+    "direction_id": "1",
+    "trip_count": 39,
+    "route_id": "100024",
+    "shape_length": 21424
   },
-  "21907004": {
-    "headsign": "Black Diamond",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "102561"
+  "10131004": {
+    "headsign": "Downtown Seattle Highland Park",
+    "direction_id": "1",
+    "trip_count": 27,
+    "route_id": "100030",
+    "shape_length": 65701
   },
-  "10907003": {
+  "10131005": {
+    "headsign": "Downtown Seattle Highland Park",
+    "direction_id": "1",
+    "trip_count": 82,
+    "route_id": "100030",
+    "shape_length": 56301
+  },
+  "10132002": {
+    "headsign": "Downtown Seattle South Park",
+    "direction_id": "1",
+    "trip_count": 6,
+    "route_id": "100031",
+    "shape_length": 63343
+  },
+  "10132006": {
+    "headsign": "Downtown Seattle South Park",
+    "direction_id": "1",
+    "trip_count": 112,
+    "route_id": "100031",
+    "shape_length": 72743
+  },
+  "10148005": {
+    "headsign": "Renton S Renton P&R",
+    "direction_id": "1",
+    "trip_count": 55,
+    "route_id": "100042",
+    "shape_length": 45031
+  },
+  "10150004": {
+    "headsign": "Downtown Seattle Southcenter",
+    "direction_id": "1",
+    "trip_count": 177,
+    "route_id": "100045",
+    "shape_length": 107894
+  },
+  "10150005": {
+    "headsign": "Downtown Seattle Southcenter",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100045",
+    "shape_length": 118073
+  },
+  "10153002": {
     "headsign": "Renton",
     "direction_id": "1",
-    "trip_count": 10,
-    "route_id": "102561"
-  },
-  "20040007": {
-    "headsign": "Downtown Seattle Ballard",
-    "direction_id": "1",
-    "trip_count": 216,
-    "route_id": "102574"
-  },
-  "11040001": {
-    "headsign": "Northgate Station Fremont",
-    "direction_id": "0",
-    "trip_count": 224,
-    "route_id": "102574"
-  },
-  "10673006": {
-    "headsign": "South Lake Union Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 270,
-    "route_id": "102576"
-  },
-  "21673004": {
-    "headsign": "West Seattle Alaska Junction",
-    "direction_id": "0",
-    "trip_count": 264,
-    "route_id": "102576"
-  },
-  "21673005": {
-    "headsign": "Westwood Village",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "102576"
-  },
-  "11674006": {
-    "headsign": "Ballard Uptown",
-    "direction_id": "0",
-    "trip_count": 272,
-    "route_id": "102581"
-  },
-  "20674003": {
-    "headsign": "Downtown Seattle Uptown",
-    "direction_id": "1",
-    "trip_count": 226,
-    "route_id": "102581"
-  },
-  "20674007": {
-    "headsign": "Downtown Seattle Uptown",
-    "direction_id": "1",
-    "trip_count": 46,
-    "route_id": "102581"
-  },
-  "30906009": {
-    "headsign": "Tukwila Station Southcenter",
-    "direction_id": "1",
-    "trip_count": 9,
-    "route_id": "102593"
-  },
-  "41906013": {
-    "headsign": "Fairwood Southcenter",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "102593"
-  },
-  "30906012": {
-    "headsign": "Southcenter",
-    "direction_id": "1",
-    "trip_count": 2,
-    "route_id": "102593"
-  },
-  "30906010": {
-    "headsign": "Southcenter",
-    "direction_id": "1",
-    "trip_count": 41,
-    "route_id": "102593"
-  },
-  "41906014": {
-    "headsign": "Fairwood",
-    "direction_id": "0",
-    "trip_count": 40,
-    "route_id": "102593"
-  },
-  "41906015": {
-    "headsign": "Fairwood Southcenter",
-    "direction_id": "0",
-    "trip_count": 10,
-    "route_id": "102593"
-  },
-  "30906011": {
-    "headsign": "Tukwila Station Southcenter",
-    "direction_id": "1",
-    "trip_count": 10,
-    "route_id": "102593"
-  },
-  "20675010": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 216,
-    "route_id": "102615"
-  },
-  "20675013": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 85,
-    "route_id": "102615"
-  },
-  "11675008": {
-    "headsign": "Aurora Village Transit Center",
-    "direction_id": "0",
-    "trip_count": 342,
-    "route_id": "102615"
-  },
-  "20675014": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 44,
-    "route_id": "102615"
-  },
-  "41676004": {
-    "headsign": "Renton The Landing Southcenter",
-    "direction_id": "0",
-    "trip_count": 211,
-    "route_id": "102619"
-  },
-  "30676003": {
-    "headsign": "Burien Southcenter",
-    "direction_id": "1",
-    "trip_count": 209,
-    "route_id": "102619"
-  },
-  "21895005": {
-    "headsign": "Ardmore Park",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "102628"
-  },
-  "10895002": {
-    "headsign": "Lake Washington High School",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "102628"
-  },
-  "41630009": {
-    "headsign": "S Mercer Island",
-    "direction_id": "0",
-    "trip_count": 4,
-    "route_id": "102634"
-  },
-  "30630008": {
-    "headsign": "Downtown Seattle First Hill",
-    "direction_id": "1",
-    "trip_count": 4,
-    "route_id": "102634"
-  },
-  "31631002": {
-    "headsign": "Gregory Heights Via Highline Medical Center",
-    "direction_id": "0",
-    "trip_count": 26,
-    "route_id": "102636"
-  },
-  "40631001": {
-    "headsign": "Burien Transit Center Via Gregory Heights",
-    "direction_id": "1",
-    "trip_count": 26,
-    "route_id": "102636"
-  },
-  "11096003": {
-    "headsign": "Capitol Hill",
-    "direction_id": "0",
-    "trip_count": 177,
-    "route_id": "102638"
-  },
-  "20096004": {
-    "headsign": "Pioneer Square",
-    "direction_id": "1",
-    "trip_count": 172,
-    "route_id": "102638"
-  },
-  "21635001": {
-    "headsign": "Marina District",
-    "direction_id": "0",
-    "trip_count": 50,
-    "route_id": "102647"
-  },
-  "10635003": {
-    "headsign": "Angle Lake Station",
-    "direction_id": "1",
-    "trip_count": 49,
-    "route_id": "102647"
-  },
-  "10204004": {
-    "headsign": "N Mercer Island",
-    "direction_id": "1",
-    "trip_count": 6,
-    "route_id": "102652"
-  },
-  "21204006": {
-    "headsign": "S Mercer Island",
-    "direction_id": "0",
-    "trip_count": 31,
-    "route_id": "102652"
-  },
-  "10204005": {
-    "headsign": "N Mercer Island",
-    "direction_id": "1",
-    "trip_count": 32,
-    "route_id": "102652"
-  },
-  "21204007": {
-    "headsign": "S Mercer Island",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "102652"
-  },
-  "30224007": {
-    "headsign": "Redmond",
-    "direction_id": "1",
-    "trip_count": 16,
-    "route_id": "102653"
-  },
-  "41224006": {
-    "headsign": "Duvall",
-    "direction_id": "0",
-    "trip_count": 14,
-    "route_id": "102653"
-  },
-  "11627001": {
-    "headsign": "Duvall Shuttle",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "102698"
-  },
-  "21629008": {
-    "headsign": "North Bend",
-    "direction_id": "0",
-    "trip_count": 13,
-    "route_id": "102699"
-  },
-  "10629004": {
-    "headsign": "Duvall",
-    "direction_id": "1",
-    "trip_count": 1,
-    "route_id": "102699"
-  },
-  "10629009": {
-    "headsign": "Duvall",
-    "direction_id": "1",
-    "trip_count": 12,
-    "route_id": "102699"
-  },
-  "21629011": {
-    "headsign": "North Bend",
-    "direction_id": "0",
-    "trip_count": 16,
-    "route_id": "102699"
-  },
-  "10629010": {
-    "headsign": "Duvall",
-    "direction_id": "1",
-    "trip_count": 16,
-    "route_id": "102699"
-  },
-  "11225003": {
-    "headsign": "Kenmore P&R",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "102701"
-  },
-  "20225002": {
-    "headsign": "Redmond Technology Station Totem Lake",
-    "direction_id": "1",
-    "trip_count": 45,
-    "route_id": "102701"
-  },
-  "11225006": {
-    "headsign": "Kenmore P&R Totem Lake",
-    "direction_id": "0",
-    "trip_count": 47,
-    "route_id": "102701"
-  },
-  "20239001": {
-    "headsign": "Kirkland Transit Center",
-    "direction_id": "1",
-    "trip_count": 98,
-    "route_id": "102702"
-  },
-  "11239005": {
-    "headsign": "UW Bothell/Cascadia College",
-    "direction_id": "0",
-    "trip_count": 98,
-    "route_id": "102702"
-  },
-  "20231002": {
-    "headsign": "Kirkland Transit Center",
-    "direction_id": "1",
-    "trip_count": 45,
-    "route_id": "102703"
-  },
-  "11231001": {
-    "headsign": "Woodinville Park & Ride",
-    "direction_id": "0",
-    "trip_count": 45,
-    "route_id": "102703"
-  },
-  "20250001": {
-    "headsign": "Bellevue Transit Center Bear Creek P&R",
-    "direction_id": "1",
-    "trip_count": 102,
-    "route_id": "102704"
-  },
-  "11250002": {
-    "headsign": "Avondale Bear Creek P&R",
-    "direction_id": "0",
-    "trip_count": 94,
-    "route_id": "102704"
-  },
-  "11250011": {
-    "headsign": "Bear Creek P&R",
-    "direction_id": "0",
-    "trip_count": 20,
-    "route_id": "102704"
-  },
-  "20250012": {
-    "headsign": "Bellevue Transit Center",
-    "direction_id": "1",
-    "trip_count": 15,
-    "route_id": "102704"
-  },
-  "11250003": {
-    "headsign": "Avondale",
-    "direction_id": "0",
-    "trip_count": 19,
-    "route_id": "102704"
-  },
-  "20250013": {
-    "headsign": "Bellevue Transit Center",
-    "direction_id": "1",
-    "trip_count": 15,
-    "route_id": "102704"
-  },
-  "20230001": {
-    "headsign": "Kirkland Transit Center",
-    "direction_id": "1",
-    "trip_count": 45,
-    "route_id": "102705"
-  },
-  "11230002": {
-    "headsign": "Bothell",
-    "direction_id": "0",
-    "trip_count": 44,
-    "route_id": "102705"
-  },
-  "10162001": {
-    "headsign": "Downtown Seattle",
-    "direction_id": "1",
-    "trip_count": 8,
-    "route_id": "102715"
-  },
-  "21162004": {
-    "headsign": "Lake Meridian",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "102715"
-  },
-  "41165001": {
-    "headsign": "Green River Coll Kent",
-    "direction_id": "0",
-    "trip_count": 78,
-    "route_id": "102717"
-  },
-  "41165002": {
-    "headsign": "Green River Coll Kent",
-    "direction_id": "0",
-    "trip_count": 9,
-    "route_id": "102717"
-  },
-  "41165004": {
-    "headsign": "Kent",
-    "direction_id": "0",
-    "trip_count": 3,
-    "route_id": "102717"
-  },
-  "30165008": {
-    "headsign": "Burien Transit Center Kent",
-    "direction_id": "1",
-    "trip_count": 81,
-    "route_id": "102717"
-  },
-  "30165010": {
-    "headsign": "Burien Transit Center Kent",
-    "direction_id": "1",
-    "trip_count": 8,
-    "route_id": "102717"
-  },
-  "30165009": {
-    "headsign": "Burien Transit Center",
-    "direction_id": "1",
-    "trip_count": 2,
-    "route_id": "102717"
-  },
-  "10184001": {
-    "headsign": "Auburn Station",
-    "direction_id": "1",
-    "trip_count": 115,
-    "route_id": "102718"
-  },
-  "21184005": {
-    "headsign": "SE Auburn",
-    "direction_id": "0",
-    "trip_count": 112,
-    "route_id": "102718"
-  },
-  "10161002": {
-    "headsign": "Burien Transit Center Seattle Tacoma International Airport",
-    "direction_id": "1",
-    "trip_count": 135,
-    "route_id": "102719"
-  },
-  "21161005": {
-    "headsign": "Kent Station Seattle Tacoma International Airport",
-    "direction_id": "0",
-    "trip_count": 126,
-    "route_id": "102719"
-  },
-  "21161006": {
-    "headsign": "Kent Station Seattle Tacoma International Airport",
-    "direction_id": "0",
-    "trip_count": 1,
-    "route_id": "102719"
-  },
-  "21160007": {
-    "headsign": "Auburn Station Kent",
-    "direction_id": "0",
-    "trip_count": 139,
-    "route_id": "102720"
+    "trip_count": 28,
+    "route_id": "100048",
+    "shape_length": 44548
   },
   "10160002": {
     "headsign": "Renton Kent",
     "direction_id": "1",
     "trip_count": 137,
-    "route_id": "102720"
+    "route_id": "102720",
+    "shape_length": 94977
   },
   "10160008": {
     "headsign": "Kent",
     "direction_id": "1",
     "trip_count": 9,
-    "route_id": "102720"
+    "route_id": "102720",
+    "shape_length": 32015
   },
-  "21160009": {
-    "headsign": "Auburn Station",
-    "direction_id": "0",
-    "trip_count": 6,
-    "route_id": "102720"
-  },
-  "20322008": {
-    "headsign": "First Hill I-5/Northgate Station",
+  "10161002": {
+    "headsign": "Burien Transit Center Seattle Tacoma International Airport",
     "direction_id": "1",
-    "trip_count": 7,
-    "route_id": "102729"
+    "trip_count": 135,
+    "route_id": "102719",
+    "shape_length": 65000
   },
-  "11322006": {
-    "headsign": "Kenmore P&R I-5/Northgate Station",
-    "direction_id": "0",
+  "10162001": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
     "trip_count": 8,
-    "route_id": "102729"
+    "route_id": "102715",
+    "shape_length": 138508
   },
-  "11079001": {
-    "headsign": "Roosevelt Station Sand Point",
-    "direction_id": "0",
-    "trip_count": 19,
-    "route_id": "102732"
-  },
-  "20079002": {
-    "headsign": "University District Sand Point",
+  "10177006": {
+    "headsign": "Downtown Seattle Via I-5",
     "direction_id": "1",
-    "trip_count": 20,
-    "route_id": "102732"
+    "trip_count": 1,
+    "route_id": "100068",
+    "shape_length": 124683
   },
-  "10566002": {
-    "headsign": "Redmond Technology Station",
+  "10177007": {
+    "headsign": "Downtown Seattle Via I-5",
     "direction_id": "1",
-    "trip_count": 11,
-    "route_id": "102734"
+    "trip_count": 4,
+    "route_id": "100068",
+    "shape_length": 124595
   },
-  "10566005": {
-    "headsign": "Redmond Technology Station",
+  "10182005": {
+    "headsign": "Downtown Federal Way Station",
     "direction_id": "1",
-    "trip_count": 2,
-    "route_id": "102734"
+    "trip_count": 45,
+    "route_id": "100073",
+    "shape_length": 41962
   },
-  "21566008": {
-    "headsign": "Kent Station",
-    "direction_id": "0",
-    "trip_count": 5,
-    "route_id": "102734"
-  },
-  "21566009": {
-    "headsign": "Auburn",
-    "direction_id": "0",
-    "trip_count": 7,
-    "route_id": "102734"
-  },
-  "21678004": {
-    "headsign": "Burien Transit Center Westwood Village",
-    "direction_id": "0",
-    "trip_count": 267,
-    "route_id": "102736"
-  },
-  "10678003": {
-    "headsign": "Downtown Seattle Westwood Village",
+  "10183002": {
+    "headsign": "Kent",
     "direction_id": "1",
-    "trip_count": 277,
-    "route_id": "102736"
+    "trip_count": 23,
+    "route_id": "100074",
+    "shape_length": 57356
   },
-  "11365001": {
-    "headsign": "Shoreline North 185th St Station NW Hospital",
-    "direction_id": "0",
-    "trip_count": 106,
-    "route_id": "102744"
-  },
-  "20365002": {
-    "headsign": "Northgate Station NW Hospital",
+  "10183007": {
+    "headsign": "Kent",
     "direction_id": "1",
-    "trip_count": 107,
-    "route_id": "102744"
+    "trip_count": 27,
+    "route_id": "100074",
+    "shape_length": 57462
   },
-  "30677004": {
-    "headsign": "Downtown Seattle Via E Madison St",
+  "10184001": {
+    "headsign": "Auburn Station",
     "direction_id": "1",
-    "trip_count": 420,
-    "route_id": "102745"
+    "trip_count": 115,
+    "route_id": "102718",
+    "shape_length": 24134
   },
-  "11333007": {
-    "headsign": "Mountlake Terrace Station",
-    "direction_id": "0",
-    "trip_count": 192,
-    "route_id": "102746"
-  },
-  "20333006": {
-    "headsign": "Shoreline South 148th St Station Shoreline CC",
+  "10193005": {
+    "headsign": "First Hill Express",
     "direction_id": "1",
-    "trip_count": 192,
-    "route_id": "102746"
+    "trip_count": 8,
+    "route_id": "100495",
+    "shape_length": 130013
   },
-  "20061002": {
-    "headsign": "Greenwood Northgate",
+  "10204004": {
+    "headsign": "N Mercer Island",
     "direction_id": "1",
-    "trip_count": 225,
-    "route_id": "102747"
+    "trip_count": 6,
+    "route_id": "102652",
+    "shape_length": 31915
   },
-  "11061001": {
-    "headsign": "Lake City Northgate",
-    "direction_id": "0",
-    "trip_count": 225,
-    "route_id": "102747"
-  },
-  "10223006": {
-    "headsign": "Downtown Redmond Station Overlake Village Station",
+  "10204005": {
+    "headsign": "N Mercer Island",
     "direction_id": "1",
-    "trip_count": 44,
-    "route_id": "102752"
-  },
-  "10223005": {
-    "headsign": "Downtown Redmond Station Overlake Village Station",
-    "direction_id": "1",
-    "trip_count": 71,
-    "route_id": "102752"
-  },
-  "21223007": {
-    "headsign": "Eastgate P&R Lake Hills",
-    "direction_id": "0",
-    "trip_count": 43,
-    "route_id": "102752"
-  },
-  "21223008": {
-    "headsign": "Eastgate P&R Lake Hills",
-    "direction_id": "0",
-    "trip_count": 71,
-    "route_id": "102752"
+    "trip_count": 32,
+    "route_id": "102652",
+    "shape_length": 24005
   },
   "10222004": {
     "headsign": "Cottage Lake Education Hill",
     "direction_id": "1",
     "trip_count": 61,
-    "route_id": "102753"
+    "route_id": "102753",
+    "shape_length": 87185
   },
-  "21222005": {
-    "headsign": "Redmond Technology Station Downtown Redmond Station",
-    "direction_id": "0",
-    "trip_count": 62,
-    "route_id": "102753"
-  },
-  "11256004": {
-    "headsign": "Woodinville Park & Ride South Lake Union",
-    "direction_id": "0",
-    "trip_count": 8,
-    "route_id": "102754"
-  },
-  "20256005": {
-    "headsign": "Downtown Seattle South Lake Union",
+  "10223005": {
+    "headsign": "Downtown Redmond Station Overlake Village Station",
     "direction_id": "1",
-    "trip_count": 8,
-    "route_id": "102754"
+    "trip_count": 71,
+    "route_id": "102752",
+    "shape_length": 54517
   },
-  "41203001": {
-    "headsign": "Issaquah Highlands Park & Ride Newport Way",
-    "direction_id": "0",
-    "trip_count": 84,
-    "route_id": "102755"
-  },
-  "30203002": {
-    "headsign": "South Bellevue Station Newport Way",
+  "10223006": {
+    "headsign": "Downtown Redmond Station Overlake Village Station",
     "direction_id": "1",
-    "trip_count": 81,
-    "route_id": "102755"
+    "trip_count": 44,
+    "route_id": "102752",
+    "shape_length": 57531
+  },
+  "10226013": {
+    "headsign": "Bellevue Transit Center Bellevue Redmond Road",
+    "direction_id": "1",
+    "trip_count": 51,
+    "route_id": "102552",
+    "shape_length": 70777
+  },
+  "10226014": {
+    "headsign": "Bellevue Transit Center Bellevue Redmond Road",
+    "direction_id": "1",
+    "trip_count": 37,
+    "route_id": "102552",
+    "shape_length": 72427
+  },
+  "10240005": {
+    "headsign": "Bellevue Transit Center South Bellevue Station",
+    "direction_id": "1",
+    "trip_count": 113,
+    "route_id": "100133",
+    "shape_length": 92620
+  },
+  "10245002": {
+    "headsign": "Kirkland Transit Center Crossroads",
+    "direction_id": "1",
+    "trip_count": 60,
+    "route_id": "100136",
+    "shape_length": 65241
+  },
+  "10245012": {
+    "headsign": "Kirkland Transit Center Crossroads",
+    "direction_id": "1",
+    "trip_count": 59,
+    "route_id": "100136",
+    "shape_length": 66891
+  },
+  "10269008": {
+    "headsign": "Marymoor Village Station Sammamish",
+    "direction_id": "1",
+    "trip_count": 24,
+    "route_id": "100160",
+    "shape_length": 86818
+  },
+  "10566002": {
+    "headsign": "Redmond Technology Station",
+    "direction_id": "1",
+    "trip_count": 11,
+    "route_id": "102734",
+    "shape_length": 161932
+  },
+  "10566005": {
+    "headsign": "Redmond Technology Station",
+    "direction_id": "1",
+    "trip_count": 2,
+    "route_id": "102734",
+    "shape_length": 120843
+  },
+  "10629004": {
+    "headsign": "Duvall",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "102699",
+    "shape_length": 88464
+  },
+  "10629009": {
+    "headsign": "Duvall",
+    "direction_id": "1",
+    "trip_count": 12,
+    "route_id": "102699",
+    "shape_length": 156751
+  },
+  "10629010": {
+    "headsign": "Duvall",
+    "direction_id": "1",
+    "trip_count": 16,
+    "route_id": "102699",
+    "shape_length": 151370
+  },
+  "10635003": {
+    "headsign": "Angle Lake Station",
+    "direction_id": "1",
+    "trip_count": 49,
+    "route_id": "102647",
+    "shape_length": 17740
+  },
+  "10671005": {
+    "headsign": "Tukwila Link Station International Boulevard",
+    "direction_id": "1",
+    "trip_count": 205,
+    "route_id": "100512",
+    "shape_length": 59431
+  },
+  "10671006": {
+    "headsign": "Tukwila Link Station International Boulevard",
+    "direction_id": "1",
+    "trip_count": 96,
+    "route_id": "100512",
+    "shape_length": 59287
+  },
+  "10673006": {
+    "headsign": "South Lake Union Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 270,
+    "route_id": "102576",
+    "shape_length": 65963
+  },
+  "10678003": {
+    "headsign": "Downtown Seattle Westwood Village",
+    "direction_id": "1",
+    "trip_count": 277,
+    "route_id": "102736",
+    "shape_length": 68941
+  },
+  "10895002": {
+    "headsign": "Lake Washington High School",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "102628",
+    "shape_length": 51417
+  },
+  "10901003": {
+    "headsign": "Mirror Lake",
+    "direction_id": "1",
+    "trip_count": 67,
+    "route_id": "100290",
+    "shape_length": 15050
+  },
+  "10903004": {
+    "headsign": "Downtown Federal Way Station",
+    "direction_id": "1",
+    "trip_count": 40,
+    "route_id": "100292",
+    "shape_length": 31841
+  },
+  "10907003": {
+    "headsign": "Renton",
+    "direction_id": "1",
+    "trip_count": 10,
+    "route_id": "102561",
+    "shape_length": 99392
+  },
+  "10917002": {
+    "headsign": "Auburn Station",
+    "direction_id": "1",
+    "trip_count": 6,
+    "route_id": "100300",
+    "shape_length": 28818
+  },
+  "10917006": {
+    "headsign": "Auburn Station",
+    "direction_id": "1",
+    "trip_count": 37,
+    "route_id": "100300",
+    "shape_length": 33560
+  },
+  "10975001": {
+    "headsign": "Downtown Seattle Water Taxi",
+    "direction_id": "1",
+    "trip_count": 20,
+    "route_id": "100337",
+    "shape_length": 50499
+  },
+  "10987005": {
+    "headsign": "Haller Lake",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100345",
+    "shape_length": 127294
+  },
+  "10988002": {
+    "headsign": "Haller Lake Special",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100346",
+    "shape_length": 55825
+  },
+  "11001003": {
+    "headsign": "Kinnear Seattle Center W",
+    "direction_id": "0",
+    "trip_count": 135,
+    "route_id": "100001",
+    "shape_length": 26708
+  },
+  "11001004": {
+    "headsign": "Kinnear Seattle Center W",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "100001",
+    "shape_length": 24082
+  },
+  "11005003": {
+    "headsign": "Shoreline Greenwood",
+    "direction_id": "0",
+    "trip_count": 136,
+    "route_id": "100229",
+    "shape_length": 60968
+  },
+  "11005004": {
+    "headsign": "Shoreline Greenwood",
+    "direction_id": "0",
+    "trip_count": 15,
+    "route_id": "100229",
+    "shape_length": 60546
+  },
+  "11010006": {
+    "headsign": "Capitol Hill Via 15th Ave E",
+    "direction_id": "0",
+    "trip_count": 155,
+    "route_id": "100002",
+    "shape_length": 17681
+  },
+  "11011010": {
+    "headsign": "Madison Park Capitol Hill Station",
+    "direction_id": "0",
+    "trip_count": 161,
+    "route_id": "100009",
+    "shape_length": 24759
+  },
+  "11012004": {
+    "headsign": "Interlaken Park Via 19th Ave",
+    "direction_id": "0",
+    "trip_count": 154,
+    "route_id": "100018",
+    "shape_length": 17367
+  },
+  "11013009": {
+    "headsign": "Seattle Pacific University Seattle Center W",
+    "direction_id": "0",
+    "trip_count": 71,
+    "route_id": "100028",
+    "shape_length": 23457
+  },
+  "11013013": {
+    "headsign": "Seattle Pacific University Seattle Center W",
+    "direction_id": "0",
+    "trip_count": 45,
+    "route_id": "100028",
+    "shape_length": 25475
+  },
+  "11017003": {
+    "headsign": "Sunset Hill",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100062",
+    "shape_length": 45573
+  },
+  "11024006": {
+    "headsign": "West Magnolia",
+    "direction_id": "0",
+    "trip_count": 85,
+    "route_id": "100132",
+    "shape_length": 52120
+  },
+  "11024007": {
+    "headsign": "Magnolia",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "100132",
+    "shape_length": 44323
+  },
+  "11024009": {
+    "headsign": "Magnolia",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "100132",
+    "shape_length": 43547
+  },
+  "11028002": {
+    "headsign": "Carkeek Park",
+    "direction_id": "0",
+    "trip_count": 94,
+    "route_id": "100169",
+    "shape_length": 45773
+  },
+  "11033003": {
+    "headsign": "E Magnolia",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "100194",
+    "shape_length": 44933
+  },
+  "11033004": {
+    "headsign": "E Magnolia",
+    "direction_id": "0",
+    "trip_count": 26,
+    "route_id": "100194",
+    "shape_length": 43328
+  },
+  "11033005": {
+    "headsign": "E Magnolia",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100194",
+    "shape_length": 48019
+  },
+  "11033006": {
+    "headsign": "E Magnolia",
+    "direction_id": "0",
+    "trip_count": 33,
+    "route_id": "100194",
+    "shape_length": 40241
+  },
+  "11040001": {
+    "headsign": "Northgate Station Fremont",
+    "direction_id": "0",
+    "trip_count": 224,
+    "route_id": "102574",
+    "shape_length": 66934
+  },
+  "11043004": {
+    "headsign": "University District Montlake",
+    "direction_id": "0",
+    "trip_count": 37,
+    "route_id": "100223",
+    "shape_length": 22713
+  },
+  "11044004": {
+    "headsign": "Ballard Wallingford",
+    "direction_id": "0",
+    "trip_count": 226,
+    "route_id": "100224",
+    "shape_length": 28671
+  },
+  "11044007": {
+    "headsign": "Ballard Wallingford",
+    "direction_id": "0",
+    "trip_count": 37,
+    "route_id": "100224",
+    "shape_length": 27953
+  },
+  "11048010": {
+    "headsign": "University District Central District",
+    "direction_id": "0",
+    "trip_count": 71,
+    "route_id": "100228",
+    "shape_length": 34679
+  },
+  "11048011": {
+    "headsign": "University District Central District",
+    "direction_id": "0",
+    "trip_count": 146,
+    "route_id": "100228",
+    "shape_length": 34060
+  },
+  "11049009": {
+    "headsign": "U-District Station Capitol Hill",
+    "direction_id": "0",
+    "trip_count": 194,
+    "route_id": "100447",
+    "shape_length": 23852
+  },
+  "11061001": {
+    "headsign": "Lake City Northgate",
+    "direction_id": "0",
+    "trip_count": 225,
+    "route_id": "102747",
+    "shape_length": 27150
+  },
+  "11062008": {
+    "headsign": "Sand Point East Green Lake",
+    "direction_id": "0",
+    "trip_count": 48,
+    "route_id": "100252",
+    "shape_length": 61266
+  },
+  "11062010": {
+    "headsign": "Sand Point East Green Lake",
+    "direction_id": "0",
+    "trip_count": 163,
+    "route_id": "100252",
+    "shape_length": 55999
+  },
+  "11065007": {
+    "headsign": "Shoreline South 148th St Station Lake City",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100254",
+    "shape_length": 22779
+  },
+  "11065008": {
+    "headsign": "Shoreline South 148th St Station Lake City",
+    "direction_id": "0",
+    "trip_count": 209,
+    "route_id": "100254",
+    "shape_length": 51605
+  },
+  "11067005": {
+    "headsign": "Northgate Station Roosevelt Station",
+    "direction_id": "0",
+    "trip_count": 208,
+    "route_id": "100259",
+    "shape_length": 37113
+  },
+  "11070002": {
+    "headsign": "U-District Station Eastlake",
+    "direction_id": "0",
+    "trip_count": 231,
+    "route_id": "100264",
+    "shape_length": 25992
+  },
+  "11070003": {
+    "headsign": "U-District Station Eastlake",
+    "direction_id": "0",
+    "trip_count": 22,
+    "route_id": "100264",
+    "shape_length": 27121
+  },
+  "11075002": {
+    "headsign": "Northgate Station Sand Point",
+    "direction_id": "0",
+    "trip_count": 218,
+    "route_id": "100269",
+    "shape_length": 56655
+  },
+  "11079001": {
+    "headsign": "Roosevelt Station Sand Point",
+    "direction_id": "0",
+    "trip_count": 19,
+    "route_id": "102732",
+    "shape_length": 41076
+  },
+  "11096003": {
+    "headsign": "Capitol Hill",
+    "direction_id": "0",
+    "trip_count": 177,
+    "route_id": "102638",
+    "shape_length": 13228
+  },
+  "11098001": {
+    "headsign": "Lake Union",
+    "direction_id": "0",
+    "trip_count": 163,
+    "route_id": "100340",
+    "shape_length": 6451
+  },
+  "11098003": {
+    "headsign": "Lake Union",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "100340",
+    "shape_length": 3402
+  },
+  "11098004": {
+    "headsign": "Lake Union",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "100340",
+    "shape_length": 2351
+  },
+  "11105005": {
+    "headsign": "Renton Highlands",
+    "direction_id": "0",
+    "trip_count": 113,
+    "route_id": "100004",
+    "shape_length": 24508
+  },
+  "11128008": {
+    "headsign": "Admiral District White Center",
+    "direction_id": "0",
+    "trip_count": 45,
+    "route_id": "100026",
+    "shape_length": 101052
+  },
+  "11128009": {
+    "headsign": "Admiral District White Center",
+    "direction_id": "0",
+    "trip_count": 78,
+    "route_id": "100026",
+    "shape_length": 90437
+  },
+  "11225003": {
+    "headsign": "Kenmore P&R",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "102701",
+    "shape_length": 40837
+  },
+  "11225006": {
+    "headsign": "Kenmore P&R Totem Lake",
+    "direction_id": "0",
+    "trip_count": 47,
+    "route_id": "102701",
+    "shape_length": 81287
+  },
+  "11230002": {
+    "headsign": "Bothell",
+    "direction_id": "0",
+    "trip_count": 44,
+    "route_id": "102705",
+    "shape_length": 50127
+  },
+  "11231001": {
+    "headsign": "Woodinville Park & Ride",
+    "direction_id": "0",
+    "trip_count": 45,
+    "route_id": "102703",
+    "shape_length": 45577
+  },
+  "11239005": {
+    "headsign": "UW Bothell/Cascadia College",
+    "direction_id": "0",
+    "trip_count": 98,
+    "route_id": "102702",
+    "shape_length": 56655
   },
   "11249010": {
     "headsign": "Spring District Station Downtown Bellevue",
     "direction_id": "0",
     "trip_count": 72,
-    "route_id": "102756"
+    "route_id": "102756",
+    "shape_length": 36250
+  },
+  "11250002": {
+    "headsign": "Avondale Bear Creek P&R",
+    "direction_id": "0",
+    "trip_count": 94,
+    "route_id": "102704",
+    "shape_length": 71300
+  },
+  "11250003": {
+    "headsign": "Avondale",
+    "direction_id": "0",
+    "trip_count": 19,
+    "route_id": "102704",
+    "shape_length": 67686
+  },
+  "11250011": {
+    "headsign": "Bear Creek P&R",
+    "direction_id": "0",
+    "trip_count": 20,
+    "route_id": "102704",
+    "shape_length": 57592
+  },
+  "11256004": {
+    "headsign": "Woodinville Park & Ride South Lake Union",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "102754",
+    "shape_length": 118589
+  },
+  "11303006": {
+    "headsign": "Aurora Village Transit Center I-5/Northgate Station",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "100177",
+    "shape_length": 74652
+  },
+  "11322006": {
+    "headsign": "Kenmore P&R I-5/Northgate Station",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "102729",
+    "shape_length": 80095
+  },
+  "11333007": {
+    "headsign": "Mountlake Terrace Station",
+    "direction_id": "0",
+    "trip_count": 192,
+    "route_id": "102746",
+    "shape_length": 48032
+  },
+  "11345003": {
+    "headsign": "Shoreline South 148th St Station NW Hospital",
+    "direction_id": "0",
+    "trip_count": 105,
+    "route_id": "100202",
+    "shape_length": 41957
+  },
+  "11346008": {
+    "headsign": "Aurora Village Transit Center",
+    "direction_id": "0",
+    "trip_count": 96,
+    "route_id": "100203",
+    "shape_length": 19342
+  },
+  "11348016": {
+    "headsign": "Richmond Beach North City",
+    "direction_id": "0",
+    "trip_count": 108,
+    "route_id": "100205",
+    "shape_length": 46874
+  },
+  "11348017": {
+    "headsign": "Hillwood Park North City",
+    "direction_id": "0",
+    "trip_count": 31,
+    "route_id": "100205",
+    "shape_length": 39933
+  },
+  "11365001": {
+    "headsign": "Shoreline North 185th St Station NW Hospital",
+    "direction_id": "0",
+    "trip_count": 106,
+    "route_id": "102744",
+    "shape_length": 41946
+  },
+  "11372006": {
+    "headsign": "UW Bothell/Cascadia College Kenmore",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100214",
+    "shape_length": 39567
+  },
+  "11372007": {
+    "headsign": "Lake City Ravenna",
+    "direction_id": "0",
+    "trip_count": 120,
+    "route_id": "100214",
+    "shape_length": 33671
+  },
+  "11372009": {
+    "headsign": "Lake City Ravenna",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100214",
+    "shape_length": 32317
+  },
+  "11372013": {
+    "headsign": "UW Bothell/Cascadia College Kenmore",
+    "direction_id": "0",
+    "trip_count": 74,
+    "route_id": "100214",
+    "shape_length": 72729
+  },
+  "11522016": {
+    "headsign": "Woodinville",
+    "direction_id": "0",
+    "trip_count": 125,
+    "route_id": "100232",
+    "shape_length": 82343
+  },
+  "11522017": {
+    "headsign": "Bothell",
+    "direction_id": "0",
+    "trip_count": 81,
+    "route_id": "100232",
+    "shape_length": 57969
+  },
+  "11627001": {
+    "headsign": "Duvall Shuttle",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "102698",
+    "shape_length": 133318
+  },
+  "11674006": {
+    "headsign": "Ballard Uptown",
+    "direction_id": "0",
+    "trip_count": 272,
+    "route_id": "102581",
+    "shape_length": 45057
+  },
+  "11675008": {
+    "headsign": "Aurora Village Transit Center",
+    "direction_id": "0",
+    "trip_count": 342,
+    "route_id": "102615",
+    "shape_length": 66711
+  },
+  "11773001": {
+    "headsign": "Seacrest Marina",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100272",
+    "shape_length": 14806
+  },
+  "11773004": {
+    "headsign": "Seacrest Marina",
+    "direction_id": "0",
+    "trip_count": 75,
+    "route_id": "100272",
+    "shape_length": 14682
+  },
+  "11773006": {
+    "headsign": "Seacrest Marina",
+    "direction_id": "0",
+    "trip_count": 10,
+    "route_id": "100272",
+    "shape_length": 25986
+  },
+  "11775001": {
+    "headsign": "Alki",
+    "direction_id": "0",
+    "trip_count": 104,
+    "route_id": "100481",
+    "shape_length": 15271
+  },
+  "11775005": {
+    "headsign": "Alki",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "100481",
+    "shape_length": 15475
+  },
+  "11775007": {
+    "headsign": "Alki",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100481",
+    "shape_length": 8086
+  },
+  "11893003": {
+    "headsign": "Forbes Creek",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "102555",
+    "shape_length": 33368
+  },
+  "20001002": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 138,
+    "route_id": "100001",
+    "shape_length": 14453
+  },
+  "20001005": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100001",
+    "shape_length": 22992
+  },
+  "20005010": {
+    "headsign": "Downtown Seattle Greenwood",
+    "direction_id": "1",
+    "trip_count": 154,
+    "route_id": "100229",
+    "shape_length": 51045
+  },
+  "20010004": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 155,
+    "route_id": "100002",
+    "shape_length": 11354
+  },
+  "20011009": {
+    "headsign": "Downtown Seattle Capitol Hill Station",
+    "direction_id": "1",
+    "trip_count": 161,
+    "route_id": "100009",
+    "shape_length": 19218
+  },
+  "20012005": {
+    "headsign": "Downtown Seattle Via Pine St",
+    "direction_id": "1",
+    "trip_count": 154,
+    "route_id": "100018",
+    "shape_length": 12105
+  },
+  "20013011": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 68,
+    "route_id": "100028",
+    "shape_length": 14361
+  },
+  "20013012": {
+    "headsign": "Downtown Only",
+    "direction_id": "1",
+    "trip_count": 46,
+    "route_id": "100028",
+    "shape_length": 22900
+  },
+  "20017002": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100062",
+    "shape_length": 44806
+  },
+  "20024001": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100132",
+    "shape_length": 49491
+  },
+  "20024004": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 9,
+    "route_id": "100132",
+    "shape_length": 32838
+  },
+  "20024005": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 89,
+    "route_id": "100132",
+    "shape_length": 41780
+  },
+  "20028004": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 95,
+    "route_id": "100169",
+    "shape_length": 33662
+  },
+  "20033002": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 64,
+    "route_id": "100194",
+    "shape_length": 32977
+  },
+  "20033007": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100194",
+    "shape_length": 28286
+  },
+  "20033008": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 5,
+    "route_id": "100194",
+    "shape_length": 35997
+  },
+  "20040007": {
+    "headsign": "Downtown Seattle Ballard",
+    "direction_id": "1",
+    "trip_count": 216,
+    "route_id": "102574",
+    "shape_length": 66304
+  },
+  "20043002": {
+    "headsign": "Capitol Hill University Of Washington Medical Center",
+    "direction_id": "1",
+    "trip_count": 37,
+    "route_id": "100223",
+    "shape_length": 28116
+  },
+  "20044003": {
+    "headsign": "University District",
+    "direction_id": "1",
+    "trip_count": 37,
+    "route_id": "100224",
+    "shape_length": 22563
+  },
+  "20044006": {
+    "headsign": "University Of Washington Medical Center Wallingford",
+    "direction_id": "1",
+    "trip_count": 226,
+    "route_id": "100224",
+    "shape_length": 27823
+  },
+  "20048006": {
+    "headsign": "Mount Baker Transit Center Central District",
+    "direction_id": "1",
+    "trip_count": 147,
+    "route_id": "100228",
+    "shape_length": 34922
+  },
+  "20048009": {
+    "headsign": "Mount Baker Transit Center Central District",
+    "direction_id": "1",
+    "trip_count": 70,
+    "route_id": "100228",
+    "shape_length": 34125
+  },
+  "20049008": {
+    "headsign": "Downtown Seattle Broadway",
+    "direction_id": "1",
+    "trip_count": 173,
+    "route_id": "100447",
+    "shape_length": 24140
+  },
+  "20049013": {
+    "headsign": "Downtown Seattle Broadway",
+    "direction_id": "1",
+    "trip_count": 21,
+    "route_id": "100447",
+    "shape_length": 29619
+  },
+  "20061002": {
+    "headsign": "Greenwood Northgate",
+    "direction_id": "1",
+    "trip_count": 225,
+    "route_id": "102747",
+    "shape_length": 30380
+  },
+  "20062014": {
+    "headsign": "Downtown Seattle Fremont",
+    "direction_id": "1",
+    "trip_count": 53,
+    "route_id": "100252",
+    "shape_length": 60611
+  },
+  "20062015": {
+    "headsign": "Downtown Seattle Fremont",
+    "direction_id": "1",
+    "trip_count": 158,
+    "route_id": "100252",
+    "shape_length": 56949
+  },
+  "20065009": {
+    "headsign": "University District Wedgwood",
+    "direction_id": "1",
+    "trip_count": 208,
+    "route_id": "100254",
+    "shape_length": 37034
+  },
+  "20067004": {
+    "headsign": "University District Roosevelt",
+    "direction_id": "1",
+    "trip_count": 209,
+    "route_id": "100259",
+    "shape_length": 22164
+  },
+  "20070001": {
+    "headsign": "Downtown Seattle Fairview",
+    "direction_id": "1",
+    "trip_count": 223,
+    "route_id": "100264",
+    "shape_length": 26915
+  },
+  "20070005": {
+    "headsign": "Downtown Seattle Fairview",
+    "direction_id": "1",
+    "trip_count": 30,
+    "route_id": "100264",
+    "shape_length": 27743
+  },
+  "20075007": {
+    "headsign": "University District Lake City",
+    "direction_id": "1",
+    "trip_count": 212,
+    "route_id": "100269",
+    "shape_length": 41884
+  },
+  "20079002": {
+    "headsign": "University District Sand Point",
+    "direction_id": "1",
+    "trip_count": 20,
+    "route_id": "102732",
+    "shape_length": 40093
+  },
+  "20096004": {
+    "headsign": "Pioneer Square",
+    "direction_id": "1",
+    "trip_count": 172,
+    "route_id": "102638",
+    "shape_length": 13228
+  },
+  "20098020": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 170,
+    "route_id": "100340",
+    "shape_length": 6498
+  },
+  "20105004": {
+    "headsign": "Renton Renton Tech Coll",
+    "direction_id": "1",
+    "trip_count": 119,
+    "route_id": "100004",
+    "shape_length": 23595
+  },
+  "20128010": {
+    "headsign": "Southcenter White Center",
+    "direction_id": "1",
+    "trip_count": 76,
+    "route_id": "100026",
+    "shape_length": 88184
+  },
+  "20128011": {
+    "headsign": "Southcenter White Center",
+    "direction_id": "1",
+    "trip_count": 48,
+    "route_id": "100026",
+    "shape_length": 98799
+  },
+  "20225002": {
+    "headsign": "Redmond Technology Station Totem Lake",
+    "direction_id": "1",
+    "trip_count": 45,
+    "route_id": "102701",
+    "shape_length": 84963
+  },
+  "20230001": {
+    "headsign": "Kirkland Transit Center",
+    "direction_id": "1",
+    "trip_count": 45,
+    "route_id": "102705",
+    "shape_length": 52395
+  },
+  "20231002": {
+    "headsign": "Kirkland Transit Center",
+    "direction_id": "1",
+    "trip_count": 45,
+    "route_id": "102703",
+    "shape_length": 50006
+  },
+  "20239001": {
+    "headsign": "Kirkland Transit Center",
+    "direction_id": "1",
+    "trip_count": 98,
+    "route_id": "102702",
+    "shape_length": 62579
   },
   "20249011": {
     "headsign": "South Bellevue Station Downtown Bellevue",
     "direction_id": "1",
     "trip_count": 72,
-    "route_id": "102756"
+    "route_id": "102756",
+    "shape_length": 34962
   },
-  "40187006": {
-    "headsign": "Downtown Federal Way Station Via S 320th St",
+  "20250001": {
+    "headsign": "Bellevue Transit Center Bear Creek P&R",
+    "direction_id": "1",
+    "trip_count": 102,
+    "route_id": "102704",
+    "shape_length": 79479
+  },
+  "20250012": {
+    "headsign": "Bellevue Transit Center",
+    "direction_id": "1",
+    "trip_count": 15,
+    "route_id": "102704",
+    "shape_length": 62391
+  },
+  "20250013": {
+    "headsign": "Bellevue Transit Center",
+    "direction_id": "1",
+    "trip_count": 15,
+    "route_id": "102704",
+    "shape_length": 75853
+  },
+  "20256005": {
+    "headsign": "Downtown Seattle South Lake Union",
+    "direction_id": "1",
+    "trip_count": 8,
+    "route_id": "102754",
+    "shape_length": 114206
+  },
+  "20303003": {
+    "headsign": "First Hill I-5/Northgate Station",
+    "direction_id": "1",
+    "trip_count": 6,
+    "route_id": "100177",
+    "shape_length": 74091
+  },
+  "20322008": {
+    "headsign": "First Hill I-5/Northgate Station",
+    "direction_id": "1",
+    "trip_count": 7,
+    "route_id": "102729",
+    "shape_length": 77610
+  },
+  "20333006": {
+    "headsign": "Shoreline South 148th St Station Shoreline CC",
+    "direction_id": "1",
+    "trip_count": 192,
+    "route_id": "102746",
+    "shape_length": 47884
+  },
+  "20345002": {
+    "headsign": "Northgate Station NW Hospital",
+    "direction_id": "1",
+    "trip_count": 107,
+    "route_id": "100202",
+    "shape_length": 42240
+  },
+  "20346004": {
+    "headsign": "Shoreline South 148th St Station",
+    "direction_id": "1",
+    "trip_count": 96,
+    "route_id": "100203",
+    "shape_length": 18784
+  },
+  "20348014": {
+    "headsign": "Northgate Station North City",
+    "direction_id": "1",
+    "trip_count": 80,
+    "route_id": "100205",
+    "shape_length": 46939
+  },
+  "20348015": {
+    "headsign": "Northgate Station North City",
+    "direction_id": "1",
+    "trip_count": 32,
+    "route_id": "100205",
+    "shape_length": 43436
+  },
+  "20348018": {
+    "headsign": "Northgate Station North City",
+    "direction_id": "1",
+    "trip_count": 28,
+    "route_id": "100205",
+    "shape_length": 47653
+  },
+  "20365002": {
+    "headsign": "Northgate Station NW Hospital",
+    "direction_id": "1",
+    "trip_count": 107,
+    "route_id": "102744",
+    "shape_length": 41380
+  },
+  "20372008": {
+    "headsign": "U-District Station",
+    "direction_id": "1",
+    "trip_count": 122,
+    "route_id": "100214",
+    "shape_length": 32135
+  },
+  "20372014": {
+    "headsign": "U-District Station Lake City",
+    "direction_id": "1",
+    "trip_count": 12,
+    "route_id": "100214",
+    "shape_length": 54923
+  },
+  "20372015": {
+    "headsign": "U-District Station Lake City",
+    "direction_id": "1",
+    "trip_count": 64,
+    "route_id": "100214",
+    "shape_length": 72833
+  },
+  "20522004": {
+    "headsign": "Roosevelt Station",
+    "direction_id": "1",
+    "trip_count": 117,
+    "route_id": "100232",
+    "shape_length": 80935
+  },
+  "20522005": {
+    "headsign": "Roosevelt Station",
+    "direction_id": "1",
+    "trip_count": 89,
+    "route_id": "100232",
+    "shape_length": 58203
+  },
+  "20674003": {
+    "headsign": "Downtown Seattle Uptown",
+    "direction_id": "1",
+    "trip_count": 226,
+    "route_id": "102581",
+    "shape_length": 46764
+  },
+  "20674007": {
+    "headsign": "Downtown Seattle Uptown",
+    "direction_id": "1",
+    "trip_count": 46,
+    "route_id": "102581",
+    "shape_length": 46766
+  },
+  "20675010": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 216,
+    "route_id": "102615",
+    "shape_length": 66479
+  },
+  "20675013": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 85,
+    "route_id": "102615",
+    "shape_length": 66913
+  },
+  "20675014": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 44,
+    "route_id": "102615",
+    "shape_length": 66641
+  },
+  "20773002": {
+    "headsign": "Alaska Junction",
+    "direction_id": "1",
+    "trip_count": 78,
+    "route_id": "100272",
+    "shape_length": 16344
+  },
+  "20773005": {
+    "headsign": "Alaska Junction",
+    "direction_id": "1",
+    "trip_count": 12,
+    "route_id": "100272",
+    "shape_length": 26344
+  },
+  "20775004": {
+    "headsign": "Seacrest Marina",
+    "direction_id": "1",
+    "trip_count": 115,
+    "route_id": "100481",
+    "shape_length": 12447
+  },
+  "20893005": {
+    "headsign": "Lake Washington High School",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "102555",
+    "shape_length": 39491
+  },
+  "21002004": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 106,
+    "route_id": "100089",
+    "shape_length": 36566
+  },
+  "21002008": {
+    "headsign": "Madrona Park Via E Union St",
+    "direction_id": "0",
+    "trip_count": 70,
+    "route_id": "100089",
+    "shape_length": 23111
+  },
+  "21002013": {
+    "headsign": "Downtown Only",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100089",
+    "shape_length": 21994
+  },
+  "21003021": {
+    "headsign": "Madrona and 34th Ave Via E Cherry St",
+    "direction_id": "0",
+    "trip_count": 42,
+    "route_id": "100173",
+    "shape_length": 17557
+  },
+  "21003022": {
+    "headsign": "Madrona and 34th Ave Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 71,
+    "route_id": "100173",
+    "shape_length": 24917
+  },
+  "21003027": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 3,
+    "route_id": "100173",
+    "shape_length": 12711
+  },
+  "21004007": {
+    "headsign": "Judkins Park Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 92,
+    "route_id": "100219",
+    "shape_length": 39880
+  },
+  "21004009": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 10,
+    "route_id": "100219",
+    "shape_length": 24337
+  },
+  "21004013": {
+    "headsign": "Central District",
+    "direction_id": "0",
+    "trip_count": 9,
+    "route_id": "100219",
+    "shape_length": 11036
+  },
+  "21004016": {
+    "headsign": "Central District Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 56,
+    "route_id": "100219",
+    "shape_length": 30022
+  },
+  "21004025": {
+    "headsign": "Judkins Park",
+    "direction_id": "0",
+    "trip_count": 28,
+    "route_id": "100219",
+    "shape_length": 20894
+  },
+  "21007003": {
+    "headsign": "Rainier Beach Via Rainier Ave S",
+    "direction_id": "0",
+    "trip_count": 209,
+    "route_id": "100263",
+    "shape_length": 42194
+  },
+  "21007008": {
+    "headsign": "Rainier Beach Via Rainier Ave S",
+    "direction_id": "0",
+    "trip_count": 27,
+    "route_id": "100263",
+    "shape_length": 33584
+  },
+  "21007015": {
+    "headsign": "Prentice St Via Rainier Ave S",
+    "direction_id": "0",
+    "trip_count": 86,
+    "route_id": "100263",
+    "shape_length": 59338
+  },
+  "21007016": {
+    "headsign": "Prentice St Via Rainier Ave S",
+    "direction_id": "0",
+    "trip_count": 9,
+    "route_id": "100263",
+    "shape_length": 50729
+  },
+  "21009002": {
+    "headsign": "Rainier Beach Station Express",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100289",
+    "shape_length": 43660
+  },
+  "21014006": {
+    "headsign": "Mount Baker Transit Center S Jackson St",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "100039",
+    "shape_length": 26245
+  },
+  "21014008": {
+    "headsign": "Mount Baker Transit Center S Jackson St",
+    "direction_id": "0",
+    "trip_count": 3,
+    "route_id": "100039",
+    "shape_length": 23057
+  },
+  "21014011": {
+    "headsign": "Mount Baker Mount Baker Transit Center",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "100039",
+    "shape_length": 21414
+  },
+  "21014013": {
+    "headsign": "Mount Baker Mount Baker Transit Center",
+    "direction_id": "0",
+    "trip_count": 131,
+    "route_id": "100039",
+    "shape_length": 30808
+  },
+  "21021004": {
+    "headsign": "Westwood Village Via 35th Ave SW",
+    "direction_id": "0",
+    "trip_count": 149,
+    "route_id": "100101",
+    "shape_length": 50406
+  },
+  "21021005": {
+    "headsign": "Westwood Village Via 35th Ave SW",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100101",
+    "shape_length": 52634
+  },
+  "21021008": {
+    "headsign": "Arbor Heights",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100101",
+    "shape_length": 63044
+  },
+  "21022005": {
+    "headsign": "Arbor Heights Gatewood",
+    "direction_id": "0",
+    "trip_count": 13,
+    "route_id": "100111",
+    "shape_length": 27916
+  },
+  "21027002": {
+    "headsign": "Colman Park Yesler",
+    "direction_id": "0",
+    "trip_count": 31,
+    "route_id": "100161",
+    "shape_length": 22292
+  },
+  "21027034": {
+    "headsign": "Colman Park Yesler",
+    "direction_id": "0",
+    "trip_count": 41,
+    "route_id": "100161",
+    "shape_length": 26265
+  },
+  "21036002": {
+    "headsign": "Othello Station N Beacon Hill",
+    "direction_id": "0",
+    "trip_count": 312,
+    "route_id": "100210",
+    "shape_length": 35134
+  },
+  "21036003": {
+    "headsign": "Othello Station N Beacon Hill",
+    "direction_id": "0",
+    "trip_count": 24,
+    "route_id": "100210",
+    "shape_length": 28928
+  },
+  "21056005": {
+    "headsign": "Alki Via SR-99",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100242",
+    "shape_length": 39979
+  },
+  "21057006": {
+    "headsign": "Alaska Junction Via SR-99",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100246",
+    "shape_length": 45237
+  },
+  "21060004": {
+    "headsign": "Westwood Village N Beacon Hill",
+    "direction_id": "0",
+    "trip_count": 208,
+    "route_id": "100249",
+    "shape_length": 62137
+  },
+  "21101006": {
+    "headsign": "S Renton P&R",
+    "direction_id": "0",
+    "trip_count": 121,
+    "route_id": "100003",
+    "shape_length": 76683
+  },
+  "21102010": {
+    "headsign": "Fairwood S Renton P&R",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "100487",
+    "shape_length": 122769
+  },
+  "21102011": {
+    "headsign": "S Renton P&R",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100487",
+    "shape_length": 71879
+  },
+  "21106108": {
+    "headsign": "Renton Rainier Beach Station",
+    "direction_id": "0",
+    "trip_count": 202,
+    "route_id": "100005",
+    "shape_length": 61567
+  },
+  "21107003": {
+    "headsign": "Renton Transit Center Rainier Beach Station",
+    "direction_id": "0",
+    "trip_count": 53,
+    "route_id": "100006",
+    "shape_length": 72670
+  },
+  "21107005": {
+    "headsign": "Renton Transit Center Rainier Beach Station",
+    "direction_id": "0",
+    "trip_count": 166,
+    "route_id": "100006",
+    "shape_length": 72579
+  },
+  "21111003": {
+    "headsign": "Lake Kathleen Via I-90",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "100011",
+    "shape_length": 136884
+  },
+  "21113008": {
+    "headsign": "Shorewood White Center",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100012",
+    "shape_length": 55748
+  },
+  "21118002": {
+    "headsign": "Tahlequah",
+    "direction_id": "0",
+    "trip_count": 24,
+    "route_id": "100016",
+    "shape_length": 74109
+  },
+  "21118003": {
+    "headsign": "Burton",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "100016",
+    "shape_length": 49843
+  },
+  "21118004": {
+    "headsign": "Vashon Island Shuttle",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100016",
+    "shape_length": 25112
+  },
+  "21119008": {
+    "headsign": "Dockton",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100017",
+    "shape_length": 68020
+  },
+  "21119010": {
+    "headsign": "Dockton",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100017",
+    "shape_length": 73899
+  },
+  "21124050": {
+    "headsign": "Tukwila Link Station Georgetown",
+    "direction_id": "0",
+    "trip_count": 18,
+    "route_id": "100023",
+    "shape_length": 63477
+  },
+  "21124051": {
+    "headsign": "Tukwila Link Station Georgetown",
+    "direction_id": "0",
+    "trip_count": 125,
+    "route_id": "100023",
+    "shape_length": 64847
+  },
+  "21124059": {
+    "headsign": "Seattle Tacoma International Airport Georgetown",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "100023",
+    "shape_length": 75076
+  },
+  "21124060": {
+    "headsign": "Seattle Tacoma International Airport Georgetown",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100023",
+    "shape_length": 77680
+  },
+  "21125001": {
+    "headsign": "Downtown Seattle South Seattle College",
+    "direction_id": "0",
+    "trip_count": 97,
+    "route_id": "100024",
+    "shape_length": 69996
+  },
+  "21131002": {
+    "headsign": "Burien Transit Center Highland Park",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "100030",
+    "shape_length": 67027
+  },
+  "21131007": {
+    "headsign": "Burien Transit Center Highland Park",
+    "direction_id": "0",
+    "trip_count": 102,
+    "route_id": "100030",
+    "shape_length": 65406
+  },
+  "21132003": {
+    "headsign": "Burien Transit Center South Park",
+    "direction_id": "0",
+    "trip_count": 87,
+    "route_id": "100031",
+    "shape_length": 78546
+  },
+  "21132007": {
+    "headsign": "Burien Transit Center South Park",
+    "direction_id": "0",
+    "trip_count": 24,
+    "route_id": "100031",
+    "shape_length": 76924
+  },
+  "21148004": {
+    "headsign": "Fairwood S Renton P&R",
+    "direction_id": "0",
+    "trip_count": 54,
+    "route_id": "100042",
+    "shape_length": 44710
+  },
+  "21150002": {
+    "headsign": "Kent Southcenter",
+    "direction_id": "0",
+    "trip_count": 183,
+    "route_id": "100045",
+    "shape_length": 109337
+  },
+  "21150007": {
+    "headsign": "Kent Southcenter",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100045",
+    "shape_length": 119516
+  },
+  "21153003": {
+    "headsign": "Kent",
+    "direction_id": "0",
+    "trip_count": 27,
+    "route_id": "100048",
+    "shape_length": 41984
+  },
+  "21160007": {
+    "headsign": "Auburn Station Kent",
+    "direction_id": "0",
+    "trip_count": 139,
+    "route_id": "102720",
+    "shape_length": 94390
+  },
+  "21160009": {
+    "headsign": "Auburn Station",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "102720",
+    "shape_length": 31401
+  },
+  "21161005": {
+    "headsign": "Kent Station Seattle Tacoma International Airport",
+    "direction_id": "0",
+    "trip_count": 126,
+    "route_id": "102719",
+    "shape_length": 65055
+  },
+  "21161006": {
+    "headsign": "Kent Station Seattle Tacoma International Airport",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "102719",
+    "shape_length": 65161
+  },
+  "21162004": {
+    "headsign": "Lake Meridian",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "102715",
+    "shape_length": 135136
+  },
+  "21177004": {
+    "headsign": "Federal Way 320th P&R Downtown Federal Way Station",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "100068",
+    "shape_length": 123773
+  },
+  "21182006": {
+    "headsign": "NE Tacoma Via SW 356th St",
+    "direction_id": "0",
+    "trip_count": 44,
+    "route_id": "100073",
+    "shape_length": 36551
+  },
+  "21183006": {
+    "headsign": "Downtown Federal Way Station",
+    "direction_id": "0",
+    "trip_count": 49,
+    "route_id": "100074",
+    "shape_length": 57877
+  },
+  "21184005": {
+    "headsign": "SE Auburn",
+    "direction_id": "0",
+    "trip_count": 112,
+    "route_id": "102718",
+    "shape_length": 22801
+  },
+  "21193004": {
+    "headsign": "Federal Way Express",
+    "direction_id": "0",
+    "trip_count": 9,
+    "route_id": "100495",
+    "shape_length": 134220
+  },
+  "21204006": {
+    "headsign": "S Mercer Island",
+    "direction_id": "0",
+    "trip_count": 31,
+    "route_id": "102652",
+    "shape_length": 24139
+  },
+  "21204007": {
+    "headsign": "S Mercer Island",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "102652",
+    "shape_length": 31065
+  },
+  "21222005": {
+    "headsign": "Redmond Technology Station Downtown Redmond Station",
+    "direction_id": "0",
+    "trip_count": 62,
+    "route_id": "102753",
+    "shape_length": 91200
+  },
+  "21223007": {
+    "headsign": "Eastgate P&R Lake Hills",
+    "direction_id": "0",
+    "trip_count": 43,
+    "route_id": "102752",
+    "shape_length": 56053
+  },
+  "21223008": {
+    "headsign": "Eastgate P&R Lake Hills",
+    "direction_id": "0",
+    "trip_count": 71,
+    "route_id": "102752",
+    "shape_length": 52925
+  },
+  "21226012": {
+    "headsign": "South Bellevue Station Eastgate",
+    "direction_id": "0",
+    "trip_count": 50,
+    "route_id": "102552",
+    "shape_length": 66638
+  },
+  "21226015": {
+    "headsign": "South Bellevue Station Eastgate",
+    "direction_id": "0",
+    "trip_count": 38,
+    "route_id": "102552",
+    "shape_length": 68471
+  },
+  "21240008": {
+    "headsign": "Renton",
+    "direction_id": "0",
+    "trip_count": 115,
+    "route_id": "100133",
+    "shape_length": 93460
+  },
+  "21245016": {
+    "headsign": "Eastgate P&R Crossroads",
+    "direction_id": "0",
+    "trip_count": 59,
+    "route_id": "100136",
+    "shape_length": 63539
+  },
+  "21245017": {
+    "headsign": "Eastgate P&R Crossroads",
+    "direction_id": "0",
+    "trip_count": 60,
+    "route_id": "100136",
+    "shape_length": 65371
+  },
+  "21269007": {
+    "headsign": "Issaquah Transit Center Sammamish",
+    "direction_id": "0",
+    "trip_count": 26,
+    "route_id": "100160",
+    "shape_length": 86638
+  },
+  "21566008": {
+    "headsign": "Kent Station",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "102734",
+    "shape_length": 123556
+  },
+  "21566009": {
+    "headsign": "Auburn",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "102734",
+    "shape_length": 167178
+  },
+  "21629008": {
+    "headsign": "North Bend",
+    "direction_id": "0",
+    "trip_count": 13,
+    "route_id": "102699",
+    "shape_length": 156185
+  },
+  "21629011": {
+    "headsign": "North Bend",
+    "direction_id": "0",
+    "trip_count": 16,
+    "route_id": "102699",
+    "shape_length": 152047
+  },
+  "21635001": {
+    "headsign": "Marina District",
+    "direction_id": "0",
+    "trip_count": 50,
+    "route_id": "102647",
+    "shape_length": 14800
+  },
+  "21671007": {
+    "headsign": "Downtown Federal Way Station",
+    "direction_id": "0",
+    "trip_count": 304,
+    "route_id": "100512",
+    "shape_length": 59186
+  },
+  "21673004": {
+    "headsign": "West Seattle Alaska Junction",
+    "direction_id": "0",
+    "trip_count": 264,
+    "route_id": "102576",
+    "shape_length": 60454
+  },
+  "21673005": {
+    "headsign": "Westwood Village",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "102576",
+    "shape_length": 22491
+  },
+  "21678004": {
+    "headsign": "Burien Transit Center Westwood Village",
+    "direction_id": "0",
+    "trip_count": 267,
+    "route_id": "102736",
+    "shape_length": 66627
+  },
+  "21895005": {
+    "headsign": "Ardmore Park",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "102628",
+    "shape_length": 41901
+  },
+  "21901004": {
+    "headsign": "Downtown Federal Way Station",
+    "direction_id": "0",
+    "trip_count": 67,
+    "route_id": "100290",
+    "shape_length": 20851
+  },
+  "21903003": {
+    "headsign": "Twin Lakes",
+    "direction_id": "0",
+    "trip_count": 37,
+    "route_id": "100292",
+    "shape_length": 34478
+  },
+  "21907004": {
+    "headsign": "Black Diamond",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "102561",
+    "shape_length": 96728
+  },
+  "21917007": {
+    "headsign": "Pacific",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100300",
+    "shape_length": 23663
+  },
+  "21917008": {
+    "headsign": "Pacific",
+    "direction_id": "0",
+    "trip_count": 38,
+    "route_id": "100300",
+    "shape_length": 28301
+  },
+  "21975002": {
+    "headsign": "Vashon Island Water Taxi",
+    "direction_id": "0",
+    "trip_count": 20,
+    "route_id": "100337",
+    "shape_length": 50499
+  },
+  "21987004": {
+    "headsign": "South Park Special",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100345",
+    "shape_length": 126030
+  },
+  "21988004": {
+    "headsign": "Madrona Special",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100346",
+    "shape_length": 66798
+  },
+  "30050002": {
+    "headsign": "West Seattle South Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 129,
+    "route_id": "100230",
+    "shape_length": 79160
+  },
+  "30165008": {
+    "headsign": "Burien Transit Center Kent",
+    "direction_id": "1",
+    "trip_count": 81,
+    "route_id": "102717",
+    "shape_length": 116420
+  },
+  "30165009": {
+    "headsign": "Burien Transit Center",
+    "direction_id": "1",
+    "trip_count": 2,
+    "route_id": "102717",
+    "shape_length": 68287
+  },
+  "30165010": {
+    "headsign": "Burien Transit Center Kent",
+    "direction_id": "1",
+    "trip_count": 8,
+    "route_id": "102717",
+    "shape_length": 118908
+  },
+  "30168005": {
+    "headsign": "Kent Via SE 256th St",
+    "direction_id": "1",
+    "trip_count": 109,
+    "route_id": "100060",
+    "shape_length": 64187
+  },
+  "30181007": {
+    "headsign": "Twin Lakes P&R Auburn Station",
+    "direction_id": "1",
+    "trip_count": 94,
+    "route_id": "100072",
+    "shape_length": 77551
+  },
+  "30181010": {
+    "headsign": "Twin Lakes P&R",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100072",
+    "shape_length": 21802
+  },
+  "30203002": {
+    "headsign": "South Bellevue Station Newport Way",
+    "direction_id": "1",
+    "trip_count": 81,
+    "route_id": "102755",
+    "shape_length": 63487
+  },
+  "30208005": {
+    "headsign": "Issaquah Snoqualmie Ridge",
+    "direction_id": "1",
+    "trip_count": 16,
+    "route_id": "100099",
+    "shape_length": 106212
+  },
+  "30212007": {
+    "headsign": "Downtown Seattle Factoria",
+    "direction_id": "1",
+    "trip_count": 3,
+    "route_id": "100104",
+    "shape_length": 56928
+  },
+  "30212008": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 11,
+    "route_id": "100104",
+    "shape_length": 58432
+  },
+  "30218001": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 5,
+    "route_id": "100459",
+    "shape_length": 99940
+  },
+  "30224007": {
+    "headsign": "Redmond",
+    "direction_id": "1",
+    "trip_count": 16,
+    "route_id": "102653",
+    "shape_length": 76933
+  },
+  "30255008": {
+    "headsign": "University District Kirkland",
+    "direction_id": "1",
+    "trip_count": 186,
+    "route_id": "100146",
+    "shape_length": 74082
+  },
+  "30271026": {
+    "headsign": "University District Bellevue",
+    "direction_id": "1",
+    "trip_count": 35,
+    "route_id": "100162",
+    "shape_length": 70653
+  },
+  "30271027": {
+    "headsign": "University District Bellevue",
+    "direction_id": "1",
+    "trip_count": 23,
+    "route_id": "100162",
+    "shape_length": 113297
+  },
+  "30271028": {
+    "headsign": "University District Bellevue",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100162",
+    "shape_length": 111647
+  },
+  "30271029": {
+    "headsign": "University District",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100162",
+    "shape_length": 40739
+  },
+  "30271030": {
+    "headsign": "University District Bellevue",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "100162",
+    "shape_length": 125527
+  },
+  "30271031": {
+    "headsign": "University District Bellevue",
     "direction_id": "1",
     "trip_count": 48,
-    "route_id": "102757"
+    "route_id": "100162",
+    "shape_length": 118729
+  },
+  "30331012": {
+    "headsign": "Shoreline CC Mountlake Terrace Station",
+    "direction_id": "1",
+    "trip_count": 107,
+    "route_id": "100196",
+    "shape_length": 59582
+  },
+  "30542005": {
+    "headsign": "U-District Station",
+    "direction_id": "1",
+    "trip_count": 93,
+    "route_id": "100511",
+    "shape_length": 71933
+  },
+  "30545007": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 141,
+    "route_id": "100236",
+    "shape_length": 98524
+  },
+  "30550001": {
+    "headsign": "Seattle",
+    "direction_id": "1",
+    "trip_count": 186,
+    "route_id": "100239",
+    "shape_length": 65481
+  },
+  "30550002": {
+    "headsign": "Seattle",
+    "direction_id": "1",
+    "trip_count": 3,
+    "route_id": "100239",
+    "shape_length": 62410
+  },
+  "30554006": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 98,
+    "route_id": "100240",
+    "shape_length": 105512
+  },
+  "30554007": {
+    "headsign": "Downtown Seattle",
+    "direction_id": "1",
+    "trip_count": 2,
+    "route_id": "100240",
+    "shape_length": 161823
+  },
+  "30630008": {
+    "headsign": "Downtown Seattle First Hill",
+    "direction_id": "1",
+    "trip_count": 4,
+    "route_id": "102634",
+    "shape_length": 53720
+  },
+  "30672005": {
+    "headsign": "Bellevue Transit Center Crossroads",
+    "direction_id": "1",
+    "trip_count": 227,
+    "route_id": "102548",
+    "shape_length": 52414
+  },
+  "30676003": {
+    "headsign": "Burien Southcenter",
+    "direction_id": "1",
+    "trip_count": 209,
+    "route_id": "102619",
+    "shape_length": 65930
+  },
+  "30677004": {
+    "headsign": "Downtown Seattle Via E Madison St",
+    "direction_id": "1",
+    "trip_count": 420,
+    "route_id": "102745",
+    "shape_length": 24156
+  },
+  "30906009": {
+    "headsign": "Tukwila Station Southcenter",
+    "direction_id": "1",
+    "trip_count": 9,
+    "route_id": "102593",
+    "shape_length": 62814
+  },
+  "30906010": {
+    "headsign": "Southcenter",
+    "direction_id": "1",
+    "trip_count": 41,
+    "route_id": "102593",
+    "shape_length": 36534
+  },
+  "30906011": {
+    "headsign": "Tukwila Station Southcenter",
+    "direction_id": "1",
+    "trip_count": 10,
+    "route_id": "102593",
+    "shape_length": 42930
+  },
+  "30906012": {
+    "headsign": "Southcenter",
+    "direction_id": "1",
+    "trip_count": 2,
+    "route_id": "102593",
+    "shape_length": 56418
+  },
+  "30915003": {
+    "headsign": "Auburn",
+    "direction_id": "1",
+    "trip_count": 19,
+    "route_id": "102557",
+    "shape_length": 89003
+  },
+  "30915008": {
+    "headsign": "Auburn",
+    "direction_id": "1",
+    "trip_count": 6,
+    "route_id": "102557",
+    "shape_length": 83696
+  },
+  "30930002": {
+    "headsign": "Kingsgate P&R",
+    "direction_id": "1",
+    "trip_count": 58,
+    "route_id": "100496",
+    "shape_length": 37660
+  },
+  "30931004": {
+    "headsign": "UW Bothell/Cascadia College",
+    "direction_id": "1",
+    "trip_count": 14,
+    "route_id": "102558",
+    "shape_length": 74702
+  },
+  "30982006": {
+    "headsign": "Haller Lake Special",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100341",
+    "shape_length": 109751
+  },
+  "31008007": {
+    "headsign": "Seattle Center",
+    "direction_id": "0",
+    "trip_count": 204,
+    "route_id": "100275",
+    "shape_length": 37933
+  },
+  "31031006": {
+    "headsign": "Central Magnolia Fremont",
+    "direction_id": "0",
+    "trip_count": 99,
+    "route_id": "100184",
+    "shape_length": 44603
+  },
+  "31032002": {
+    "headsign": "Seattle Center Fremont",
+    "direction_id": "0",
+    "trip_count": 115,
+    "route_id": "100193",
+    "shape_length": 45671
+  },
+  "31045010": {
+    "headsign": "Loyal Heights Greenwood",
+    "direction_id": "0",
+    "trip_count": 145,
+    "route_id": "100225",
+    "shape_length": 43438
+  },
+  "31045012": {
+    "headsign": "Loyal Heights Greenwood",
+    "direction_id": "0",
+    "trip_count": 67,
+    "route_id": "100225",
+    "shape_length": 43621
+  },
+  "31156003": {
+    "headsign": "Highline College Sea Tac",
+    "direction_id": "0",
+    "trip_count": 70,
+    "route_id": "100489",
+    "shape_length": 65603
   },
   "31187007": {
     "headsign": "Twin Lakes Via Hoyt Road",
     "direction_id": "0",
     "trip_count": 48,
-    "route_id": "102757"
+    "route_id": "102757",
+    "shape_length": 14877
+  },
+  "31556009": {
+    "headsign": "U-District Station",
+    "direction_id": "0",
+    "trip_count": 10,
+    "route_id": "100451",
+    "shape_length": 125239
+  },
+  "31631002": {
+    "headsign": "Gregory Heights Via Highline Medical Center",
+    "direction_id": "0",
+    "trip_count": 26,
+    "route_id": "102636",
+    "shape_length": 15342
+  },
+  "31973002": {
+    "headsign": "West Seattle Water Taxi",
+    "direction_id": "0",
+    "trip_count": 67,
+    "route_id": "100336",
+    "shape_length": 10920
+  },
+  "31986007": {
+    "headsign": "Haller Lake Special",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100344",
+    "shape_length": 88417
+  },
+  "31989005": {
+    "headsign": "Haller Lake Special",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100347",
+    "shape_length": 133095
+  },
+  "40008005": {
+    "headsign": "Mount Baker Transit Center",
+    "direction_id": "1",
+    "trip_count": 207,
+    "route_id": "100275",
+    "shape_length": 37414
+  },
+  "40031005": {
+    "headsign": "Seattle Childrens Hospital U-District Station",
+    "direction_id": "1",
+    "trip_count": 98,
+    "route_id": "100184",
+    "shape_length": 47425
+  },
+  "40032001": {
+    "headsign": "Seattle Childrens Hospital U-District Station",
+    "direction_id": "1",
+    "trip_count": 115,
+    "route_id": "100193",
+    "shape_length": 46226
+  },
+  "40045006": {
+    "headsign": "University District Roosevelt Station",
+    "direction_id": "1",
+    "trip_count": 69,
+    "route_id": "100225",
+    "shape_length": 29731
+  },
+  "40045008": {
+    "headsign": "University District Roosevelt Station",
+    "direction_id": "1",
+    "trip_count": 149,
+    "route_id": "100225",
+    "shape_length": 29548
+  },
+  "40156002": {
+    "headsign": "Southcenter Sea Tac",
+    "direction_id": "1",
+    "trip_count": 69,
+    "route_id": "100489",
+    "shape_length": 66585
+  },
+  "40187006": {
+    "headsign": "Downtown Federal Way Station Via S 320th St",
+    "direction_id": "1",
+    "trip_count": 48,
+    "route_id": "102757",
+    "shape_length": 45967
+  },
+  "40556005": {
+    "headsign": "Issaquah",
+    "direction_id": "1",
+    "trip_count": 8,
+    "route_id": "100451",
+    "shape_length": 122852
+  },
+  "40631001": {
+    "headsign": "Burien Transit Center Via Gregory Heights",
+    "direction_id": "1",
+    "trip_count": 26,
+    "route_id": "102636",
+    "shape_length": 6700
+  },
+  "40973001": {
+    "headsign": "Downtown Seattle Water Taxi",
+    "direction_id": "1",
+    "trip_count": 67,
+    "route_id": "100336",
+    "shape_length": 10920
+  },
+  "40986003": {
+    "headsign": "Kirkland Special",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100344",
+    "shape_length": 121219
+  },
+  "40989004": {
+    "headsign": "Factoria Special",
+    "direction_id": "1",
+    "trip_count": 1,
+    "route_id": "100347",
+    "shape_length": 132450
+  },
+  "41050004": {
+    "headsign": "Othello Station South Downtown Seattle",
+    "direction_id": "0",
+    "trip_count": 126,
+    "route_id": "100230",
+    "shape_length": 78186
+  },
+  "41165001": {
+    "headsign": "Green River Coll Kent",
+    "direction_id": "0",
+    "trip_count": 78,
+    "route_id": "102717",
+    "shape_length": 121343
+  },
+  "41165002": {
+    "headsign": "Green River Coll Kent",
+    "direction_id": "0",
+    "trip_count": 9,
+    "route_id": "102717",
+    "shape_length": 123831
+  },
+  "41165004": {
+    "headsign": "Kent",
+    "direction_id": "0",
+    "trip_count": 3,
+    "route_id": "102717",
+    "shape_length": 69246
+  },
+  "41168002": {
+    "headsign": "Maple Valley Via SE 256th St",
+    "direction_id": "0",
+    "trip_count": 68,
+    "route_id": "100060",
+    "shape_length": 64198
+  },
+  "41168003": {
+    "headsign": "Maple Valley Via SE 256th St",
+    "direction_id": "0",
+    "trip_count": 36,
+    "route_id": "100060",
+    "shape_length": 64198
+  },
+  "41181008": {
+    "headsign": "Green River Coll Auburn Station",
+    "direction_id": "0",
+    "trip_count": 94,
+    "route_id": "100072",
+    "shape_length": 74419
+  },
+  "41181009": {
+    "headsign": "Auburn Station",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100072",
+    "shape_length": 52928
+  },
+  "41203001": {
+    "headsign": "Issaquah Highlands Park & Ride Newport Way",
+    "direction_id": "0",
+    "trip_count": 84,
+    "route_id": "102755",
+    "shape_length": 63095
+  },
+  "41208004": {
+    "headsign": "North Bend Snoqualmie Ridge",
+    "direction_id": "0",
+    "trip_count": 16,
+    "route_id": "100099",
+    "shape_length": 112161
+  },
+  "41212005": {
+    "headsign": "Eastgate P&R",
+    "direction_id": "0",
+    "trip_count": 10,
+    "route_id": "100104",
+    "shape_length": 60208
+  },
+  "41212006": {
+    "headsign": "Eastgate Factoria",
+    "direction_id": "0",
+    "trip_count": 3,
+    "route_id": "100104",
+    "shape_length": 58844
+  },
+  "41218003": {
+    "headsign": "Issaquah Highlands",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100459",
+    "shape_length": 103898
+  },
+  "41224006": {
+    "headsign": "Duvall",
+    "direction_id": "0",
+    "trip_count": 14,
+    "route_id": "102653",
+    "shape_length": 75951
+  },
+  "41255002": {
+    "headsign": "Totem Lake Transit Center Kirkland",
+    "direction_id": "0",
+    "trip_count": 189,
+    "route_id": "100146",
+    "shape_length": 74892
+  },
+  "41271001": {
+    "headsign": "Issaquah Bellevue",
+    "direction_id": "0",
+    "trip_count": 49,
+    "route_id": "100162",
+    "shape_length": 118813
+  },
+  "41271017": {
+    "headsign": "Eastgate P&R Bellevue",
+    "direction_id": "0",
+    "trip_count": 29,
+    "route_id": "100162",
+    "shape_length": 70082
+  },
+  "41271018": {
+    "headsign": "Eastgate Bellevue",
+    "direction_id": "0",
+    "trip_count": 8,
+    "route_id": "100162",
+    "shape_length": 79275
+  },
+  "41271019": {
+    "headsign": "Issaquah Transit Center Bellevue",
+    "direction_id": "0",
+    "trip_count": 19,
+    "route_id": "100162",
+    "shape_length": 113238
+  },
+  "41271020": {
+    "headsign": "Issaquah Bellevue",
+    "direction_id": "0",
+    "trip_count": 9,
+    "route_id": "100162",
+    "shape_length": 125777
+  },
+  "41271021": {
+    "headsign": "Issaquah Bellevue",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100162",
+    "shape_length": 123945
+  },
+  "41331010": {
+    "headsign": "Kenmore P&R Mountlake Terrace Station",
+    "direction_id": "0",
+    "trip_count": 106,
+    "route_id": "100196",
+    "shape_length": 60849
+  },
+  "41542004": {
+    "headsign": "Redmond",
+    "direction_id": "0",
+    "trip_count": 94,
+    "route_id": "100511",
+    "shape_length": 72495
+  },
+  "41545002": {
+    "headsign": "Redmond",
+    "direction_id": "0",
+    "trip_count": 26,
+    "route_id": "100236",
+    "shape_length": 100705
+  },
+  "41545006": {
+    "headsign": "Redmond",
+    "direction_id": "0",
+    "trip_count": 116,
+    "route_id": "100236",
+    "shape_length": 100705
+  },
+  "41550018": {
+    "headsign": "Bellevue",
+    "direction_id": "0",
+    "trip_count": 193,
+    "route_id": "100239",
+    "shape_length": 65590
+  },
+  "41554009": {
+    "headsign": "Issaquah",
+    "direction_id": "0",
+    "trip_count": 95,
+    "route_id": "100240",
+    "shape_length": 104327
+  },
+  "41554011": {
+    "headsign": "Sammamish Issaquah",
+    "direction_id": "0",
+    "trip_count": 5,
+    "route_id": "100240",
+    "shape_length": 160613
+  },
+  "41630009": {
+    "headsign": "S Mercer Island",
+    "direction_id": "0",
+    "trip_count": 4,
+    "route_id": "102634",
+    "shape_length": 61187
+  },
+  "41672006": {
+    "headsign": "Downtown Redmond Station Crossroads",
+    "direction_id": "0",
+    "trip_count": 224,
+    "route_id": "102548",
+    "shape_length": 52210
+  },
+  "41676004": {
+    "headsign": "Renton The Landing Southcenter",
+    "direction_id": "0",
+    "trip_count": 211,
+    "route_id": "102619",
+    "shape_length": 67185
+  },
+  "41906013": {
+    "headsign": "Fairwood Southcenter",
+    "direction_id": "0",
+    "trip_count": 7,
+    "route_id": "102593",
+    "shape_length": 43163
+  },
+  "41906014": {
+    "headsign": "Fairwood",
+    "direction_id": "0",
+    "trip_count": 40,
+    "route_id": "102593",
+    "shape_length": 36555
+  },
+  "41906015": {
+    "headsign": "Fairwood Southcenter",
+    "direction_id": "0",
+    "trip_count": 10,
+    "route_id": "102593",
+    "shape_length": 61232
+  },
+  "41914001": {
+    "headsign": "Kent East Hill",
+    "direction_id": "0",
+    "trip_count": 23,
+    "route_id": "100297",
+    "shape_length": 94993
+  },
+  "41914021": {
+    "headsign": "Downtown Kent",
+    "direction_id": "0",
+    "trip_count": 2,
+    "route_id": "100297",
+    "shape_length": 22111
+  },
+  "41915006": {
+    "headsign": "Enumclaw High School",
+    "direction_id": "0",
+    "trip_count": 17,
+    "route_id": "102557",
+    "shape_length": 91832
+  },
+  "41915007": {
+    "headsign": "Enumclaw",
+    "direction_id": "0",
+    "trip_count": 6,
+    "route_id": "102557",
+    "shape_length": 80724
+  },
+  "41930003": {
+    "headsign": "Redmond",
+    "direction_id": "0",
+    "trip_count": 58,
+    "route_id": "100496",
+    "shape_length": 37813
+  },
+  "41931003": {
+    "headsign": "Duvall",
+    "direction_id": "0",
+    "trip_count": 14,
+    "route_id": "102558",
+    "shape_length": 75310
+  },
+  "41981003": {
+    "headsign": "Mercer Island Special",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100473",
+    "shape_length": 140410
+  },
+  "41982005": {
+    "headsign": "Bear Creek P&R Special",
+    "direction_id": "0",
+    "trip_count": 1,
+    "route_id": "100341",
+    "shape_length": 138040
   }
 }

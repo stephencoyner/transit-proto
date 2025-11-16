@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
-import Map from 'react-map-gl/mapbox';
+import MapboxMap from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer, Layer } from '@deck.gl/core';
@@ -11,6 +11,8 @@ import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
+import MapScale from '@/components/MapScale';
+import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -550,32 +552,32 @@ export default function MapCanvas() {
       return filtered;
     }
 
-    // In system view, show only the most frequent pattern per route
+    // In system view, show only the longest pattern per route
     if (Object.keys(patternLookup).length > 0) {
-      const mostFrequentShapePerRoute: { [routeId: string]: string } = {};
+      const longestShapePerRoute: { [routeId: string]: string } = {};
 
-      // Find the shape with highest trip_count for each route
+      // Find the shape with highest shape_length for each route
       shapes.forEach(shape => {
         const routeId = shape.properties.route_id;
         const shapeId = shape.properties.shape_id;
         const patternInfo = patternLookup[shapeId];
 
-        if (patternInfo) {
-          if (!mostFrequentShapePerRoute[routeId]) {
-            mostFrequentShapePerRoute[routeId] = shapeId;
+        if (patternInfo && patternInfo.shape_length) {
+          if (!longestShapePerRoute[routeId]) {
+            longestShapePerRoute[routeId] = shapeId;
           } else {
-            const currentShapeId = mostFrequentShapePerRoute[routeId];
+            const currentShapeId = longestShapePerRoute[routeId];
             const currentPattern = patternLookup[currentShapeId];
-            if (patternInfo.trip_count > currentPattern.trip_count) {
-              mostFrequentShapePerRoute[routeId] = shapeId;
+            if (patternInfo.shape_length > (currentPattern.shape_length || 0)) {
+              longestShapePerRoute[routeId] = shapeId;
             }
           }
         }
       });
 
-      // Filter to only include the most frequent shape per route
+      // Filter to only include the longest shape per route
       return shapes.filter(shape =>
-        mostFrequentShapePerRoute[shape.properties.route_id] === shape.properties.shape_id
+        longestShapePerRoute[shape.properties.route_id] === shape.properties.shape_id
       );
     }
 
@@ -612,6 +614,50 @@ export default function MapCanvas() {
     // Only show all stops when in stops tab view
     return activeTab === 'stops' ? stops : [];
   }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab]);
+
+  // Calculate value ranges for the color scale
+  // This needs to be based on what's currently visible on the map
+  const { routeValueRange, stopValueRange, scaleTitle } = React.useMemo(() => {
+    // Determine which data to show based on view
+    if (selectedRouteId || activeTab === 'stops') {
+      // Route detail view OR stops tab - show stop data
+      const visibleStopIds = new Set(filteredStops.map(s => s.properties.stop_id));
+      const visibleStopValues = stopsList
+        .filter(stop => visibleStopIds.has(stop.id))
+        .map(stop => stop.value);
+
+      return {
+        routeValueRange: { min: 0, max: 0 },
+        stopValueRange: getValueRange(visibleStopValues),
+        scaleTitle: selectedMetric,
+      };
+    } else {
+      // System view or routes tab - show route data
+      const visibleRouteIds = new Set(filteredShapes.map(s => s.properties.route_id));
+      const visibleRouteValues = routesList
+        .filter(route => visibleRouteIds.has(route.id))
+        .map(route => route.value);
+
+      return {
+        routeValueRange: getValueRange(visibleRouteValues),
+        stopValueRange: { min: 0, max: 0 },
+        scaleTitle: selectedMetric,
+      };
+    }
+  }, [selectedRouteId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric]);
+
+  // Create lookup maps for values
+  const routeValueMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    routesList.forEach(route => map.set(route.id, route.value));
+    return map;
+  }, [routesList]);
+
+  const stopValueMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    stopsList.forEach(stop => map.set(stop.id, stop.value));
+    return map;
+  }, [stopsList]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -1131,18 +1177,21 @@ export default function MapCanvas() {
 
   // Update view state when route or stop is selected
   useEffect(() => {
-    if (selectedRouteId && filteredShapes.length > 0) {
-      const bounds = calculateBounds(filteredShapes);
-      if (bounds) {
-        const el = mapContainerRef.current;
-        const width = el?.clientWidth ?? window.innerWidth;
-        const height = el?.clientHeight ?? window.innerHeight;
-        const newViewState = fitToBounds(bounds, { width, height });
-        setViewState(newViewState);
+    if (selectedRouteId) {
+      const routeShapes = shapes.filter(shape => shape.properties.route_id === selectedRouteId);
+      if (routeShapes.length > 0) {
+        const bounds = calculateBounds(routeShapes);
+        if (bounds) {
+          const el = mapContainerRef.current;
+          const width = el?.clientWidth ?? window.innerWidth;
+          const height = el?.clientHeight ?? window.innerHeight;
+          const newViewState = fitToBounds(bounds, { width, height });
+          setViewState(newViewState);
+        }
       }
-    } else if (selectedStopId && filteredStops.length > 0) {
+    } else if (selectedStopId) {
       // Find the actual selected stop
-      const stop = filteredStops.find(s => s.properties.stop_id === selectedStopId);
+      const stop = stops.find(s => s.properties.stop_id === selectedStopId);
       if (!stop) return;
       const [stopLng, stopLat] = stop.geometry.coordinates as number[];
 
@@ -1183,7 +1232,7 @@ export default function MapCanvas() {
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
-  }, [selectedRouteId, selectedStopId, filteredShapes, filteredStops, fitToBounds, isFiltersPanelOpen]);
+  }, [selectedRouteId, selectedStopId, shapes, stops, fitToBounds, isFiltersPanelOpen]);
 
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1191,11 +1240,13 @@ export default function MapCanvas() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
-    const color = getColorForId(d.properties.stop_id);
-    const isSelected = selectedStopId === d.properties.stop_id;
+    const stopId = d.properties.stop_id;
+    const value = stopValueMap.get(stopId) || 0;
+    const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
+    const isSelected = selectedStopId === stopId;
     const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId]);
+  }, [selectedStopId, stopValueMap, stopValueRange]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
@@ -1220,14 +1271,14 @@ export default function MapCanvas() {
           if (selectedRouteId) {
             return [186, 177, 169, 255]; // #BAB1A9 at full opacity
           }
-          // Otherwise use the color scheme
-          const color = getColorForId(d.properties.route_id);
-          // If a route is hovered, reduce opacity of other routes to 40%
-          const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200; // 80 = 40% of 200
+          // Otherwise use data-driven color from value
+          const value = routeValueMap.get(d.properties.route_id) || 0;
+          const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
+          const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 200 : 80) : 200;
           return [...color, opacity];
         },
         updateTriggers: {
-          getColor: [hoveredRoute, selectedRouteId]
+          getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange]
         },
         widthMinPixels: 4.5,
         widthMaxPixels: 18,
@@ -1239,8 +1290,9 @@ export default function MapCanvas() {
     if (hoveredRoute) {
       const hoveredPaths = pathGeoms.filter(p => p.properties.route_id === hoveredRoute);
       if (hoveredPaths.length) {
-        const routeColor = getColorForId(hoveredRoute);
-        
+        const value = routeValueMap.get(hoveredRoute) || 0;
+        const routeColor = valueToColor(value, routeValueRange.min, routeValueRange.max);
+
         // Outer glow layer (very wide, very transparent)
         layers.push(
           new PathLayer({
@@ -1309,10 +1361,14 @@ export default function MapCanvas() {
       const midIndex = Math.floor(coords.length / 2);
       const [lng, lat] = coords[midIndex];
 
+      // Use data-driven color to match route coloring
+      const value = routeValueMap.get(shape.properties.route_id) || 0;
+      const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
+
       return {
         position: [lng, lat],
         text: shape.properties.route_short_name || '?',
-        color: getColorForId(shape.properties.route_id),
+        color,
         routeId: shape.properties.route_id
       };
     });
@@ -1396,7 +1452,8 @@ export default function MapCanvas() {
     if (selectedStopId) {
       const selectedStopData = filteredStops.filter(stop => stop.properties.stop_id === selectedStopId);
       if (selectedStopData.length > 0) {
-        const selectedStopColor = getColorForId(selectedStopId);
+        const value = stopValueMap.get(selectedStopId) || 0;
+        const selectedStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
         // Halo layer (12px larger than the stop, 50% opacity)
         layers.push(
@@ -1417,7 +1474,8 @@ export default function MapCanvas() {
     if (hoveredStop && hoveredStop !== selectedStopId) {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === hoveredStop);
       if (hoveredStopData.length > 0) {
-        const hoveredStopColor = getColorForId(hoveredStop);
+        const value = stopValueMap.get(hoveredStop) || 0;
+        const hoveredStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
         // Halo layer (12px larger than the stop, 50% opacity)
         layers.push(
@@ -2672,9 +2730,23 @@ export default function MapCanvas() {
             setHoveredStop(null);
           }
         }}
+        onClick={({ object }) => {
+          if (object && object.properties) {
+            if ('route_id' in object.properties) {
+              const routeId = (object as RouteFeature).properties.route_id;
+              setHoveredRoute(null); // Clear hover immediately
+              setSelectedRouteId(routeId);
+              setSelectedStopId(null);
+            } else if ('stop_id' in object.properties) {
+              const stopId = (object as StopFeature).properties.stop_id;
+              setHoveredStop(null); // Clear hover immediately
+              setSelectedStopId(stopId);
+            }
+          }
+        }}
         style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
       >
-        <Map
+        <MapboxMap
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/stephencoynerseattle/cmgifl16g001u01s6699hg7iv"
           style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
@@ -2687,6 +2759,15 @@ export default function MapCanvas() {
         />
       </DeckGL>
 
+      {/* Map Scale */}
+      {(routeValueRange.max > 0 || stopValueRange.max > 0) && (
+        <MapScale
+          title={scaleTitle}
+          min={(selectedRouteId || activeTab === 'stops') ? stopValueRange.min : routeValueRange.min}
+          max={(selectedRouteId || activeTab === 'stops') ? stopValueRange.max : routeValueRange.max}
+        />
+      )}
+
       {/* Data Panel */}
       <div style={{
         position: 'fixed',
@@ -2696,7 +2777,7 @@ export default function MapCanvas() {
         width: '376px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
-        padding: '20px 16px 0 16px',
+        padding: '0 16px 0 16px',
         fontFamily: 'Inter, sans-serif',
         zIndex: 1001,
         overflowX: 'hidden',
@@ -2708,7 +2789,7 @@ export default function MapCanvas() {
       }}>
         {selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
             {/* Back Button and Header */}
             <div style={{
               display: 'flex',
@@ -2794,7 +2875,7 @@ export default function MapCanvas() {
 
             {/* Tab Content */}
             {selectedRouteTab === 'Summary' ? (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px' }}>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
                 <MetricCard
                   value={selectedRouteId
                     ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0)
@@ -2820,7 +2901,9 @@ export default function MapCanvas() {
                   display: 'flex',
                   flexDirection: 'column',
                   paddingTop: '12px',
-                  paddingBottom: '24px'
+                  paddingBottom: '24px',
+                  marginRight: '-8px',
+                  paddingRight: '8px'
                 }}
               >
                 {routeTrips.length === 0 ? (
@@ -2982,7 +3065,9 @@ export default function MapCanvas() {
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
-                paddingBottom: '24px'
+                paddingBottom: '24px',
+                marginRight: '-8px',
+                paddingRight: '8px'
               }}>
                 <div style={{
                   padding: '24px',
@@ -2998,7 +3083,7 @@ export default function MapCanvas() {
           </div>
         ) : activeTab === 'system' ? (
           /* System View - Aggregated Charts */
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
             <MetricCard value="8,973" />
             <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" />
@@ -3012,7 +3097,7 @@ export default function MapCanvas() {
           </div>
         ) : activeTab === 'components' ? (
           /* Components View - Showcase */
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             <div style={{ marginBottom: '32px' }}>
               <h2 style={{ fontSize: '24px', fontWeight: '500', marginBottom: '24px', color: 'var(--text-primary)' }}>
                 UI Components
@@ -3100,7 +3185,7 @@ export default function MapCanvas() {
           </div>
         ) : (
           /* Routes/Stops View - List */
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Sort and Filter Buttons - DISABLED FOR NOW */}
             {/* <div style={{
               display: 'flex',
