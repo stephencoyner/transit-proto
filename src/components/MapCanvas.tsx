@@ -1612,11 +1612,11 @@ export default function MapCanvas() {
           if (firstStop && lastStop) {
             stopLabels = [
               {
-                position: firstStop.geometry.coordinates,
+                position: firstStop.geometry.coordinates as [number, number],
                 text: 'First stop'
               },
               {
-                position: lastStop.geometry.coordinates,
+                position: lastStop.geometry.coordinates as [number, number],
                 text: 'Last stop'
               }
             ];

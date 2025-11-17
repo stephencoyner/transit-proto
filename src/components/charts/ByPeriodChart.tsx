@@ -11,7 +11,7 @@ export default function ByPeriodChart({
   colors,
   activePieIndex,
   setActivePieIndex,
-  metric
+  metric: _metric
 }: {
   data: PeriodDataPoint[],
   colors: string[],
