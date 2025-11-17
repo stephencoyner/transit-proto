@@ -10,12 +10,14 @@ export default function ByPeriodChart({
   data,
   colors,
   activePieIndex,
-  setActivePieIndex
+  setActivePieIndex,
+  metric
 }: {
   data: PeriodDataPoint[],
   colors: string[],
   activePieIndex: number | null,
-  setActivePieIndex: (index: number | null) => void
+  setActivePieIndex: (index: number | null) => void,
+  metric?: string
 }) {
   return (
     <div style={{
