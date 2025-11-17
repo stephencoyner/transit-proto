@@ -377,6 +377,15 @@ export default function MapCanvas() {
   // State to track which trip is being hovered (format: "groupIndex-tripIndex")
   const [hoveredTrip, setHoveredTrip] = useState<string | null>(null);
 
+  // Tooltip state for trips
+  const [tripTooltip, setTripTooltip] = useState<{
+    show: boolean;
+    time: string;
+    ridership: number;
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Ref for trips scroll container
   const tripsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -1436,7 +1445,7 @@ export default function MapCanvas() {
           id: 'route-segments',
           data: segmentsWithIndex,
           getPath: (d) => d.path,
-          getWidth: 10,
+          getWidth: 15,
           getColor: (d) => {
             const color = valueToColor(d.loadValue, segmentValueRange.min, segmentValueRange.max);
             // Reduce opacity of non-hovered segments when hovering
@@ -1447,7 +1456,7 @@ export default function MapCanvas() {
             getColor: [segmentValueRange, hoveredSegment]
           },
           widthMinPixels: 5,
-          widthMaxPixels: 20,
+          widthMaxPixels: 25,
           pickable: true,
           onHover: ({ object }) => setHoveredSegment(object ? object.index : null),
         })
@@ -1582,7 +1591,8 @@ export default function MapCanvas() {
     }
   }
 
-  // Add directional arrows when a pattern is selected
+  // Prepare directional labels when a pattern is selected (render later to ensure they're on top)
+  let stopLabels: Array<{position: [number, number], text: string}> | null = null;
     if (selectedPattern && selectedRouteId && filteredStops.length > 1) {
       // selectedRouteId is already the actual route_id (e.g., "100001")
       if (routePatterns[selectedRouteId]) {
@@ -1600,42 +1610,16 @@ export default function MapCanvas() {
           const lastStop = filteredStops.find(s => s.properties.stop_id === lastStopId);
 
           if (firstStop && lastStop) {
-            const stopLabels = [
+            stopLabels = [
               {
-                position: firstStop.geometry.coordinates,
+                position: firstStop.geometry.coordinates as [number, number],
                 text: 'First stop'
               },
               {
-                position: lastStop.geometry.coordinates,
+                position: lastStop.geometry.coordinates as [number, number],
                 text: 'Last stop'
               }
             ];
-
-            layers.push(
-              new TextLayer({
-                id: 'stop-direction-labels',
-                data: stopLabels,
-                getPosition: (d) => d.position,
-                getText: (d) => d.text,
-                getSize: 12,
-                getColor: [61, 40, 23, 255], // text-secondary #3D2817
-                getBackgroundColor: [255, 255, 255, 255], // white background
-                getTextAnchor: 'start',
-                getAlignmentBaseline: 'center',
-                getBorderColor: [232, 224, 213, 255], // border-default #E8E0D5
-                getBorderWidth: 0.5,
-                background: true,
-                backgroundPadding: [8, 4, 8, 4], // [top, right, bottom, left] - 8px top/bottom, 4px left/right
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 500,
-                sizeScale: 1,
-                sizeMinPixels: 12,
-                sizeMaxPixels: 12,
-                pickable: false,
-                getPixelOffset: [12, 0], // Offset to the right of the stop
-                // Note: getBorderRadius is not supported by deck.gl TextLayer
-              })
-            );
           }
         }
       }
@@ -1695,10 +1679,10 @@ export default function MapCanvas() {
           id: 'stops-border',
           data: filteredStops,
           getPosition: getStopPosition,
-          getRadius: showSegmentColoring ? 11 : 12, // Smaller in segment mode (3px border + 8px), normal size otherwise
+          getRadius: showSegmentColoring ? 10 : 12, // Smaller in segment mode (4px border + 6px), normal size otherwise
           getFillColor: getStopBorderColor,
-          radiusMinPixels: showSegmentColoring ? 6.5 : 6,
-          radiusMaxPixels: showSegmentColoring ? 22 : 24,
+          radiusMinPixels: showSegmentColoring ? 5 : 6,
+          radiusMaxPixels: showSegmentColoring ? 20 : 24,
           pickable: !showSegmentColoring, // Disable hover in segment coloring mode
           visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
           onHover: ({ object }) => {
@@ -1724,7 +1708,7 @@ export default function MapCanvas() {
           getPosition: getStopPosition,
           getRadius: showSegmentColoring ? 8 : 4, // Larger in segment mode (8px black), smaller otherwise (4px white)
           getFillColor: getStopCenterColor,
-          radiusMinPixels: showSegmentColoring ? 4 : 2,
+          radiusMinPixels: showSegmentColoring ? 3 : 2,
           radiusMaxPixels: showSegmentColoring ? 16 : 8,
           pickable: !showSegmentColoring, // Disable hover in segment coloring mode
           visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
@@ -1744,6 +1728,35 @@ export default function MapCanvas() {
             getRadius: [showSegmentColoring] // Update radius when mode changes
           }
         })
+    );
+  }
+
+  // Add stop direction labels on top of everything (rendered last so they appear above stops)
+  if (stopLabels) {
+    layers.push(
+      new TextLayer({
+        id: 'stop-direction-labels',
+        data: stopLabels,
+        getPosition: (d) => d.position,
+        getText: (d) => d.text,
+        getSize: 12,
+        getColor: [61, 40, 23, 255], // text-secondary #3D2817
+        getBackgroundColor: [255, 255, 255, 255], // white background
+        getTextAnchor: 'start',
+        getAlignmentBaseline: 'center',
+        getBorderColor: [232, 224, 213, 255], // border-default #E8E0D5
+        getBorderWidth: 0.5,
+        background: true,
+        backgroundPadding: [8, 4, 8, 4], // [top, right, bottom, left] - 8px top/bottom, 4px left/right
+        fontFamily: 'Inter, sans-serif',
+        fontWeight: 500,
+        sizeScale: 1,
+        sizeMinPixels: 12,
+        sizeMaxPixels: 12,
+        pickable: false,
+        getPixelOffset: [12, 0], // Offset to the right of the stop
+        // Note: getBorderRadius is not supported by deck.gl TextLayer
+      })
     );
   }
 
@@ -3085,18 +3098,20 @@ export default function MapCanvas() {
             {selectedRouteTab === 'Summary' ? (
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
                 <MetricCard
+                  title={selectedMetric}
                   value={selectedRouteId
                     ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0)
                     : (stopsList.find((s) => s.id === selectedStopId)?.value || 0)
                   }
                 />
-                <ByDateChart data={chartDataByDate} gradientId="colorValue" />
-                <ByDayChart data={mockDataByDay} average={averageDailyByDay} />
+                <ByDateChart data={chartDataByDate} gradientId="colorValue" metric={selectedMetric} />
+                <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />
                 <ByPeriodChart
                   data={mockDataByPeriod}
                   colors={PERIOD_COLORS}
                   activePieIndex={activePieIndex}
                   setActivePieIndex={setActivePieIndex}
+                  metric={selectedMetric}
                 />
               </div>
             ) : selectedRouteTab === 'Trips' ? (
@@ -3222,8 +3237,21 @@ export default function MapCanvas() {
                                         height: '24px',
                                         width: `${barWidth}%`,
                                       }}
-                                      onMouseEnter={() => setHoveredTrip(tripKey)}
-                                      onMouseLeave={() => setHoveredTrip(null)}
+                                      onMouseEnter={(e) => {
+                                        setHoveredTrip(tripKey);
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setTripTooltip({
+                                          show: true,
+                                          time: formatTime12Hour(trip.start_time),
+                                          ridership: trip.ridership,
+                                          x: rect.left,
+                                          y: rect.top
+                                        });
+                                      }}
+                                      onMouseLeave={() => {
+                                        setHoveredTrip(null);
+                                        setTripTooltip(null);
+                                      }}
                                     >
                                       <div
                                         style={{
@@ -3234,27 +3262,6 @@ export default function MapCanvas() {
                                           cursor: 'pointer'
                                         }}
                                       />
-                                      {showTooltip && (
-                                        <div
-                                          className="label"
-                                          style={{
-                                            position: 'absolute',
-                                            bottom: 'calc(100% + 8px)',
-                                            left: '0',
-                                            backgroundColor: 'var(--btn-primary)',
-                                            color: 'var(--text-btn-primary)',
-                                            padding: '8px 12px',
-                                            borderRadius: 'var(--radius-sm)',
-                                            whiteSpace: 'nowrap',
-                                            zIndex: 9999,
-                                            boxShadow: 'var(--shadow-lg)',
-                                            pointerEvents: 'none'
-                                          }}
-                                        >
-                                          <div>{formatTime12Hour(trip.start_time)}</div>
-                                          <div>{trip.ridership} average daily boardings</div>
-                                        </div>
-                                      )}
                                     </div>
                                   </div>
                                 );
@@ -3293,14 +3300,15 @@ export default function MapCanvas() {
           /* System View - Aggregated Charts */
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
-            <MetricCard value="8,973" />
-            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" />
-            <ByDayChart data={mockDataByDay} average={averageDailyByDay} />
+            <MetricCard title={selectedMetric} value="8,973" />
+            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" metric={selectedMetric} />
+            <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />
             <ByPeriodChart
               data={mockDataByPeriod}
               colors={PERIOD_COLORS}
               activePieIndex={activePieIndex}
               setActivePieIndex={setActivePieIndex}
+              metric={selectedMetric}
             />
           </div>
         ) : activeTab === 'components' ? (
@@ -3475,6 +3483,30 @@ export default function MapCanvas() {
         }}>
           <div style={{ fontWeight: '500', marginBottom: '2px' }}>{chartTooltip.label}</div>
           <div style={{ fontSize: '14px' }}>{chartTooltip.value}</div>
+        </div>
+      )}
+
+      {/* Trip Tooltip */}
+      {tripTooltip && tripTooltip.show && (
+        <div
+          className="label"
+          style={{
+            position: 'fixed',
+            left: `${tripTooltip.x}px`,
+            top: `${tripTooltip.y - 8}px`,
+            transform: 'translate(0, -100%)',
+            backgroundColor: 'var(--btn-primary)',
+            color: 'var(--text-btn-primary)',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            whiteSpace: 'nowrap',
+            zIndex: 10001,
+            boxShadow: 'var(--shadow-lg)',
+            pointerEvents: 'none'
+          }}
+        >
+          <div>{tripTooltip.time}</div>
+          <div>{tripTooltip.ridership} average daily boardings</div>
         </div>
       )}
     </div>

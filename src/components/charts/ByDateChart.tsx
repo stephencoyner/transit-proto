@@ -7,7 +7,7 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
-export default function ByDateChart({ data, gradientId }: { data: ChartDataPoint[], gradientId: string }) {
+export default function ByDateChart({ data, gradientId, metric: _metric }: { data: ChartDataPoint[], gradientId: string, metric?: string }) {
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',

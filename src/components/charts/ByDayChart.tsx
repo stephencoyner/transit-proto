@@ -8,7 +8,7 @@ interface DayDataPoint {
   [key: string]: string | number;
 }
 
-export default function ByDayChart({ data, average }: { data: DayDataPoint[], average: number }) {
+export default function ByDayChart({ data, average, metric: _metric }: { data: DayDataPoint[], average: number, metric?: string }) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {
