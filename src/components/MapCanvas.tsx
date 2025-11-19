@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import MapboxMap from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
@@ -329,6 +330,9 @@ export default function MapCanvas() {
   // Track which pattern cards have sticky headers
   const [stickyPatterns, setStickyPatterns] = useState<Set<number>>(new Set());
 
+  // Track scroll position for smooth border radius animation
+  const [scrollProgress, setScrollProgress] = useState(0);
+
   // Add hover state tracking for filters and button
   const [isDateHovered, setIsDateHovered] = useState(false);
   const [isDaysHovered, setIsDaysHovered] = useState(false);
@@ -388,6 +392,16 @@ export default function MapCanvas() {
 
   // Ref for trips scroll container
   const tripsScrollRef = useRef<HTMLDivElement>(null);
+
+  // Trip filtering and sorting state
+  const [tripFilterMin, setTripFilterMin] = useState<number | null>(null);
+  const [tripFilterMax, setTripFilterMax] = useState<number | null>(null);
+  const [tripSortBy, setTripSortBy] = useState<'ridership' | 'time'>('time');
+  const [tripSortOrder, setTripSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [isTripFilterMenuOpen, setIsTripFilterMenuOpen] = useState(false);
+  const [isTripSortMenuOpen, setIsTripSortMenuOpen] = useState(false);
+  const tripFilterButtonRef = useRef<HTMLButtonElement>(null);
+  const tripSortButtonRef = useRef<HTMLButtonElement>(null);
 
   // Date picker state - Applied state (what's actually being used)
   const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
@@ -1209,29 +1223,22 @@ export default function MapCanvas() {
     };
   }, [openFilter]);
 
-  // Track sticky pattern headers
+  // Animate corner radius based on scroll
   useEffect(() => {
     const handleScroll = () => {
-      const stickyHeaders = document.querySelectorAll('[data-pattern-index]');
-      const newStickySet = new Set<number>();
+      const scrollContainer = tripsScrollRef.current;
+      if (!scrollContainer) return;
 
-      stickyHeaders.forEach((header) => {
-        const index = parseInt(header.getAttribute('data-pattern-index') || '0');
-        const rect = header.getBoundingClientRect();
-        // Check if the element is stuck at the top (top position is -13 or less)
-        if (rect.top <= -13) {
-          newStickySet.add(index);
-        }
-      });
-
-      setStickyPatterns(newStickySet);
+      const scrollTop = scrollContainer.scrollTop;
+      // Calculate progress (0 to 1) over first 20px of scroll
+      const progress = Math.min(scrollTop / 20, 1);
+      setScrollProgress(progress);
     };
 
     const scrollContainer = tripsScrollRef.current;
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', handleScroll);
-      // Initial check
-      handleScroll();
+      handleScroll(); // Initial call
     }
 
     return () => {
@@ -1239,7 +1246,52 @@ export default function MapCanvas() {
         scrollContainer.removeEventListener('scroll', handleScroll);
       }
     };
-  }, [routeTrips, selectedPattern]);
+  }, [selectedRouteTab]);
+
+  // Close trip filter/sort menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (isTripFilterMenuOpen && tripFilterButtonRef.current && !tripFilterButtonRef.current.contains(target)) {
+        // Check if click is inside the filter menu portal
+        const filterMenus = document.querySelectorAll('[data-trip-filter-menu]');
+        let clickedInMenu = false;
+        filterMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsTripFilterMenuOpen(false);
+        }
+      }
+
+      if (isTripSortMenuOpen && tripSortButtonRef.current && !tripSortButtonRef.current.contains(target)) {
+        // Check if click is inside the sort menu portal
+        const sortMenus = document.querySelectorAll('[data-trip-sort-menu]');
+        let clickedInMenu = false;
+        sortMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsTripSortMenuOpen(false);
+        }
+      }
+    };
+
+    if (isTripFilterMenuOpen || isTripSortMenuOpen) {
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isTripFilterMenuOpen, isTripSortMenuOpen]);
 
   useEffect(() => {
     (async () => {
@@ -3116,43 +3168,183 @@ export default function MapCanvas() {
               </div>
             ) : selectedRouteTab === 'Trips' ? (
               /* Trips View */
-              <div
-                ref={tripsScrollRef}
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  paddingTop: '12px',
-                  paddingBottom: '24px',
-                  marginRight: '-8px',
-                  paddingRight: '8px'
-                }}
-              >
-                {routeTrips.length === 0 ? (
+              (() => {
+                // Filter and sort trips
+                const filteredAndSortedRouteTrips = routeTrips
+                  .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
+                  .map(patternGroup => {
+                    let filteredTrips = patternGroup.trips;
+
+                    // Apply ridership filter
+                    if (tripFilterMin !== null || tripFilterMax !== null) {
+                      filteredTrips = filteredTrips.filter(trip => {
+                        const passes =
+                          (tripFilterMin === null || trip.ridership >= tripFilterMin) &&
+                          (tripFilterMax === null || trip.ridership <= tripFilterMax);
+                        return passes;
+                      });
+                    }
+
+                    // Apply sorting
+                    const sortedTrips = [...filteredTrips].sort((a, b) => {
+                      if (tripSortBy === 'ridership') {
+                        return tripSortOrder === 'asc'
+                          ? a.ridership - b.ridership
+                          : b.ridership - a.ridership;
+                      } else {
+                        // Sort by time
+                        return tripSortOrder === 'asc'
+                          ? a.start_time.localeCompare(b.start_time)
+                          : b.start_time.localeCompare(a.start_time);
+                      }
+                    });
+
+                    return {
+                      ...patternGroup,
+                      trips: sortedTrips
+                    };
+                  })
+                  .filter(patternGroup => patternGroup.trips.length > 0);
+
+                // Calculate total and filtered counts
+                const totalTripsCount = routeTrips
+                  .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
+                  .reduce((sum, pg) => sum + pg.trips.length, 0);
+                const filteredTripsCount = filteredAndSortedRouteTrips.reduce((sum, pg) => sum + pg.trips.length, 0);
+                const isFiltered = tripFilterMin !== null || tripFilterMax !== null;
+
+                return (
                   <div style={{
-                    padding: '24px',
-                    textAlign: 'center',
-                    color: 'var(--text-tertiary)',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--body-size)'
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflowY: 'hidden',
+                    position: 'relative',
+                    marginRight: '-50px',
+                    paddingRight: '50px'
                   }}>
-                    No trips available for this route
-                  </div>
-                ) : (
-                  routeTrips
-                    .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
-                    .map((patternGroup, groupIndex) => {
+                    {/* Filter Bar */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingTop: '4px',
+                      paddingBottom: '4px',
+                      paddingLeft: '0px',
+                      paddingRight: '0px',
+                      flexShrink: 0,
+                      backgroundColor: 'var(--bg-primary)',
+                      zIndex: 20
+                    }}>
+                      {/* Trip Count */}
+                      <div
+                        className="data-small"
+                        style={{
+                          color: 'var(--text-secondary)'
+                        }}
+                      >
+                        {isFiltered
+                          ? `${filteredTripsCount} of ${totalTripsCount} Trips`
+                          : `${totalTripsCount} Trips`}
+                      </div>
+
+                      {/* Filter and Sort Buttons */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* Filter Button */}
+                        <button
+                          ref={tripFilterButtonRef}
+                          type="button"
+                          onClick={() => setIsTripFilterMenuOpen(!isTripFilterMenuOpen)}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'background-color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14.0001 3.99846C13.9917 4.54984 13.5378 4.99683 12.9864 4.99683L2.98335 4.99683C2.4319 4.99683 1.9917 4.54984 2.00013 3.99846V3.99846C2.00857 3.44708 2.46244 3.00009 3.01389 3.00009L13.0169 3.00009C13.5684 3.00009 14.0086 3.44707 14.0001 3.99846V3.99846Z" fill="var(--text-primary)"/>
+                            <path d="M4.00013 7.99519C3.9917 7.44381 4.4319 6.99683 4.98335 6.99683H10.9864C11.5378 6.99683 11.9917 7.44381 12.0001 7.99519V7.99519C12.0086 8.54658 11.5684 8.99356 11.0169 8.99356H5.01389C4.46244 8.99356 4.00857 8.54658 4.00013 7.99519V7.99519Z" fill="var(--text-primary)"/>
+                            <path d="M6.00013 11.9918C5.9917 11.4404 6.4319 10.9934 6.98335 10.9934H8.98638C9.53783 10.9934 9.9917 11.4404 10.0001 11.9918V11.9918C10.0086 12.5432 9.56837 12.9901 9.01692 12.9901H7.01389C6.46244 12.9901 6.00857 12.5432 6.00013 11.9918V11.9918Z" fill="var(--text-primary)"/>
+                          </svg>
+                        </button>
+
+                        {/* Sort Button */}
+                        <button
+                          ref={tripSortButtonRef}
+                          type="button"
+                          onClick={() => setIsTripSortMenuOpen(!isTripSortMenuOpen)}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'background-color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.74023 4.84204C8.12398 5.22446 8.12224 5.84067 7.73633 6.22095C7.34859 6.60233 6.71966 6.60249 6.33203 6.22095L3.98047 3.90454L1.71973 6.1311C1.32621 6.51798 0.688239 6.5183 0.294922 6.1311C-0.0984059 5.74375 -0.0980861 5.11533 0.294922 4.72778L3.29199 1.77563C3.67799 1.39551 4.30076 1.41387 4.68555 1.79517C4.70766 1.81708 4.72829 1.84013 4.74805 1.86353C4.75214 1.86743 4.75671 1.87123 4.76074 1.87524L7.74023 4.84204Z" fill="var(--text-primary)"/>
+                            <rect x="3.00195" y="13.5" width="10" height="2" rx="0.999999" transform="rotate(-90 3.00195 13.5)" fill="var(--text-primary)"/>
+                            <path d="M8.26367 11.158C7.87992 10.7755 7.88166 10.1593 8.26758 9.77905C8.65531 9.39767 9.28424 9.39751 9.67188 9.77905L12.0234 12.0955L14.2842 9.8689C14.6777 9.48201 15.3157 9.4817 15.709 9.8689C16.1023 10.2563 16.102 10.8847 15.709 11.2722L12.7119 14.2244C12.3259 14.6045 11.7031 14.5861 11.3184 14.2048C11.2962 14.1829 11.2756 14.1599 11.2559 14.1365C11.2518 14.1326 11.2472 14.1288 11.2432 14.1248L8.26367 11.158Z" fill="var(--text-primary)"/>
+                            <rect x="13.002" y="2.5" width="10" height="2" rx="0.999999" transform="rotate(90 13.002 2.5)" fill="var(--text-primary)"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Trips List */}
+                    <div
+                      ref={tripsScrollRef}
+                      style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        paddingBottom: '24px'
+                      }}
+                    >
+                      {filteredAndSortedRouteTrips.length === 0 ? (
+                        <div style={{
+                          padding: '24px',
+                          textAlign: 'center',
+                          color: 'var(--text-tertiary)',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--body-size)'
+                        }}>
+                          {routeTrips.length === 0 ? 'No trips available for this route' : 'No trips match the current filters'}
+                        </div>
+                      ) : (
+                        filteredAndSortedRouteTrips.map((patternGroup, groupIndex) => {
                       const maxRidership = Math.max(...patternGroup.trips.map(t => t.ridership));
 
                       return (
                         <div
                           key={groupIndex}
                           style={{
-                            marginTop: groupIndex > 0 ? '8px' : 0,
-                            border: '0.5px solid var(--border-default)',
-                            borderRadius: '20px',
-                            backgroundColor: 'var(--bg-elevated)'
+                            marginTop: groupIndex > 0 ? '8px' : '0'
                           }}
                         >
                           {/* Pattern Title - Sticky */}
@@ -3161,7 +3353,7 @@ export default function MapCanvas() {
                             data-pattern-index={groupIndex}
                             style={{
                               position: 'sticky',
-                              top: '-13px',
+                              top: '0px',
                               backgroundColor: 'var(--bg-elevated)',
                               color: 'var(--text-primary)',
                               paddingTop: '12px',
@@ -3169,15 +3361,18 @@ export default function MapCanvas() {
                               paddingLeft: '12px',
                               paddingRight: '12px',
                               zIndex: 10,
+                              borderTop: '0.5px solid var(--border-default)',
+                              borderLeft: '0.5px solid var(--border-default)',
+                              borderRight: '0.5px solid var(--border-default)',
                               borderBottom: '0.5px solid var(--border-default)',
-                              borderTopLeftRadius: stickyPatterns.has(groupIndex) ? '0' : '19px',
-                              borderTopRightRadius: stickyPatterns.has(groupIndex) ? '0' : '19px'
+                              borderTopLeftRadius: `${20 * (1 - scrollProgress)}px`,
+                              borderTopRightRadius: `${20 * (1 - scrollProgress)}px`
                             }}>
                             {patternGroup.headsign}
                           </div>
 
                           {/* Trips List */}
-                          <div style={{ position: 'relative', padding: '16px', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
+                          <div style={{ position: 'relative', padding: '16px', borderLeft: '0.5px solid var(--border-default)', borderRight: '0.5px solid var(--border-default)', borderBottom: '0.5px solid var(--border-default)', borderTop: 'none', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', backgroundColor: 'var(--bg-elevated)' }}>
                             {/* Grid Lines Background */}
                             <div style={{
                               position: 'absolute',
@@ -3271,8 +3466,11 @@ export default function MapCanvas() {
                         </div>
                       );
                     })
-                )}
-              </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()
             ) : (
               /* Grid View - Placeholder */
               <div style={{
@@ -3485,6 +3683,226 @@ export default function MapCanvas() {
           <div style={{ fontSize: '14px' }}>{chartTooltip.value}</div>
         </div>
       )}
+
+      {/* Trip Filter Menu */}
+      {isTripFilterMenuOpen && tripFilterButtonRef.current && (() => {
+        const buttonRect = tripFilterButtonRef.current.getBoundingClientRect();
+        return createPortal(
+          <div
+            data-trip-filter-menu
+            style={{
+              position: 'fixed',
+              top: `${buttonRect.bottom + 8}px`,
+              right: `${window.innerWidth - buttonRect.right}px`,
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '12px',
+              zIndex: 10002,
+              minWidth: '200px'
+            }}
+          >
+            <div className="caption" style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
+              Filter by {selectedMetric}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <label className="caption" style={{ display: 'block', marginBottom: '4px', color: 'var(--text-tertiary)' }}>
+                  Minimum
+                </label>
+                <input
+                  type="number"
+                  value={tripFilterMin ?? ''}
+                  onChange={(e) => setTripFilterMin(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="No minimum"
+                  className="body"
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '0.5px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--body-size)'
+                  }}
+                />
+              </div>
+              <div>
+                <label className="caption" style={{ display: 'block', marginBottom: '4px', color: 'var(--text-tertiary)' }}>
+                  Maximum
+                </label>
+                <input
+                  type="number"
+                  value={tripFilterMax ?? ''}
+                  onChange={(e) => setTripFilterMax(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="No maximum"
+                  className="body"
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '0.5px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--body-size)'
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setTripFilterMin(null);
+                  setTripFilterMax(null);
+                }}
+                className="caption"
+                style={{
+                  marginTop: '4px',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '0.5px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* Trip Sort Menu */}
+      {isTripSortMenuOpen && tripSortButtonRef.current && (() => {
+        const buttonRect = tripSortButtonRef.current.getBoundingClientRect();
+        return createPortal(
+          <div
+            data-trip-sort-menu
+            style={{
+              position: 'fixed',
+              top: `${buttonRect.bottom + 8}px`,
+              right: `${window.innerWidth - buttonRect.right}px`,
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '8px',
+              zIndex: 10002,
+              minWidth: '180px'
+            }}
+          >
+            <div className="caption" style={{ padding: '8px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+              Sort by
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTripSortBy('time');
+                setTripSortOrder('asc');
+              }}
+              className="body"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                backgroundColor: tripSortBy === 'time' && tripSortOrder === 'asc' ? 'var(--bg-hover)' : 'transparent',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'Inter, sans-serif',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span>Time (earliest first)</span>
+              {tripSortBy === 'time' && tripSortOrder === 'asc' && <span>✓</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTripSortBy('time');
+                setTripSortOrder('desc');
+              }}
+              className="body"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                backgroundColor: tripSortBy === 'time' && tripSortOrder === 'desc' ? 'var(--bg-hover)' : 'transparent',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'Inter, sans-serif',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span>Time (latest first)</span>
+              {tripSortBy === 'time' && tripSortOrder === 'desc' && <span>✓</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTripSortBy('ridership');
+                setTripSortOrder('desc');
+              }}
+              className="body"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                backgroundColor: tripSortBy === 'ridership' && tripSortOrder === 'desc' ? 'var(--bg-hover)' : 'transparent',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'Inter, sans-serif',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span>{selectedMetric} (highest first)</span>
+              {tripSortBy === 'ridership' && tripSortOrder === 'desc' && <span>✓</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTripSortBy('ridership');
+                setTripSortOrder('asc');
+              }}
+              className="body"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                backgroundColor: tripSortBy === 'ridership' && tripSortOrder === 'asc' ? 'var(--bg-hover)' : 'transparent',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'Inter, sans-serif',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span>{selectedMetric} (lowest first)</span>
+              {tripSortBy === 'ridership' && tripSortOrder === 'asc' && <span>✓</span>}
+            </button>
+          </div>,
+          document.body
+        );
+      })()}
 
       {/* Trip Tooltip */}
       {tripTooltip && tripTooltip.show && (
