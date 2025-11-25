@@ -120,8 +120,8 @@ export async function fetchTripStopTimes(): Promise<{ [tripId: string]: TripStop
     return tripStopTimesCache;
   }
 
-  const res = await fetch('/data/trip_stop_times.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load trip_stop_times.json');
+  const res = await fetch('/data/trip_stop_times.json.gz', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load trip_stop_times.json.gz');
   tripStopTimesCache = await res.json();
   return tripStopTimesCache!;
 }
