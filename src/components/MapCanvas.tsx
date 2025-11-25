@@ -59,6 +59,7 @@ const RIDERSHIP_COLORS = [
 ];
 
 // Helper function to get a consistent color for a route/stop based on its ID
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getColorForId(id: string): [number, number, number] {
   // Use a simple hash function to get consistent colors
   let hash = 0;
@@ -116,7 +117,7 @@ const MIN_ZOOM = 8;
 function formatTime12Hour(time24: string): string {
   const [hourStr, minuteStr] = time24.split(':');
   // Handle GTFS times which can be >= 24 for trips past midnight
-  let hour = parseInt(hourStr, 10) % 24;
+  const hour = parseInt(hourStr, 10) % 24;
   const minute = minuteStr;
   const ampm = hour >= 12 ? 'PM' : 'AM';
   // Convert to 12-hour format
@@ -337,6 +338,7 @@ export default function MapCanvas() {
   const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
 
   // Track which pattern cards have sticky headers
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stickyPatterns, setStickyPatterns] = useState<Set<number>>(new Set());
 
   // Track scroll position for smooth border radius animation
@@ -1191,6 +1193,7 @@ export default function MapCanvas() {
       setStagedTripFilterMin(appliedTripFilterMin);
       setStagedTripFilterMax(appliedTripFilterMax);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTripFilterMenuOpen]);
 
   // Handle Apply button for trip filter
