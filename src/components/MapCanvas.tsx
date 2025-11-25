@@ -1396,10 +1396,17 @@ export default function MapCanvas() {
     })();
   }, [fitToBounds]);
 
-  // Reset pattern filter and tab when route changes
+  // Reset pattern filter, trip filters, and sort when route changes
   useEffect(() => {
     setSelectedPattern(null);
-    setSelectedRouteTab('Summary');
+    // Reset trip filters
+    setAppliedTripFilterMin(null);
+    setAppliedTripFilterMax(null);
+    setStagedTripFilterMin(null);
+    setStagedTripFilterMax(null);
+    // Reset sort to default (time ascending)
+    setTripSortBy('time');
+    setTripSortOrder('asc');
   }, [selectedRouteId]);
 
   // Reset trips scroll position when route or pattern changes
@@ -3074,6 +3081,10 @@ export default function MapCanvas() {
             if ('route_id' in object.properties) {
               const routeId = (object as RouteFeature).properties.route_id;
               setHoveredRoute(null); // Clear hover immediately
+              // Only reset to Summary if coming from no route (list/map view)
+              if (!selectedRouteId) {
+                setSelectedRouteTab('Summary');
+              }
               setSelectedRouteId(routeId);
               setSelectedStopId(null);
             } else if ('stop_id' in object.properties) {
@@ -3420,28 +3431,34 @@ export default function MapCanvas() {
                             marginTop: groupIndex > 0 ? '8px' : '0'
                           }}
                         >
-                          {/* Pattern Title - Sticky */}
+                          {/* Pattern Title - Sticky wrapper with bg-primary to mask scrolling content */}
                           <div
-                            className="data-small"
                             data-pattern-index={groupIndex}
                             style={{
                               position: 'sticky',
                               top: '0px',
-                              backgroundColor: 'var(--bg-elevated)',
-                              color: 'var(--text-primary)',
-                              paddingTop: '12px',
-                              paddingBottom: '11px',
-                              paddingLeft: '12px',
-                              paddingRight: '12px',
-                              zIndex: 10,
-                              borderTop: '0.5px solid var(--border-default)',
-                              borderLeft: '0.5px solid var(--border-default)',
-                              borderRight: '0.5px solid var(--border-default)',
-                              borderBottom: '0.5px solid var(--border-default)',
-                              borderTopLeftRadius: `${20 * (1 - scrollProgress)}px`,
-                              borderTopRightRadius: `${20 * (1 - scrollProgress)}px`
+                              backgroundColor: 'var(--bg-primary)',
+                              zIndex: 10
                             }}>
-                            {patternGroup.headsign}
+                            {/* Inner element with rounded corners and elevated background */}
+                            <div
+                              className="data-small"
+                              style={{
+                                backgroundColor: 'var(--bg-elevated)',
+                                color: 'var(--text-primary)',
+                                paddingTop: '12px',
+                                paddingBottom: '11px',
+                                paddingLeft: '12px',
+                                paddingRight: '12px',
+                                borderTop: '0.5px solid var(--border-default)',
+                                borderLeft: '0.5px solid var(--border-default)',
+                                borderRight: '0.5px solid var(--border-default)',
+                                borderBottom: '0.5px solid var(--border-default)',
+                                borderTopLeftRadius: '20px',
+                                borderTopRightRadius: '20px'
+                              }}>
+                              {patternGroup.headsign}
+                            </div>
                           </div>
 
                           {/* Trips List */}
@@ -3762,6 +3779,7 @@ export default function MapCanvas() {
                   onClick={() => {
                     if (activeTab === 'routes') {
                       setSelectedRouteId(item.id);
+                      setSelectedRouteTab('Summary'); // Always start in Summary when coming from list
                     } else {
                       setSelectedStopId(item.id);
                     }
