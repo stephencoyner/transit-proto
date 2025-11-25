@@ -103,6 +103,35 @@ function isValidServiceTime(time: string): boolean {
   return hour < 24;
 }
 
+// Trip stop time data (stop-by-stop details for each trip)
+export interface TripStopTime {
+  id: string;      // stop_id
+  t: string;       // arrival_time (HH:MM:SS)
+  n: string;       // stop_name
+  lat: number;     // stop_lat
+  lon: number;     // stop_lon
+}
+
+// Fetch trip stop times (lazy loaded due to large file size)
+let tripStopTimesCache: { [tripId: string]: TripStopTime[] } | null = null;
+
+export async function fetchTripStopTimes(): Promise<{ [tripId: string]: TripStopTime[] }> {
+  if (tripStopTimesCache) {
+    return tripStopTimesCache;
+  }
+
+  const res = await fetch('/data/trip_stop_times.json', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load trip_stop_times.json');
+  tripStopTimesCache = await res.json();
+  return tripStopTimesCache!;
+}
+
+// Get stop times for a specific trip (loads full file on first call, then cached)
+export async function getTripStopTimes(tripId: string): Promise<TripStopTime[] | null> {
+  const allTripStopTimes = await fetchTripStopTimes();
+  return allTripStopTimes[tripId] || null;
+}
+
 // Organize trips by pattern (headsign) for a specific route
 export function organizeTripsbyPattern(
   trips: Trip[],
