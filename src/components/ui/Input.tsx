@@ -5,10 +5,11 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label?: string;
   error?: string;
   helperText?: string;
+  variant?: 'default' | 'elevated';
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, className = '', id, ...props }, ref) => {
+  ({ label, error, helperText, className = '', id, variant = 'default', ...props }, ref) => {
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
     const [showTooltip, setShowTooltip] = useState(false);
     const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -41,13 +42,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       setShowTooltip(false);
     };
 
+    const bgClasses = variant === 'elevated'
+      ? 'bg-bg-elevated hover:bg-bg-elevated'
+      : 'bg-bg-primary hover:bg-bg-elevated focus:bg-bg-elevated';
+
     const inputClasses = `
       button-small
       w-full
       h-10
-      bg-bg-primary
-      hover:bg-bg-elevated
-      focus:bg-bg-elevated
+      ${bgClasses}
       border
       ${error ? 'border-error' : 'border-border-default'}
       ${error ? 'focus:border-error' : 'focus:border-border-focus'}
