@@ -122,7 +122,15 @@ export async function fetchTripStopTimes(): Promise<{ [tripId: string]: TripStop
 
   const res = await fetch('/data/trip_stop_times.json.gz', { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to load trip_stop_times.json.gz');
-  tripStopTimesCache = await res.json();
+
+  // Decompress the gzipped response
+  const blob = await res.blob();
+  const ds = new DecompressionStream('gzip');
+  const decompressedStream = blob.stream().pipeThrough(ds);
+  const decompressedBlob = await new Response(decompressedStream).blob();
+  const text = await decompressedBlob.text();
+  tripStopTimesCache = JSON.parse(text);
+
   return tripStopTimesCache!;
 }
 
