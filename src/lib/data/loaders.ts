@@ -95,6 +95,14 @@ export async function fetchRouteTrips(): Promise<{ [routeId: string]: Trip[] }> 
   return data;
 }
 
+// Helper function to check if a GTFS time is valid (< 24:00)
+// GTFS allows times >= 24:00 for trips that run past midnight
+function isValidServiceTime(time: string): boolean {
+  const [hourStr] = time.split(':');
+  const hour = parseInt(hourStr, 10);
+  return hour < 24;
+}
+
 // Organize trips by pattern (headsign) for a specific route
 export function organizeTripsbyPattern(
   trips: Trip[],
@@ -102,9 +110,12 @@ export function organizeTripsbyPattern(
 ): TripsByPattern[] {
   const tripsByPattern: TripsByPattern[] = [];
 
+  // Filter out trips with times >= 24:00 (past midnight trips from previous service day)
+  const validTrips = trips.filter(trip => isValidServiceTime(trip.start_time));
+
   // Use the patterns from route_patterns.json to group trips
   for (const pattern of routePatternInfo.patterns) {
-    const patternTrips = trips.filter(trip =>
+    const patternTrips = validTrips.filter(trip =>
       trip.headsign === pattern.headsign &&
       trip.direction_id === pattern.direction_id
     );

@@ -59,6 +59,7 @@ const RIDERSHIP_COLORS = [
 ];
 
 // Helper function to get a consistent color for a route/stop based on its ID
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getColorForId(id: string): [number, number, number] {
   // Use a simple hash function to get consistent colors
   let hash = 0;
@@ -115,10 +116,19 @@ const MIN_ZOOM = 8;
 // Helper function to format time from HH:MM:SS to 12-hour format
 function formatTime12Hour(time24: string): string {
   const [hourStr, minuteStr] = time24.split(':');
-  const hour = parseInt(hourStr, 10);
+  // Handle GTFS times which can be >= 24 for trips past midnight
+  const hour = parseInt(hourStr, 10) % 24;
   const minute = minuteStr;
   const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  // Convert to 12-hour format
+  let hour12: number;
+  if (hour === 0) {
+    hour12 = 12;
+  } else if (hour > 12) {
+    hour12 = hour - 12;
+  } else {
+    hour12 = hour;
+  }
   return `${hour12}:${minute} ${ampm}`;
 }
 
@@ -328,6 +338,7 @@ export default function MapCanvas() {
   const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
 
   // Track which pattern cards have sticky headers
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stickyPatterns, setStickyPatterns] = useState<Set<number>>(new Set());
 
   // Track scroll position for smooth border radius animation
@@ -393,13 +404,22 @@ export default function MapCanvas() {
   // Ref for trips scroll container
   const tripsScrollRef = useRef<HTMLDivElement>(null);
 
-  // Trip filtering and sorting state
-  const [tripFilterMin, setTripFilterMin] = useState<number | null>(null);
-  const [tripFilterMax, setTripFilterMax] = useState<number | null>(null);
+  // Trip filtering and sorting state - Applied state (what's actually being used)
+  const [appliedTripFilterMin, setAppliedTripFilterMin] = useState<number | null>(null);
+  const [appliedTripFilterMax, setAppliedTripFilterMax] = useState<number | null>(null);
+  // Staged state (temporary changes in the picker)
+  const [stagedTripFilterMin, setStagedTripFilterMin] = useState<number | null>(null);
+  const [stagedTripFilterMax, setStagedTripFilterMax] = useState<number | null>(null);
+  // Original state when picker was opened (for Reset)
+  const [originalTripFilterMin, setOriginalTripFilterMin] = useState<number | null>(null);
+  const [originalTripFilterMax, setOriginalTripFilterMax] = useState<number | null>(null);
+
   const [tripSortBy, setTripSortBy] = useState<'ridership' | 'time'>('time');
   const [tripSortOrder, setTripSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isTripFilterMenuOpen, setIsTripFilterMenuOpen] = useState(false);
   const [isTripSortMenuOpen, setIsTripSortMenuOpen] = useState(false);
+  const [isFilterButtonHovered, setIsFilterButtonHovered] = useState(false);
+  const [isSortButtonHovered, setIsSortButtonHovered] = useState(false);
   const tripFilterButtonRef = useRef<HTMLButtonElement>(null);
   const tripSortButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -865,6 +885,10 @@ export default function MapCanvas() {
   // This prevents fitToBounds from being recreated on every panel toggle
   const fitToBounds = useCallback((bounds: LngLatBoundsLike, size: {width: number; height: number}) => {
     const { width, height } = size;
+    // Guard against invalid dimensions
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
     const padding = getUIPadding(isFiltersPanelOpen);
     const viewport = new WebMercatorViewport({ width, height });
     const { longitude, latitude, zoom } = viewport.fitBounds(bounds, {
@@ -1159,6 +1183,44 @@ export default function MapCanvas() {
     stagedTimeMode !== originalTimeMode ||
     JSON.stringify(stagedTimePeriods) !== JSON.stringify(originalTimePeriods);
 
+  // When trip filter menu opens, capture current applied state as both original and staged
+  useEffect(() => {
+    if (isTripFilterMenuOpen) {
+      // Capture original state for Reset
+      setOriginalTripFilterMin(appliedTripFilterMin);
+      setOriginalTripFilterMax(appliedTripFilterMax);
+      // Initialize staged state from applied state
+      setStagedTripFilterMin(appliedTripFilterMin);
+      setStagedTripFilterMax(appliedTripFilterMax);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTripFilterMenuOpen]);
+
+  // Handle Apply button for trip filter
+  const handleApplyTripFilter = () => {
+    setAppliedTripFilterMin(stagedTripFilterMin);
+    setAppliedTripFilterMax(stagedTripFilterMax);
+    setIsTripFilterMenuOpen(false);
+  };
+
+  // Handle Reset button for trip filter - clears filters entirely and closes menu
+  const handleResetTripFilter = () => {
+    setStagedTripFilterMin(null);
+    setStagedTripFilterMax(null);
+    setAppliedTripFilterMin(null);
+    setAppliedTripFilterMax(null);
+    setIsTripFilterMenuOpen(false);
+  };
+
+  // Check if there are changes for trip filter (for Apply button)
+  const hasTripFilterChanges =
+    stagedTripFilterMin !== originalTripFilterMin ||
+    stagedTripFilterMax !== originalTripFilterMax;
+
+  // Check if there are any filters to reset (for Reset button)
+  const hasTripFiltersToReset =
+    stagedTripFilterMin !== null || stagedTripFilterMax !== null;
+
   // Function to update panel position based on which filter is open
   const updatePanelPosition = useCallback(() => {
     const GAP = 8; // 8px gap between filter and panel
@@ -1322,8 +1384,10 @@ export default function MapCanvas() {
           const bounds = calculateBounds(routeFeatures);
           if (bounds) {
             const initialView = fitToBounds(bounds, { width, height });
-            initialFittedViewRef.current = initialView;     // save for later resets
-            setViewState(initialView);
+            if (initialView) {
+              initialFittedViewRef.current = initialView;     // save for later resets
+              setViewState(initialView);
+            }
           }
         }
       } catch (error) {
@@ -1377,7 +1441,9 @@ export default function MapCanvas() {
           const width = el?.clientWidth ?? window.innerWidth;
           const height = el?.clientHeight ?? window.innerHeight;
           const newViewState = fitToBounds(bounds, { width, height });
-          setViewState(newViewState);
+          if (newViewState) {
+            setViewState(newViewState);
+          }
         }
       }
     } else if (selectedStopId) {
@@ -3078,7 +3144,7 @@ export default function MapCanvas() {
               setSelectedRouteId(null);
               setSelectedStopId(null);
             }}>
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
               </svg>
               <div className="heading-3">
@@ -3176,11 +3242,11 @@ export default function MapCanvas() {
                     let filteredTrips = patternGroup.trips;
 
                     // Apply ridership filter
-                    if (tripFilterMin !== null || tripFilterMax !== null) {
+                    if (appliedTripFilterMin !== null || appliedTripFilterMax !== null) {
                       filteredTrips = filteredTrips.filter(trip => {
                         const passes =
-                          (tripFilterMin === null || trip.ridership >= tripFilterMin) &&
-                          (tripFilterMax === null || trip.ridership <= tripFilterMax);
+                          (appliedTripFilterMin === null || trip.ridership >= appliedTripFilterMin) &&
+                          (appliedTripFilterMax === null || trip.ridership <= appliedTripFilterMax);
                         return passes;
                       });
                     }
@@ -3211,7 +3277,7 @@ export default function MapCanvas() {
                   .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
                   .reduce((sum, pg) => sum + pg.trips.length, 0);
                 const filteredTripsCount = filteredAndSortedRouteTrips.reduce((sum, pg) => sum + pg.trips.length, 0);
-                const isFiltered = tripFilterMin !== null || tripFilterMax !== null;
+                const isFiltered = appliedTripFilterMin !== null || appliedTripFilterMax !== null;
 
                 return (
                   <div style={{
@@ -3228,8 +3294,8 @@ export default function MapCanvas() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      paddingTop: '4px',
-                      paddingBottom: '4px',
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
                       paddingLeft: '0px',
                       paddingRight: '0px',
                       flexShrink: 0,
@@ -3255,30 +3321,40 @@ export default function MapCanvas() {
                           ref={tripFilterButtonRef}
                           type="button"
                           onClick={() => setIsTripFilterMenuOpen(!isTripFilterMenuOpen)}
+                          onMouseEnter={() => setIsFilterButtonHovered(true)}
+                          onMouseLeave={() => setIsFilterButtonHovered(false)}
                           style={{
-                            width: '40px',
-                            height: '40px',
+                            width: '32px',
+                            height: '32px',
                             borderRadius: '50%',
-                            border: 'none',
-                            backgroundColor: 'transparent',
+                            border: isTripFilterMenuOpen
+                              ? '0.5px solid var(--border-focus)'
+                              : isFilterButtonHovered
+                                ? '0.5px solid var(--border-default)'
+                                : '0.5px solid transparent',
+                            backgroundColor: (isTripFilterMenuOpen || isFilterButtonHovered) ? 'var(--bg-elevated)' : 'transparent',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'background-color 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
+                            transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                            position: 'relative'
                           }}
                         >
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M14.0001 3.99846C13.9917 4.54984 13.5378 4.99683 12.9864 4.99683L2.98335 4.99683C2.4319 4.99683 1.9917 4.54984 2.00013 3.99846V3.99846C2.00857 3.44708 2.46244 3.00009 3.01389 3.00009L13.0169 3.00009C13.5684 3.00009 14.0086 3.44707 14.0001 3.99846V3.99846Z" fill="var(--text-primary)"/>
-                            <path d="M4.00013 7.99519C3.9917 7.44381 4.4319 6.99683 4.98335 6.99683H10.9864C11.5378 6.99683 11.9917 7.44381 12.0001 7.99519V7.99519C12.0086 8.54658 11.5684 8.99356 11.0169 8.99356H5.01389C4.46244 8.99356 4.00857 8.54658 4.00013 7.99519V7.99519Z" fill="var(--text-primary)"/>
-                            <path d="M6.00013 11.9918C5.9917 11.4404 6.4319 10.9934 6.98335 10.9934H8.98638C9.53783 10.9934 9.9917 11.4404 10.0001 11.9918V11.9918C10.0086 12.5432 9.56837 12.9901 9.01692 12.9901H7.01389C6.46244 12.9901 6.00857 12.5432 6.00013 11.9918V11.9918Z" fill="var(--text-primary)"/>
+                          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7.3168 12.6501C7.07235 12.6501 6.86402 12.564 6.6918 12.3918C6.51958 12.2195 6.43346 12.0112 6.43346 11.7668C6.43346 11.5223 6.51958 11.314 6.6918 11.1418C6.86402 10.9695 7.07235 10.8834 7.3168 10.8834H8.70013C8.94458 10.8834 9.15291 10.9695 9.32513 11.1418C9.49735 11.314 9.58346 11.5223 9.58346 11.7668C9.58346 12.0112 9.49735 12.2195 9.32513 12.3918C9.15291 12.564 8.94458 12.6501 8.70013 12.6501H7.3168ZM4.4668 8.88343C4.22235 8.88343 4.01402 8.79732 3.8418 8.6251C3.66957 8.45288 3.58346 8.24454 3.58346 8.0001C3.58346 7.75565 3.66957 7.54732 3.8418 7.3751C4.01402 7.20288 4.22235 7.11676 4.4668 7.11676H11.5168C11.7612 7.11676 11.9696 7.20288 12.1418 7.3751C12.314 7.54732 12.4001 7.75565 12.4001 8.0001C12.4001 8.24454 12.314 8.45288 12.1418 8.6251C11.9696 8.79732 11.7612 8.88343 11.5168 8.88343H4.4668ZM2.35013 5.11676C2.10569 5.11676 1.89735 5.03065 1.72513 4.85843C1.55291 4.68621 1.4668 4.47788 1.4668 4.23343C1.4668 3.98899 1.55291 3.78065 1.72513 3.60843C1.89735 3.43621 2.10569 3.3501 2.35013 3.3501H13.6501C13.8946 3.3501 14.1029 3.43621 14.2751 3.60843C14.4474 3.78065 14.5335 3.98899 14.5335 4.23343C14.5335 4.47788 14.4474 4.68621 14.2751 4.85843C14.1029 5.03065 13.8946 5.11676 13.6501 5.11676H2.35013Z" fill="var(--text-secondary)"/>
                           </svg>
+                          {(appliedTripFilterMin !== null || appliedTripFilterMax !== null) && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '1px',
+                              right: '1px',
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: 'var(--text-secondary)'
+                            }} />
+                          )}
                         </button>
 
                         {/* Sort Button */}
@@ -3286,30 +3362,27 @@ export default function MapCanvas() {
                           ref={tripSortButtonRef}
                           type="button"
                           onClick={() => setIsTripSortMenuOpen(!isTripSortMenuOpen)}
+                          onMouseEnter={() => setIsSortButtonHovered(true)}
+                          onMouseLeave={() => setIsSortButtonHovered(false)}
                           style={{
-                            width: '40px',
-                            height: '40px',
+                            width: '32px',
+                            height: '32px',
                             borderRadius: '50%',
-                            border: 'none',
-                            backgroundColor: 'transparent',
+                            border: isTripSortMenuOpen
+                              ? '0.5px solid var(--border-focus)'
+                              : isSortButtonHovered
+                                ? '0.5px solid var(--border-default)'
+                                : '0.5px solid transparent',
+                            backgroundColor: (isTripSortMenuOpen || isSortButtonHovered) ? 'var(--bg-elevated)' : 'transparent',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'background-color 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
+                            transition: 'background-color 0.2s ease, border-color 0.2s ease'
                           }}
                         >
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.74023 4.84204C8.12398 5.22446 8.12224 5.84067 7.73633 6.22095C7.34859 6.60233 6.71966 6.60249 6.33203 6.22095L3.98047 3.90454L1.71973 6.1311C1.32621 6.51798 0.688239 6.5183 0.294922 6.1311C-0.0984059 5.74375 -0.0980861 5.11533 0.294922 4.72778L3.29199 1.77563C3.67799 1.39551 4.30076 1.41387 4.68555 1.79517C4.70766 1.81708 4.72829 1.84013 4.74805 1.86353C4.75214 1.86743 4.75671 1.87123 4.76074 1.87524L7.74023 4.84204Z" fill="var(--text-primary)"/>
-                            <rect x="3.00195" y="13.5" width="10" height="2" rx="0.999999" transform="rotate(-90 3.00195 13.5)" fill="var(--text-primary)"/>
-                            <path d="M8.26367 11.158C7.87992 10.7755 7.88166 10.1593 8.26758 9.77905C8.65531 9.39767 9.28424 9.39751 9.67188 9.77905L12.0234 12.0955L14.2842 9.8689C14.6777 9.48201 15.3157 9.4817 15.709 9.8689C16.1023 10.2563 16.102 10.8847 15.709 11.2722L12.7119 14.2244C12.3259 14.6045 11.7031 14.5861 11.3184 14.2048C11.2962 14.1829 11.2756 14.1599 11.2559 14.1365C11.2518 14.1326 11.2472 14.1288 11.2432 14.1248L8.26367 11.158Z" fill="var(--text-primary)"/>
-                            <rect x="13.002" y="2.5" width="10" height="2" rx="0.999999" transform="rotate(90 13.002 2.5)" fill="var(--text-primary)"/>
+                          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5.81667 8.76675C5.57222 8.76675 5.36389 8.68064 5.19167 8.50842C5.01944 8.33619 4.93333 8.12786 4.93333 7.88342V4.20008L4.01667 5.11675C3.85 5.28341 3.64444 5.36675 3.4 5.36675C3.15556 5.36675 2.94444 5.28341 2.76667 5.11675C2.58889 4.93897 2.5 4.73064 2.5 4.49175C2.5 4.25286 2.58889 4.04453 2.76667 3.86675L5.18333 1.43341C5.27222 1.34453 5.36944 1.27786 5.475 1.23341C5.58056 1.18897 5.69444 1.16675 5.81667 1.16675C5.93889 1.16675 6.05278 1.18897 6.15833 1.23341C6.26389 1.27786 6.36111 1.34453 6.45 1.43341L8.86667 3.86675C9.04444 4.04453 9.13056 4.25286 9.125 4.49175C9.11944 4.73064 9.02778 4.93897 8.85 5.11675C8.67222 5.28341 8.46667 5.36953 8.23333 5.37508C8 5.38064 7.79444 5.29453 7.61667 5.11675L6.7 4.20008V7.88342C6.7 8.12786 6.61389 8.33619 6.44167 8.50842C6.26944 8.68064 6.06111 8.76675 5.81667 8.76675ZM10.1833 14.8334C10.0611 14.8334 9.94722 14.8112 9.84167 14.7667C9.73611 14.7223 9.63889 14.6556 9.55 14.5667L7.13333 12.1334C6.95556 11.9556 6.86944 11.7473 6.875 11.5084C6.88056 11.2695 6.97222 11.0612 7.15 10.8834C7.32778 10.7167 7.53333 10.6306 7.76667 10.6251C8 10.6195 8.20556 10.7056 8.38333 10.8834L9.3 11.8001V8.11675C9.3 7.8723 9.38611 7.66397 9.55833 7.49175C9.73056 7.31953 9.93889 7.23342 10.1833 7.23342C10.4278 7.23342 10.6361 7.31953 10.8083 7.49175C10.9806 7.66397 11.0667 7.8723 11.0667 8.11675V11.8001L11.9833 10.8834C12.15 10.7167 12.3556 10.6334 12.6 10.6334C12.8444 10.6334 13.0556 10.7167 13.2333 10.8834C13.4111 11.0612 13.5 11.2695 13.5 11.5084C13.5 11.7473 13.4111 11.9556 13.2333 12.1334L10.8167 14.5667C10.7278 14.6556 10.6306 14.7223 10.525 14.7667C10.4194 14.8112 10.3056 14.8334 10.1833 14.8334Z" fill="var(--text-secondary)"/>
                           </svg>
                         </button>
                       </div>
@@ -3372,19 +3445,60 @@ export default function MapCanvas() {
                           </div>
 
                           {/* Trips List */}
-                          <div style={{ position: 'relative', padding: '16px', borderLeft: '0.5px solid var(--border-default)', borderRight: '0.5px solid var(--border-default)', borderBottom: '0.5px solid var(--border-default)', borderTop: 'none', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', backgroundColor: 'var(--bg-elevated)' }}>
+                          <div style={{ position: 'relative', padding: '8px 16px 16px 16px', borderLeft: '0.5px solid var(--border-default)', borderRight: '0.5px solid var(--border-default)', borderBottom: '0.5px solid var(--border-default)', borderTop: 'none', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', backgroundColor: 'var(--bg-elevated)' }}>
+                            {/* Axis Labels */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '8px',
+                              gap: '16px'
+                            }}>
+                              {/* Empty space for time label column */}
+                              <div style={{ minWidth: '52px', flexShrink: 0 }} />
+                              {/* Axis labels container */}
+                              <div style={{ flex: 1, position: 'relative', height: '16px' }}>
+                                {[0, 25, 50, 75].map((percent, i) => (
+                                  <span
+                                    key={i}
+                                    className="caption"
+                                    style={{
+                                      position: 'absolute',
+                                      left: `${percent}%`,
+                                      transform: 'translateX(-50%)',
+                                      color: 'var(--text-tertiary)',
+                                      whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    {Math.round(maxRidership * percent / 100)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
                             {/* Grid Lines Background */}
                             <div style={{
                               position: 'absolute',
-                              top: '16px',
+                              top: 'calc(8px + 16px + 8px)', // padding + axis height + marginBottom (grid lines start with trips container)
                               bottom: '16px',
-                              left: 'calc(16px + 68px)', // 16px padding + 60px (time label width) + 8px (gap)
+                              left: 'calc(16px + 52px + 16px)', // 16px padding + 52px (time label width) + 16px (gap)
                               right: '16px',
                               display: 'flex',
                               pointerEvents: 'none',
                               zIndex: 0
                             }}>
-                              {[0, 20, 40, 60, 80, 100].map((percent, i) => (
+                              {/* Horizontal line at top - extends edge to edge */}
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 'calc(-52px - 16px - 16px)', // Extend to left edge (time label width + gap + container padding)
+                                  right: '-16px', // Extend to right edge (container padding)
+                                  height: '0.5px',
+                                  backgroundColor: 'var(--border-default)',
+                                  opacity: 0.5
+                                }}
+                              />
+                              {[0, 25, 50, 75].map((percent, i) => (
                                 <div
                                   key={i}
                                   style={{
@@ -3392,7 +3506,7 @@ export default function MapCanvas() {
                                     left: `${percent}%`,
                                     top: 0,
                                     bottom: 0,
-                                    width: '1px',
+                                    width: '0.5px',
                                     backgroundColor: 'var(--border-default)',
                                     opacity: 0.5
                                   }}
@@ -3401,9 +3515,9 @@ export default function MapCanvas() {
                             </div>
 
                             {/* Trips */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', zIndex: 1 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', zIndex: 1, paddingTop: '8px' }}>
                               {patternGroup.trips.map((trip, tripIndex) => {
-                                const barWidth = (trip.ridership / maxRidership) * 100;
+                                const barWidth = (trip.ridership / maxRidership) * 100; // Full width bars
                                 const tripKey = `${groupIndex}-${tripIndex}`;
                                 const showTooltip = hoveredTrip === tripKey;
 
@@ -3413,50 +3527,53 @@ export default function MapCanvas() {
                                     style={{
                                       display: 'flex',
                                       alignItems: 'center',
-                                      gap: '8px'
+                                      gap: '16px'
                                     }}
                                   >
                                     {/* Time Label */}
                                     <div className="caption" style={{
                                       color: 'var(--text-tertiary)',
-                                      minWidth: '60px',
-                                      flexShrink: 0
+                                      minWidth: '52px',
+                                      flexShrink: 0,
+                                      textAlign: 'right'
                                     }}>
                                       {formatTime12Hour(trip.start_time)}
                                     </div>
 
-                                    {/* Bar with Tooltip */}
-                                    <div
-                                      style={{
-                                        position: 'relative',
-                                        height: '24px',
-                                        width: `${barWidth}%`,
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        setHoveredTrip(tripKey);
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setTripTooltip({
-                                          show: true,
-                                          time: formatTime12Hour(trip.start_time),
-                                          ridership: trip.ridership,
-                                          x: rect.left,
-                                          y: rect.top
-                                        });
-                                      }}
-                                      onMouseLeave={() => {
-                                        setHoveredTrip(null);
-                                        setTripTooltip(null);
-                                      }}
-                                    >
+                                    {/* Bar Container - flex: 1 to match axis labels container */}
+                                    <div style={{ flex: 1, position: 'relative' }}>
                                       <div
                                         style={{
-                                          height: '100%',
-                                          backgroundColor: 'var(--border-hover)',
-                                          borderRadius: '4px',
-                                          transition: 'width 0.3s ease',
-                                          cursor: 'pointer'
+                                          position: 'relative',
+                                          height: '24px',
+                                          width: `${barWidth}%`,
                                         }}
-                                      />
+                                        onMouseEnter={(e) => {
+                                          setHoveredTrip(tripKey);
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setTripTooltip({
+                                            show: true,
+                                            time: formatTime12Hour(trip.start_time),
+                                            ridership: trip.ridership,
+                                            x: rect.left,
+                                            y: rect.top
+                                          });
+                                        }}
+                                        onMouseLeave={() => {
+                                          setHoveredTrip(null);
+                                          setTripTooltip(null);
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            height: '100%',
+                                            backgroundColor: 'var(--border-hover)',
+                                            borderRadius: '4px',
+                                            transition: 'width 0.3s ease',
+                                            cursor: 'pointer'
+                                          }}
+                                        />
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -3693,84 +3810,77 @@ export default function MapCanvas() {
             style={{
               position: 'fixed',
               top: `${buttonRect.bottom + 8}px`,
-              right: `${window.innerWidth - buttonRect.right}px`,
+              left: `${buttonRect.left}px`,
               backgroundColor: 'var(--bg-elevated)',
               border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 'var(--radius-large)',
               boxShadow: 'var(--shadow-lg)',
-              padding: '12px',
               zIndex: 10002,
-              minWidth: '200px'
+              minWidth: '240px',
+              overflowY: 'auto',
+              padding: '16px'
             }}
           >
-            <div className="caption" style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
+            <div
+              className="label text-text-tertiary"
+              style={{
+                marginBottom: '18px'
+              }}
+            >
               Filter by {selectedMetric}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div>
-                <label className="caption" style={{ display: 'block', marginBottom: '4px', color: 'var(--text-tertiary)' }}>
-                  Minimum
-                </label>
-                <input
-                  type="number"
-                  value={tripFilterMin ?? ''}
-                  onChange={(e) => setTripFilterMin(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="No minimum"
-                  className="body"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '0.5px solid var(--border-default)',
-                    backgroundColor: 'var(--bg-primary)',
-                    color: 'var(--text-primary)',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--body-size)'
-                  }}
-                />
-              </div>
-              <div>
-                <label className="caption" style={{ display: 'block', marginBottom: '4px', color: 'var(--text-tertiary)' }}>
-                  Maximum
-                </label>
-                <input
-                  type="number"
-                  value={tripFilterMax ?? ''}
-                  onChange={(e) => setTripFilterMax(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="No maximum"
-                  className="body"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '0.5px solid var(--border-default)',
-                    backgroundColor: 'var(--bg-primary)',
-                    color: 'var(--text-primary)',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--body-size)'
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setTripFilterMin(null);
-                  setTripFilterMax(null);
-                }}
-                className="caption"
+            <div style={{ marginBottom: '18px' }}>
+              <Input
+                type="number"
+                label="Minimum"
+                value={stagedTripFilterMin ?? ''}
+                onChange={(e) => setStagedTripFilterMin(e.target.value ? Number(e.target.value) : null)}
+                placeholder="None"
+                variant="elevated"
+              />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <Input
+                type="number"
+                label="Maximum"
+                value={stagedTripFilterMax ?? ''}
+                onChange={(e) => setStagedTripFilterMax(e.target.value ? Number(e.target.value) : null)}
+                placeholder="None"
+                variant="elevated"
+              />
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              justifyContent: 'flex-end'
+            }}>
+              <Button
+                variant="tertiary"
+                size="medium"
+                onClick={handleResetTripFilter}
+                disabled={!hasTripFiltersToReset}
                 style={{
-                  marginTop: '4px',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '0.5px solid var(--border-default)',
-                  backgroundColor: 'var(--bg-primary)',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif'
+                  backgroundColor: 'var(--bg-elevated)',
+                }}
+                onMouseEnter={(e) => {
+                  if (hasTripFiltersToReset) {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
                 }}
               >
-                Clear filters
-              </button>
+                Reset
+              </Button>
+              <Button
+                variant="primary"
+                size="medium"
+                onClick={handleApplyTripFilter}
+                disabled={!hasTripFilterChanges}
+              >
+                Apply
+              </Button>
             </div>
           </div>,
           document.body
@@ -3780,125 +3890,75 @@ export default function MapCanvas() {
       {/* Trip Sort Menu */}
       {isTripSortMenuOpen && tripSortButtonRef.current && (() => {
         const buttonRect = tripSortButtonRef.current.getBoundingClientRect();
+        const sortOptions = [
+          { sortBy: 'time' as const, order: 'asc' as const, label: 'Time (earliest first)' },
+          { sortBy: 'time' as const, order: 'desc' as const, label: 'Time (latest first)' },
+          { sortBy: 'ridership' as const, order: 'desc' as const, label: `${selectedMetric} (highest first)` },
+          { sortBy: 'ridership' as const, order: 'asc' as const, label: `${selectedMetric} (lowest first)` }
+        ];
         return createPortal(
           <div
             data-trip-sort-menu
             style={{
               position: 'fixed',
               top: `${buttonRect.bottom + 8}px`,
-              right: `${window.innerWidth - buttonRect.right}px`,
+              left: `${buttonRect.left}px`,
               backgroundColor: 'var(--bg-elevated)',
               border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 'var(--radius-large)',
               boxShadow: 'var(--shadow-lg)',
-              padding: '8px',
               zIndex: 10002,
-              minWidth: '180px'
+              minWidth: '220px',
+              overflowY: 'auto',
+              paddingTop: '16px'
             }}
           >
-            <div className="caption" style={{ padding: '8px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+            <div
+              className="label text-text-tertiary"
+              style={{
+                padding: '0 16px 8px 16px'
+              }}
+            >
               Sort by
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setTripSortBy('time');
-                setTripSortOrder('asc');
-              }}
-              className="body"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                backgroundColor: tripSortBy === 'time' && tripSortOrder === 'asc' ? 'var(--bg-hover)' : 'transparent',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'Inter, sans-serif',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <span>Time (earliest first)</span>
-              {tripSortBy === 'time' && tripSortOrder === 'asc' && <span>✓</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTripSortBy('time');
-                setTripSortOrder('desc');
-              }}
-              className="body"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                backgroundColor: tripSortBy === 'time' && tripSortOrder === 'desc' ? 'var(--bg-hover)' : 'transparent',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'Inter, sans-serif',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <span>Time (latest first)</span>
-              {tripSortBy === 'time' && tripSortOrder === 'desc' && <span>✓</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTripSortBy('ridership');
-                setTripSortOrder('desc');
-              }}
-              className="body"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                backgroundColor: tripSortBy === 'ridership' && tripSortOrder === 'desc' ? 'var(--bg-hover)' : 'transparent',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'Inter, sans-serif',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <span>{selectedMetric} (highest first)</span>
-              {tripSortBy === 'ridership' && tripSortOrder === 'desc' && <span>✓</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTripSortBy('ridership');
-                setTripSortOrder('asc');
-              }}
-              className="body"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                backgroundColor: tripSortBy === 'ridership' && tripSortOrder === 'asc' ? 'var(--bg-hover)' : 'transparent',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'Inter, sans-serif',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <span>{selectedMetric} (lowest first)</span>
-              {tripSortBy === 'ridership' && tripSortOrder === 'asc' && <span>✓</span>}
-            </button>
+            {sortOptions.map((option, index) => {
+              const isSelected = tripSortBy === option.sortBy && tripSortOrder === option.order;
+              return (
+                <div
+                  key={`${option.sortBy}-${option.order}`}
+                  onClick={() => {
+                    setTripSortBy(option.sortBy);
+                    setTripSortOrder(option.order);
+                    setIsTripSortMenuOpen(false);
+                  }}
+                  className="button-small"
+                  style={{
+                    padding: '12px 28px 12px 16px',
+                    cursor: 'pointer',
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    transition: 'background-color 0.2s ease',
+                    backgroundColor: 'transparent',
+                    margin: index === sortOptions.length - 1 ? '4px 0 12px 0' : '4px 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                  <span style={{ marginLeft: isSelected ? '0' : '32px' }}>{option.label}</span>
+                </div>
+              );
+            })}
           </div>,
           document.body
         );
