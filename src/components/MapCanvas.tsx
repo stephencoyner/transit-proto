@@ -6,7 +6,7 @@ import MapboxMap from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer, Layer } from '@deck.gl/core';
-import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern } from '@/lib/data/loaders';
+import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern, getTripStopTimes, TripStopTime } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
@@ -392,6 +392,10 @@ export default function MapCanvas() {
   // State to track which trip is being hovered (format: "groupIndex-tripIndex")
   const [hoveredTrip, setHoveredTrip] = useState<string | null>(null);
 
+  // State for selected trip (for trip detail view)
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [selectedTripStops, setSelectedTripStops] = useState<TripStopTime[]>([]);
+
   // Tooltip state for trips
   const [tripTooltip, setTripTooltip] = useState<{
     show: boolean;
@@ -579,6 +583,11 @@ export default function MapCanvas() {
 
   // Filter data based on selection
   const filteredShapes = React.useMemo(() => {
+    // If a trip is selected, show only that trip's shape
+    if (selectedTrip) {
+      return shapes.filter(shape => shape.properties.shape_id === selectedTrip.shape_id);
+    }
+
     if (selectedRouteId) {
       let filtered = shapes.filter(shape => {
         return shape.properties.route_id === selectedRouteId;
@@ -626,9 +635,15 @@ export default function MapCanvas() {
     }
 
     return shapes;
-  }, [shapes, selectedRouteId, selectedPattern, patternLookup]);
+  }, [shapes, selectedRouteId, selectedPattern, patternLookup, selectedTrip]);
 
   const filteredStops = React.useMemo(() => {
+    // If a trip is selected, show only stops from that trip
+    if (selectedTrip && selectedTripStops.length > 0) {
+      const tripStopIds = new Set(selectedTripStops.map(s => s.id));
+      return stops.filter(stop => tripStopIds.has(stop.properties.stop_id));
+    }
+
     if (selectedStopId) {
       // Show all stops when in stop detail view, so user can see context
       return stops;
@@ -657,7 +672,7 @@ export default function MapCanvas() {
 
     // Only show all stops when in stops tab view
     return activeTab === 'stops' ? stops : [];
-  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab]);
+  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, selectedTrip, selectedTripStops]);
 
   // Check if we should show segment-based coloring (for load metrics in route detail view)
   const isLoadMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
@@ -887,6 +902,14 @@ export default function MapCanvas() {
     const { width, height } = size;
     // Guard against invalid dimensions
     if (width <= 0 || height <= 0) {
+      return null;
+    }
+    // Guard against invalid or degenerate bounds
+    const boundsArray = bounds as [[number, number], [number, number]];
+    if (!boundsArray || boundsArray.length !== 2 ||
+        !Number.isFinite(boundsArray[0][0]) || !Number.isFinite(boundsArray[0][1]) ||
+        !Number.isFinite(boundsArray[1][0]) || !Number.isFinite(boundsArray[1][1]) ||
+        (boundsArray[0][0] === boundsArray[1][0] && boundsArray[0][1] === boundsArray[1][1])) {
       return null;
     }
     const padding = getUIPadding(isFiltersPanelOpen);
@@ -1716,9 +1739,33 @@ export default function MapCanvas() {
     }
   }
 
-  // Prepare directional labels when a pattern is selected (render later to ensure they're on top)
+  // Prepare directional labels when a pattern or trip is selected (render later to ensure they're on top)
   let stopLabels: Array<{position: [number, number], text: string}> | null = null;
-    if (selectedPattern && selectedRouteId && filteredStops.length > 1) {
+
+  // Show first/last stop labels for trip detail view
+  if (selectedTrip && selectedTripStops.length > 1) {
+    const firstTripStop = selectedTripStops[0];
+    const lastTripStop = selectedTripStops[selectedTripStops.length - 1];
+
+    // Find the actual stop features to get coordinates
+    const firstStop = filteredStops.find(s => s.properties.stop_id === firstTripStop.id);
+    const lastStop = filteredStops.find(s => s.properties.stop_id === lastTripStop.id);
+
+    if (firstStop && lastStop) {
+      stopLabels = [
+        {
+          position: firstStop.geometry.coordinates as [number, number],
+          text: 'First stop'
+        },
+        {
+          position: lastStop.geometry.coordinates as [number, number],
+          text: 'Last stop'
+        }
+      ];
+    }
+  }
+  // Show first/last stop labels for pattern filter
+  else if (selectedPattern && selectedRouteId && filteredStops.length > 1) {
       // selectedRouteId is already the actual route_id (e.g., "100001")
       if (routePatterns[selectedRouteId]) {
         const patternInfo = routePatterns[selectedRouteId].patterns.find(
@@ -2076,6 +2123,12 @@ export default function MapCanvas() {
                   <Select
                     value={selectedRouteId}
                     onChange={(value) => {
+                      // If changing routes while in TDV, go to RDV Summary tab
+                      if (selectedTrip) {
+                        setSelectedTrip(null);
+                        setSelectedTripStops([]);
+                        setSelectedRouteTab('Summary');
+                      }
                       setSelectedRouteId(value);
                     }}
                     options={routesList.map(route => ({
@@ -2085,25 +2138,61 @@ export default function MapCanvas() {
                   />
                 </div>
 
-                {/* Pattern Filter */}
-                <div style={{ marginTop: '16px' }}>
-                  <label className="label text-text-tertiary block mb-1">Pattern</label>
-                  <Select
-                    value={selectedPattern || 'all'}
-                    onChange={(value) => setSelectedPattern(value === 'all' ? null : value)}
-                    options={[
-                      {
-                        value: 'all',
-                        label: 'All patterns'
-                      },
-                      ...routePatternInfo.patterns.map(pattern => ({
-                        value: pattern.headsign,
-                        label: pattern.headsign,
-                        description: `${Math.round(pattern.pct_of_route)}% of trips`
-                      }))
-                    ]}
-                  />
-                </div>
+                {/* Pattern Filter - Hidden when trip is selected */}
+                {!selectedTrip && (
+                  <div style={{ marginTop: '16px' }}>
+                    <label className="label text-text-tertiary block mb-1">Pattern</label>
+                    <Select
+                      value={selectedPattern || 'all'}
+                      onChange={(value) => setSelectedPattern(value === 'all' ? null : value)}
+                      options={[
+                        {
+                          value: 'all',
+                          label: 'All patterns'
+                        },
+                        ...routePatternInfo.patterns.map(pattern => ({
+                          value: pattern.headsign,
+                          label: pattern.headsign,
+                          description: `${Math.round(pattern.pct_of_route)}% of trips`
+                        }))
+                      ]}
+                    />
+                  </div>
+                )}
+
+                {/* Trip Filter - Only shown when a trip is selected */}
+                {selectedTrip && (
+                  <div style={{ marginTop: '16px' }}>
+                    <label className="label text-text-tertiary block mb-1">Trip</label>
+                    <Select
+                      value={selectedTrip.trip_id}
+                      onChange={async (value) => {
+                        // Find the trip from routeTrips
+                        for (const pattern of routeTrips) {
+                          const trip = pattern.trips.find(t => t.trip_id === value);
+                          if (trip) {
+                            setSelectedTrip(trip);
+                            // Load stop times for this trip
+                            const stopTimes = await getTripStopTimes(trip.trip_id);
+                            if (stopTimes) {
+                              setSelectedTripStops(stopTimes);
+                            }
+                            break;
+                          }
+                        }
+                      }}
+                      options={routeTrips.flatMap(pattern =>
+                        pattern.trips.map(trip => ({
+                          value: trip.trip_id,
+                          label: formatTime12Hour(trip.start_time),
+                          description: trip.headsign,
+                          sortKey: trip.start_time
+                        }))
+                      ).sort((a, b) => (a as { sortKey: string }).sortKey.localeCompare((b as { sortKey: string }).sortKey))
+                       .map(({ sortKey, ...rest }) => rest as { value: string; label: string; description: string })}
+                    />
+                  </div>
+                )}
               </>
             );
           })()}
@@ -3137,7 +3226,202 @@ export default function MapCanvas() {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {selectedRouteId || selectedStopId ? (
+        {selectedTrip ? (
+          /* Trip Detail View */
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
+            {/* Close Button and Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '0px',
+              marginBottom: '4px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              color: 'var(--text-secondary)'
+            }}
+            onClick={() => {
+              setSelectedTrip(null);
+              setSelectedTripStops([]);
+            }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
+              </svg>
+              <div className="heading-3">
+                {formatTime12Hour(selectedTrip.start_time)}
+              </div>
+            </div>
+            <div className="data-small" style={{ color: 'var(--text-tertiary)', marginLeft: '28px', marginTop: '-4px', fontWeight: 'normal' }}>
+              {selectedTrip.headsign}
+            </div>
+
+            {/* Divider */}
+            <div style={{
+              position: 'relative',
+              marginLeft: '-16px',
+              marginRight: '-16px',
+              flexShrink: 0
+            }}>
+              <div style={{
+                height: '0.5px',
+                backgroundColor: 'var(--border-default)',
+                marginLeft: '16px',
+                marginRight: '16px',
+                marginTop: '12px'
+              }} />
+            </div>
+
+            {/* Trip Content */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
+              {/* Overall Trip Metric Card */}
+              <MetricCard
+                title={selectedMetric}
+                value={selectedTrip.ridership}
+              />
+
+              {/* By Stop Card */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: '20px'
+              }}>
+                {/* Stop List with Timeline - different visualization for Load vs Boardings/Alightings/Activity */}
+                {(selectedMetric === 'Average load' || selectedMetric === 'Maxload') ? (
+                  /* Load metric: Colored line segments + black stops */
+                  (() => {
+                    // Build a map of fromStopId -> loadValue from segmentGeoms
+                    const segmentLoadMap = new Map<string, number>();
+                    segmentGeoms.forEach(seg => {
+                      segmentLoadMap.set(seg.fromStopId, seg.loadValue);
+                    });
+
+                    return (
+                      <div style={{ position: 'relative' }}>
+                        {/* Stops */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          {selectedTripStops.map((stop, index) => {
+                            const isLastStop = index === selectedTripStops.length - 1;
+                            // Get the segment load value (load for segment starting at this stop)
+                            const segmentLoad = segmentLoadMap.get(stop.id) || 0;
+                            const segmentColor = valueToColor(segmentLoad, segmentValueRange.min, segmentValueRange.max);
+
+                            return (
+                              <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '19px', position: 'relative' }}>
+                                {/* Colored segment line to next stop - positioned absolutely */}
+                                {!isLastStop && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    left: '4px',
+                                    top: '12px',
+                                    width: '9px',
+                                    height: 'calc(100% + 24px - 12px + 14px)',
+                                    backgroundColor: `rgb(${segmentColor.join(',')})`
+                                  }} />
+                                )}
+
+                                {/* Stop Circle - black with white border */}
+                                <div style={{
+                                  width: '17px',
+                                  height: '17px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'black',
+                                  border: '3px solid white',
+                                  flexShrink: 0,
+                                  zIndex: 1,
+                                  marginTop: '2px'
+                                }} />
+
+                                {/* Stop Info */}
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 'var(--body-regular-size)', color: 'var(--text-tertiary)' }}>
+                                    {stop.n} • {formatTime12Hour(stop.t)}
+                                  </div>
+                                  <div style={{
+                                    fontSize: 'var(--data-large-size)',
+                                    fontWeight: 'var(--data-large-weight)',
+                                    color: 'var(--text-primary)',
+                                    marginTop: '4px',
+                                    lineHeight: '1'
+                                  }}>
+                                    {segmentLoad}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  /* Boardings/Alightings/Activity metrics: Colored stops + beige line */
+                  <div style={{ position: 'relative' }}>
+                    {/* Vertical beige line */}
+                    <div style={{
+                      position: 'absolute',
+                      left: '8px',
+                      top: '8px',
+                      height: selectedTripStops.length > 1 ? `calc(100% - 8px - 42px)` : '0px',
+                      width: '4px',
+                      backgroundColor: 'var(--border-default)'
+                    }} />
+
+                    {/* Stops */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {selectedTripStops.map((stop, index) => {
+                        const stopValue = stopValueMap.get(stop.id) || 0;
+                        const stopColor = valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
+
+                        return (
+                          <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                            {/* Stop Circle - colored with white border and center dot */}
+                            <div style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              backgroundColor: `rgb(${stopColor.join(',')})`,
+                              border: '2px solid white',
+                              flexShrink: 0,
+                              zIndex: 1,
+                              marginTop: '2px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <div style={{
+                                width: '4px',
+                                height: '4px',
+                                borderRadius: '50%',
+                                backgroundColor: 'white'
+                              }} />
+                            </div>
+
+                            {/* Stop Info */}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 'var(--body-regular-size)', color: 'var(--text-tertiary)' }}>
+                                {stop.n} • {formatTime12Hour(stop.t)}
+                              </div>
+                              <div style={{
+                                fontSize: 'var(--data-large-size)',
+                                fontWeight: 'var(--data-large-weight)',
+                                color: 'var(--text-primary)',
+                                marginTop: '4px',
+                                lineHeight: '1'
+                              }}>
+                                {stopValue}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
             {/* Back Button and Header */}
@@ -3579,6 +3863,17 @@ export default function MapCanvas() {
                                         onMouseLeave={() => {
                                           setHoveredTrip(null);
                                           setTripTooltip(null);
+                                        }}
+                                        onClick={async () => {
+                                          // Clear tooltip before navigating
+                                          setHoveredTrip(null);
+                                          setTripTooltip(null);
+                                          setSelectedTrip(trip);
+                                          // Load stop times for this trip
+                                          const stops = await getTripStopTimes(trip.trip_id);
+                                          if (stops) {
+                                            setSelectedTripStops(stops);
+                                          }
                                         }}
                                       >
                                         <div
