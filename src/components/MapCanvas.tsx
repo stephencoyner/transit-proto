@@ -119,7 +119,7 @@ function formatTime12Hour(time24: string): string {
   // Handle GTFS times which can be >= 24 for trips past midnight
   const hour = parseInt(hourStr, 10) % 24;
   const minute = minuteStr;
-  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const ampm = hour >= 12 ? 'pm' : 'am';
   // Convert to 12-hour format
   let hour12: number;
   if (hour === 0) {
@@ -4650,7 +4650,7 @@ export default function MapCanvas() {
                                         >
                                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
                                             <span>{timePart}</span>
-                                            <span style={{ fontSize: '11px' }}>{ampmPart}</span>
+                                            <span style={{ fontSize: '10px' }}>{ampmPart}</span>
                                           </div>
                                         </div>
                                       );
