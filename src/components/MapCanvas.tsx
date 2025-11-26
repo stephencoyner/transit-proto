@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import MapboxMap from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer, Layer } from '@deck.gl/core';
-import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern, getTripStopTimes, TripStopTime } from '@/lib/data/loaders';
+import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern, getTripStopTimes, TripStopTime, fetchTripStopTimes } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
@@ -311,6 +311,7 @@ export default function MapCanvas() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
+  const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
@@ -411,6 +412,26 @@ export default function MapCanvas() {
 
   // Ref for trips scroll container
   const tripsScrollRef = useRef<HTMLDivElement>(null);
+
+  // Grid view state
+  const [gridTripStops, setGridTripStops] = useState<{ [tripId: string]: TripStopTime[] }>({});
+  const [isLoadingGridData, setIsLoadingGridData] = useState(false);
+  const currentGridPatternIndexRef = useRef(0);
+  const gridContentRef = useRef<HTMLDivElement>(null);
+  const gridHeadsignRef = useRef<HTMLDivElement>(null);
+
+  // Compute filtered grid trips for the header (used when Grid tab is selected)
+  const filteredGridTripsForHeader = useMemo(() => {
+    if (selectedRouteTab !== 'Grid') return [];
+    return routeTrips
+      .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
+      .filter(patternGroup => patternGroup.trips.length > 0);
+  }, [selectedRouteTab, routeTrips, selectedPattern]);
+
+  // Get initial headsign for first render
+  const currentGridPatternHeadsign = filteredGridTripsForHeader.length > 0
+    ? filteredGridTripsForHeader[0]?.headsign || ''
+    : '';
 
   // Trip filtering and sorting state - Applied state (what's actually being used)
   const [appliedTripFilterMin, setAppliedTripFilterMin] = useState<number | null>(null);
@@ -777,6 +798,9 @@ export default function MapCanvas() {
   // Check if we should show segment-based coloring (for load metrics in route detail view)
   const isLoadMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
   const showSegmentColoring = selectedRouteId && isLoadMetric;
+
+  // Check if we're in Grid view (full screen data panel)
+  const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip);
 
   // Generate segments between consecutive stops with mock load values (needed before value range calculation)
   const segmentGeoms = React.useMemo(() => {
@@ -1634,6 +1658,39 @@ export default function MapCanvas() {
     }
   }, [selectedRouteId, routePatterns, allTripsData]);
 
+  // Load trip stop times when Grid tab is selected
+  useEffect(() => {
+    if (selectedRouteTab === 'Grid' && routeTrips.length > 0) {
+      const loadGridData = async () => {
+        setIsLoadingGridData(true);
+        try {
+          const allTripStopTimes = await fetchTripStopTimes();
+
+          // Get all trip IDs from routeTrips (filtered by pattern if selected)
+          const relevantTrips = routeTrips
+            .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
+            .flatMap(pg => pg.trips);
+
+          // Build a map of trip stops for relevant trips
+          const tripStopsMap: { [tripId: string]: TripStopTime[] } = {};
+          for (const trip of relevantTrips) {
+            if (allTripStopTimes[trip.trip_id]) {
+              tripStopsMap[trip.trip_id] = allTripStopTimes[trip.trip_id];
+            }
+          }
+
+          setGridTripStops(tripStopsMap);
+        } catch (error) {
+          console.error('Failed to load grid data:', error);
+        } finally {
+          setIsLoadingGridData(false);
+        }
+      };
+
+      loadGridData();
+    }
+  }, [selectedRouteTab, routeTrips, selectedPattern]);
+
   // Update view state when route or stop is selected
   useEffect(() => {
     if (selectedRouteId) {
@@ -2116,11 +2173,11 @@ export default function MapCanvas() {
         left: '12px',
         top: '12px',
         height: 'calc(100% - 24px)',
-        width: isFiltersPanelOpen ? '704px' : '448px',
+        width: isGridView ? 'calc(100% - 24px)' : (isFiltersPanelOpen ? '704px' : '448px'),
         boxShadow: 'var(--shadow-lg)',
         borderRadius: '28px',
         pointerEvents: 'none',
-        zIndex: 999,
+        zIndex: isGridView ? 1999 : 999,
         transition: 'width 300ms ease-in-out'
       }} />
 
@@ -3401,14 +3458,16 @@ export default function MapCanvas() {
         top: '12px',
         bottom: '12px',
         left: isFiltersPanelOpen ? '340px' : '84px',
-        width: '376px',
+        width: isGridView
+          ? `calc(100% - ${isFiltersPanelOpen ? '340px' : '84px'} - 12px)`
+          : '376px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
         padding: '0 16px 0 16px',
         fontFamily: 'Inter, sans-serif',
-        zIndex: 1001,
+        zIndex: isGridView ? 2000 : 1001,
         overflowX: 'hidden',
-        transition: 'left 300ms ease-in-out',
+        transition: 'left 300ms ease-in-out, width 300ms ease-in-out',
         border: '0.5px solid var(--border-default)',
         borderLeft: 'none',
         display: 'flex',
@@ -3771,27 +3830,78 @@ export default function MapCanvas() {
           </div>
         ) : selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px', position: 'relative' }}>
+            {/* Pattern headsign - positioned in header area, centered over grid section */}
+            {selectedRouteTab === 'Grid' && currentGridPatternHeadsign && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: '240px',
+                right: 0,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                paddingTop: '32px',
+                pointerEvents: 'none',
+                zIndex: 40
+              }}>
+                <div
+                  ref={gridHeadsignRef}
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--data-3-size)',
+                    fontWeight: 600,
+                    lineHeight: 'var(--data-3-line-height)',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  {currentGridPatternHeadsign}
+                </div>
+              </div>
+            )}
+            {/* Shadow divider for Grid view - extends full height of panel */}
+            {selectedRouteTab === 'Grid' && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: '224px',
+                width: '8px',
+                background: 'linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent)',
+                zIndex: 35,
+                pointerEvents: 'none'
+              }} />
+            )}
             {/* Back Button and Header */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              justifyContent: 'space-between',
               marginTop: '0px',
               marginBottom: '4px',
-              cursor: 'pointer',
-              flexShrink: 0,
-              color: 'var(--text-secondary)'
-            }}
-            onClick={() => {
-              setSelectedRouteId(null);
-              setSelectedStopId(null);
+              flexShrink: 0
             }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
-              </svg>
-              <div className="heading-3">
-                {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
+              {/* Left side: Back button and Route name */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)'
+                }}
+                onClick={() => {
+                  setSelectedRouteId(null);
+                  setSelectedStopId(null);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
+                </svg>
+                <div className="heading-3">
+                  {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
+                </div>
               </div>
             </div>
 
@@ -3813,7 +3923,15 @@ export default function MapCanvas() {
                   <button
                     key={tab}
                     type="button"
-                    onClick={() => setSelectedRouteTab(tab)}
+                    onClick={() => {
+                      const wasGrid = selectedRouteTab === 'Grid';
+                      const willBeGrid = tab === 'Grid';
+                      if (wasGrid !== willBeGrid) {
+                        setIsGridTransitioning(true);
+                        setTimeout(() => setIsGridTransitioning(false), 300);
+                      }
+                      setSelectedRouteTab(tab);
+                    }}
                     style={{
                       position: 'relative',
                       padding: '12px 0',
@@ -3857,7 +3975,7 @@ export default function MapCanvas() {
 
             {/* Tab Content */}
             {selectedRouteTab === 'Summary' ? (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px', opacity: isGridTransitioning ? 0 : 1, transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms' }}>
                 <MetricCard
                   title={selectedMetric}
                   value={selectedRouteId
@@ -3930,7 +4048,9 @@ export default function MapCanvas() {
                     overflowY: 'hidden',
                     position: 'relative',
                     marginRight: '-50px',
-                    paddingRight: '50px'
+                    paddingRight: '50px',
+                    opacity: isGridTransitioning ? 0 : 1,
+                    transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms'
                   }}>
                     {/* Filter Bar */}
                     <div style={{
@@ -4249,26 +4369,244 @@ export default function MapCanvas() {
                 );
               })()
             ) : (
-              /* Grid View - Placeholder */
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                paddingBottom: '24px',
-                marginRight: '-8px',
-                paddingRight: '8px'
-              }}>
-                <div style={{
-                  padding: '24px',
-                  textAlign: 'center',
-                  color: 'var(--text-tertiary)',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 'var(--body-size)'
-                }}>
-                  Grid view coming soon
-                </div>
-              </div>
+              /* Grid View */
+              (() => {
+                // Filter trips by pattern (same logic as Trips view)
+                const filteredGridTrips = routeTrips
+                  .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
+                  .map(patternGroup => ({
+                    ...patternGroup,
+                    trips: [...patternGroup.trips].sort((a, b) => a.start_time.localeCompare(b.start_time))
+                  }))
+                  .filter(patternGroup => patternGroup.trips.length > 0);
+
+                // Cell dimensions
+                const CELL_WIDTH = 90;
+                const CELL_HEIGHT = 48;
+                const LABEL_WIDTH = 240;
+
+                // Handle scroll for updating current pattern - directly manipulates DOM for instant update
+                const handleGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
+                  const scrollTop = e.currentTarget.scrollTop;
+                  if (filteredGridTrips.length <= 1) return;
+
+                  // Calculate cumulative heights to find pattern boundaries
+                  let accumulatedHeight = 0;
+                  let newIndex = 0;
+                  for (let i = 0; i < filteredGridTrips.length; i++) {
+                    const pattern = filteredGridTrips[i];
+                    const firstTrip = pattern.trips[0];
+                    const stops = gridTripStops[firstTrip?.trip_id] || [];
+                    // Height = Start Time row + stop rows (no Trip Total, no margin)
+                    const patternHeight = CELL_HEIGHT * (1 + stops.length);
+
+                    // Switch to next pattern only when its Start Time row reaches the top
+                    if (scrollTop < accumulatedHeight + patternHeight) {
+                      newIndex = i;
+                      break;
+                    }
+                    accumulatedHeight += patternHeight;
+                    newIndex = i;
+                  }
+
+                  // Directly update DOM if index changed - bypasses React render cycle
+                  if (currentGridPatternIndexRef.current !== newIndex) {
+                    currentGridPatternIndexRef.current = newIndex;
+                    if (gridHeadsignRef.current) {
+                      gridHeadsignRef.current.textContent = filteredGridTrips[newIndex]?.headsign || '';
+                    }
+                  }
+                };
+
+                return (
+                  <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    opacity: isGridTransitioning ? 0 : 1,
+                    transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms',
+                    marginRight: '-16px'
+                  }}>
+                    {isLoadingGridData ? (
+                      <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-tertiary)',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--body-size)'
+                      }}>
+                        Loading grid data...
+                      </div>
+                    ) : filteredGridTrips.length === 0 ? (
+                      <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-tertiary)',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--body-size)'
+                      }}>
+                        {routeTrips.length === 0 ? 'No trips available for this route' : 'No trips match the current pattern filter'}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Single Scroll Container - both directions */}
+                        <div
+                          ref={gridContentRef}
+                          onScroll={handleGridScroll}
+                          style={{
+                            flex: 1,
+                            overflow: 'auto',
+                            marginLeft: '-16px',
+                            marginRight: '-16px'
+                          }}
+                        >
+                          <div style={{ display: 'inline-block', minWidth: '100%' }}>
+                            {filteredGridTrips.map((patternGroup, groupIndex) => {
+                              // Get stops from first trip in pattern
+                              const firstTrip = patternGroup.trips[0];
+                              const tripStops = gridTripStops[firstTrip?.trip_id] || [];
+
+                              return (
+                                <div key={groupIndex}>
+                                  {/* Start Time Row - Sticky top */}
+                                  <div style={{
+                                    position: 'sticky',
+                                    top: 0,
+                                    backgroundColor: 'var(--bg-primary)',
+                                    zIndex: 20,
+                                    display: 'flex',
+                                    flexDirection: 'row',
+                                    boxShadow: 'inset 0 -1px 0 var(--border-primary)'
+                                  }}>
+                                    {/* Start Time Label - Sticky left */}
+                                    <div style={{
+                                      position: 'sticky',
+                                      left: 0,
+                                      width: `${LABEL_WIDTH}px`,
+                                      flexShrink: 0,
+                                      height: `${CELL_HEIGHT}px`,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'flex-start',
+                                      paddingLeft: '16px',
+                                      paddingRight: '12px',
+                                      fontFamily: 'Inter, sans-serif',
+                                      fontSize: '14px',
+                                      fontWeight: 600,
+                                      color: 'var(--text-secondary)',
+                                      backgroundColor: 'var(--bg-primary)',
+                                      zIndex: 21
+                                    }}>
+                                      Stop Name
+                                    </div>
+                                    {/* Start Time Cells */}
+                                    {patternGroup.trips.map((trip, tripIndex) => (
+                                      <div
+                                        key={trip.trip_id}
+                                        style={{
+                                          width: `${CELL_WIDTH}px`,
+                                          flexShrink: 0,
+                                          height: `${CELL_HEIGHT}px`,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontFamily: 'Inter, sans-serif',
+                                          fontSize: '14px',
+                                          fontWeight: 600,
+                                          color: 'var(--text-primary)',
+                                          backgroundColor: 'var(--bg-primary)',
+                                          borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
+                                          borderRight: '0.5px solid var(--border-default)'
+                                        }}
+                                      >
+                                        {formatTime12Hour(trip.start_time)}
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Stop Rows */}
+                                  {tripStops.map((stop, stopIndex) => (
+                                    <div
+                                      key={stop.id}
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'row'
+                                      }}
+                                    >
+                                      {/* Stop Name Label - Sticky left */}
+                                      <div style={{
+                                        position: 'sticky',
+                                        left: 0,
+                                        width: `${LABEL_WIDTH}px`,
+                                        flexShrink: 0,
+                                        height: `${CELL_HEIGHT}px`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-start',
+                                        paddingLeft: '16px',
+                                        paddingRight: '12px',
+                                        fontFamily: 'Inter, sans-serif',
+                                        fontSize: '14px',
+                                        color: 'var(--text-primary)',
+                                        backgroundColor: 'var(--bg-primary)',
+                                        borderTop: stopIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
+                                        borderBottom: '0.5px solid var(--border-default)',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        zIndex: 10
+                                      }}>
+                                        {stop.n}
+                                      </div>
+                                      {/* Stop Value Cells */}
+                                      {patternGroup.trips.map((trip, tripIndex) => {
+                                        const tripStopTimes = gridTripStops[trip.trip_id] || [];
+                                        const stopTimeMap = new Map(tripStopTimes.map(st => [st.id, st]));
+                                        const stopTime = stopTimeMap.get(stop.id);
+                                        const stopValue = stopTime ? (stopValueMap.get(stop.id) || 0) : 0;
+                                        const cellColor = valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
+
+                                        return (
+                                          <div
+                                            key={trip.trip_id}
+                                            style={{
+                                              width: `${CELL_WIDTH}px`,
+                                              flexShrink: 0,
+                                              height: `${CELL_HEIGHT}px`,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              fontFamily: 'Inter, sans-serif',
+                                              fontSize: '18px',
+                                              fontWeight: 500,
+                                              color: '#fff',
+                                              backgroundColor: `rgb(${cellColor[0]}, ${cellColor[1]}, ${cellColor[2]})`,
+                                              borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
+                                              borderRight: '0.5px solid var(--border-default)',
+                                              borderBottom: '0.5px solid var(--border-default)'
+                                            }}
+                                          >
+                                            {stopValue}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()
             )}
           </div>
         ) : activeTab === 'system' ? (
