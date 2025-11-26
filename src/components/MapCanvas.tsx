@@ -315,6 +315,7 @@ export default function MapCanvas() {
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [experimentalDetailViewNav, setExperimentalDetailViewNav] = useState<boolean>(true);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
+  const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
 
@@ -3886,19 +3887,28 @@ export default function MapCanvas() {
           </div>
         ) : selectedRouteId || selectedStopId ? (
           /* Detail View for Selected Route/Stop */
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px', position: 'relative' }}>
-            {/* Pattern headsign - positioned in header area, centered over grid section */}
-            {selectedRouteTab === 'Grid' && currentGridPatternHeadsign && (
+          (() => {
+            // Grid size configuration - defined at top level so it's available for shadow divider
+            const gridSizeConfig = {
+              large: { cellWidth: 90, cellHeight: 48, labelWidth: 280, timeFont: 14, ampmFont: 12, labelFont: 14, dataFont: 16 },
+              medium: { cellWidth: 74, cellHeight: 44, labelWidth: 260, timeFont: 13, ampmFont: 11, labelFont: 13, dataFont: 14 },
+              small: { cellWidth: 64, cellHeight: 40, labelWidth: 240, timeFont: 12, ampmFont: 10, labelFont: 12, dataFont: 13 }
+            };
+            const config = gridSizeConfig[gridSize];
+            const LABEL_WIDTH = config.labelWidth;
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px', position: 'relative' }}>
+                {/* Pattern headsign - positioned in header area, centered over grid section */}
+                {selectedRouteTab === 'Grid' && currentGridPatternHeadsign && (
               <div style={{
                 position: 'absolute',
-                top: 0,
-                bottom: 0,
+                top: experimentalDetailViewNav ? '20px' : '32px',
                 left: '280px',
                 right: 0,
                 display: 'flex',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 justifyContent: 'center',
-                paddingTop: experimentalDetailViewNav ? '20px' : '32px',
                 pointerEvents: 'none',
                 zIndex: 40
               }}>
@@ -3914,6 +3924,91 @@ export default function MapCanvas() {
                 >
                   {currentGridPatternHeadsign}
                 </div>
+                {/* Grid sizing controls - positioned to the right */}
+                <div style={{
+                  position: 'absolute',
+                  right: '0px',
+                  display: 'flex',
+                  gap: '8px',
+                  pointerEvents: 'auto'
+                }}>
+                  {/* Decrease size button */}
+                  <button
+                    onClick={() => {
+                      if (gridSize === 'large') setGridSize('medium');
+                      else if (gridSize === 'medium') setGridSize('small');
+                    }}
+                    disabled={gridSize === 'small'}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: gridSize === 'small' ? 'not-allowed' : 'pointer',
+                      backgroundColor: 'transparent',
+                      borderWidth: 'var(--border-width)',
+                      borderStyle: 'solid',
+                      borderColor: 'transparent',
+                      opacity: gridSize === 'small' ? 0.5 : 1,
+                      transition: 'all 0.2s ease',
+                      padding: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      if (gridSize !== 'small') {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                        e.currentTarget.style.borderColor = 'var(--border-default)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1.05084 9.05009C0.498554 9.05009 0.0509454 8.60249 0.0509454 8.0502C0.0510121 7.49797 0.498595 7.05031 1.05084 7.05031H15.0507C15.6029 7.05039 16.0506 7.49802 16.0506 8.0502C16.0506 8.60243 15.6029 9.05001 15.0507 9.05009H1.05084Z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                  {/* Increase size button */}
+                  <button
+                    onClick={() => {
+                      if (gridSize === 'small') setGridSize('medium');
+                      else if (gridSize === 'medium') setGridSize('large');
+                    }}
+                    disabled={gridSize === 'large'}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: gridSize === 'large' ? 'not-allowed' : 'pointer',
+                      backgroundColor: 'transparent',
+                      borderWidth: 'var(--border-width)',
+                      borderStyle: 'solid',
+                      borderColor: 'transparent',
+                      opacity: gridSize === 'large' ? 0.5 : 1,
+                      transition: 'all 0.2s ease',
+                      padding: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      if (gridSize !== 'large') {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                        e.currentTarget.style.borderColor = 'var(--border-default)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1.05087 9.05023C0.498583 9.05023 0.0509737 8.60262 0.050974 8.05034C0.0510406 7.49811 0.498623 7.05044 1.05087 7.05044L7.05092 7.05113L7.05092 1.05039C7.05102 0.498193 7.49859 0.0505002 8.05081 0.0505002C8.60298 0.0505629 9.0506 0.498231 9.0507 1.05039L9.0507 7.05113L15.0508 7.05044C15.6029 7.05053 16.0506 7.49816 16.0506 8.05034C16.0506 8.60257 15.603 9.05014 15.0508 9.05023L9.0507 9.05092V15.0503C9.0507 15.6025 8.60304 16.0501 8.05081 16.0502C7.49853 16.0502 7.05092 15.6026 7.05092 15.0503L7.05092 9.05092L1.05087 9.05023Z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
             {/* Shadow divider for Grid view - extends full height of panel */}
@@ -3922,7 +4017,7 @@ export default function MapCanvas() {
                 position: 'absolute',
                 top: 0,
                 bottom: 0,
-                left: '264px',
+                left: `${LABEL_WIDTH - 16}px`,
                 width: '8px',
                 background: 'linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent)',
                 zIndex: 35,
@@ -4484,10 +4579,9 @@ export default function MapCanvas() {
                   }))
                   .filter(patternGroup => patternGroup.trips.length > 0);
 
-                // Cell dimensions
-                const CELL_WIDTH = 74;
-                const CELL_HEIGHT = 44;
-                const LABEL_WIDTH = 280;
+                // Use grid size config from outer scope
+                const CELL_WIDTH = config.cellWidth;
+                const CELL_HEIGHT = config.cellHeight;
 
                 // Handle scroll for updating current pattern - directly manipulates DOM for instant update
                 const handleGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -4616,7 +4710,7 @@ export default function MapCanvas() {
                                       paddingLeft: '16px',
                                       paddingRight: '12px',
                                       fontFamily: 'Inter, sans-serif',
-                                      fontSize: '13px',
+                                      fontSize: `${config.labelFont}px`,
                                       fontWeight: 600,
                                       color: 'var(--text-secondary)',
                                       backgroundColor: 'var(--bg-primary)',
@@ -4640,7 +4734,7 @@ export default function MapCanvas() {
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             fontFamily: 'Inter, sans-serif',
-                                            fontSize: '13px',
+                                            fontSize: `${config.timeFont}px`,
                                             fontWeight: 600,
                                             color: 'var(--text-primary)',
                                             backgroundColor: 'var(--bg-primary)',
@@ -4650,7 +4744,7 @@ export default function MapCanvas() {
                                         >
                                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
                                             <span>{timePart}</span>
-                                            <span style={{ fontSize: '10px' }}>{ampmPart}</span>
+                                            <span style={{ fontSize: `${config.ampmFont}px` }}>{ampmPart}</span>
                                           </div>
                                         </div>
                                       );
@@ -4679,7 +4773,7 @@ export default function MapCanvas() {
                                         paddingLeft: '16px',
                                         paddingRight: '12px',
                                         fontFamily: 'Inter, sans-serif',
-                                        fontSize: '13px',
+                                        fontSize: `${config.labelFont}px`,
                                         color: 'var(--text-primary)',
                                         backgroundColor: 'var(--bg-primary)',
                                         borderTop: stopIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
@@ -4710,7 +4804,7 @@ export default function MapCanvas() {
                                               alignItems: 'center',
                                               justifyContent: 'center',
                                               fontFamily: 'Inter, sans-serif',
-                                              fontSize: '14px',
+                                              fontSize: `${config.dataFont}px`,
                                               fontWeight: 600,
                                               color: '#fff',
                                               backgroundColor: `rgb(${cellColor[0]}, ${cellColor[1]}, ${cellColor[2]})`,
@@ -4737,7 +4831,9 @@ export default function MapCanvas() {
               })()
             )}
           </div>
-        ) : activeTab === 'system' ? (
+        );
+      })()
+    ) : activeTab === 'system' ? (
           /* System View - Aggregated Charts */
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
