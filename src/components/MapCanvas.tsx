@@ -3669,7 +3669,7 @@ export default function MapCanvas() {
                                   borderRadius: '50%',
                                   backgroundColor: `rgba(${stopColor.join(',')}, 0.5)`,
                                   zIndex: 0,
-                                  marginTop: '2px'
+                                  marginTop: '1px'
                                 }} />
                               )}
                               {/* Stop Circle - colored with white border and center dot */}
