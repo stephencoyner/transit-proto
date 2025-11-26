@@ -313,6 +313,8 @@ export default function MapCanvas() {
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
   const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
+  const [experimentalDetailViewNav, setExperimentalDetailViewNav] = useState<boolean>(true);
+  const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
 
@@ -400,6 +402,7 @@ export default function MapCanvas() {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [selectedTripStops, setSelectedTripStops] = useState<TripStopTime[]>([]);
   const [isTripContentScrolled, setIsTripContentScrolled] = useState(false);
+  const [isRouteContentScrolled, setIsRouteContentScrolled] = useState(false);
 
   // Tooltip state for trips
   const [tripTooltip, setTripTooltip] = useState<{
@@ -1637,6 +1640,11 @@ export default function MapCanvas() {
     }
   }, [selectedRouteId, selectedPattern]);
 
+  // Reset route content scroll state when switching tabs
+  useEffect(() => {
+    setIsRouteContentScrolled(false);
+  }, [selectedRouteTab]);
+
   // Organize trips by pattern when a route is selected
   useEffect(() => {
     if (selectedRouteId && routePatterns[selectedRouteId] && allTripsData[selectedRouteId]) {
@@ -2200,6 +2208,8 @@ export default function MapCanvas() {
           userInitial="S"
           isFiltersPanelOpen={isFiltersPanelOpen}
           onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
+          experimentalDetailViewNav={experimentalDetailViewNav}
+          onExperimentalDetailViewNavChange={setExperimentalDetailViewNav}
         />
       </div>
 
@@ -2233,7 +2243,7 @@ export default function MapCanvas() {
           minWidth: '256px'
         }}>
           {/* Date-time Section */}
-          <div style={{ marginBottom: '8px' }}>
+          <div>
             <label className="label text-text-tertiary block mb-1">Date-time</label>
 
             {/* Date Range Filter */}
@@ -2357,9 +2367,55 @@ export default function MapCanvas() {
                   width: '100%',
                   height: '0.5px',
                   backgroundColor: 'var(--border-default)',
-                  marginTop: '24px',
-                  marginBottom: '24px'
+                  marginTop: '16px',
+                  marginBottom: '16px'
                 }} />
+
+                {/* View Selector - Only show when experimental mode is on */}
+                {experimentalDetailViewNav && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <label className="label text-text-tertiary block mb-1">View</label>
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      width: '100%'
+                    }}>
+                      {(['Summary', 'Trips', 'Grid'] as const).map(view => (
+                        <button
+                          key={view}
+                          type="button"
+                          onClick={() => {
+                            const wasGrid = selectedRouteTab === 'Grid';
+                            const willBeGrid = view === 'Grid';
+                            if (wasGrid !== willBeGrid) {
+                              setIsGridTransitioning(true);
+                              setTimeout(() => setIsGridTransitioning(false), 300);
+                            }
+                            setSelectedRouteTab(view);
+                          }}
+                          onMouseEnter={() => setHoveredViewButton(view)}
+                          onMouseLeave={() => setHoveredViewButton(null)}
+                          className="button-small"
+                          style={{
+                            flex: 1,
+                            height: '40px',
+                            borderRadius: 'var(--radius-large)',
+                            backgroundColor: selectedRouteTab === view
+                              ? 'var(--btn-secondary)'
+                              : (hoveredViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
+                            color: 'var(--text-secondary)',
+                            border: selectedRouteTab === view ? 'none' : '0.5px solid var(--border-default)',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease, border 0.2s ease',
+                            padding: '0 12px'
+                          }}
+                        >
+                          {view}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Route Filter */}
                 <div>
@@ -3837,12 +3893,12 @@ export default function MapCanvas() {
                 position: 'absolute',
                 top: 0,
                 bottom: 0,
-                left: '240px',
+                left: '280px',
                 right: 0,
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'center',
-                paddingTop: '32px',
+                paddingTop: experimentalDetailViewNav ? '20px' : '32px',
                 pointerEvents: 'none',
                 zIndex: 40
               }}>
@@ -3866,7 +3922,7 @@ export default function MapCanvas() {
                 position: 'absolute',
                 top: 0,
                 bottom: 0,
-                left: '224px',
+                left: '264px',
                 width: '8px',
                 background: 'linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent)',
                 zIndex: 35,
@@ -3905,77 +3961,107 @@ export default function MapCanvas() {
               </div>
             </div>
 
-            {/* Summary/Trips/Grid Tabs */}
-            <div style={{
-              position: 'relative',
-              marginLeft: '-16px',
-              marginRight: '-16px',
-              flexShrink: 0
-            }}>
-              {/* Tabs */}
+            {/* Scroll-based divider - Only show when experimental mode is on */}
+            {experimentalDetailViewNav && (
               <div style={{
                 position: 'relative',
-                display: 'flex',
-                gap: '24px',
-                paddingLeft: '16px'
+                marginLeft: '-16px',
+                marginRight: '-16px',
+                flexShrink: 0
               }}>
-                {(['Summary', 'Trips', 'Grid'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => {
-                      const wasGrid = selectedRouteTab === 'Grid';
-                      const willBeGrid = tab === 'Grid';
-                      if (wasGrid !== willBeGrid) {
-                        setIsGridTransitioning(true);
-                        setTimeout(() => setIsGridTransitioning(false), 300);
-                      }
-                      setSelectedRouteTab(tab);
-                    }}
-                    style={{
-                      position: 'relative',
-                      padding: '12px 0',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      cursor: 'pointer',
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: 'var(--data-small-size)',
-                      fontWeight: 'var(--data-small-weight)',
-                      color: selectedRouteTab === tab ? 'var(--text-secondary)' : 'var(--text-disabled)',
-                      lineHeight: 'var(--data-small-line-height)',
-                      transition: 'color 0.2s ease'
-                    }}
-                  >
-                    {tab}
-                    {/* Underline indicator for selected tab */}
-                    {selectedRouteTab === tab && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '1px',
-                        left: 0,
-                        right: 0,
-                        height: '2px',
-                        backgroundColor: 'var(--text-secondary)',
-                        borderTopLeftRadius: '2px',
-                        borderTopRightRadius: '2px'
-                      }} />
-                    )}
-                  </button>
-                ))}
+                <div style={{
+                  height: '0.5px',
+                  backgroundColor: 'var(--border-default)',
+                  marginLeft: '16px',
+                  marginRight: '16px',
+                  marginTop: '12px',
+                  opacity: isRouteContentScrolled ? 1 : 0,
+                  transition: 'opacity 0.2s ease'
+                }} />
               </div>
-              {/* Divider */}
+            )}
+
+            {/* Summary/Trips/Grid Tabs - Only show when experimental mode is off */}
+            {!experimentalDetailViewNav && (
               <div style={{
-                height: '0.5px',
-                backgroundColor: 'var(--border-default)',
-                marginLeft: '16px',
-                marginRight: '16px',
-                marginTop: '-1px'
-              }} />
-            </div>
+                position: 'relative',
+                marginLeft: '-16px',
+                marginRight: '-16px',
+                flexShrink: 0
+              }}>
+                {/* Tabs */}
+                <div style={{
+                  position: 'relative',
+                  display: 'flex',
+                  gap: '24px',
+                  paddingLeft: '16px'
+                }}>
+                  {(['Summary', 'Trips', 'Grid'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => {
+                        const wasGrid = selectedRouteTab === 'Grid';
+                        const willBeGrid = tab === 'Grid';
+                        if (wasGrid !== willBeGrid) {
+                          setIsGridTransitioning(true);
+                          setTimeout(() => setIsGridTransitioning(false), 300);
+                        }
+                        setSelectedRouteTab(tab);
+                      }}
+                      style={{
+                        position: 'relative',
+                        padding: '12px 0',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--data-small-size)',
+                        fontWeight: 'var(--data-small-weight)',
+                        color: selectedRouteTab === tab ? 'var(--text-secondary)' : 'var(--text-disabled)',
+                        lineHeight: 'var(--data-small-line-height)',
+                        transition: 'color 0.2s ease'
+                      }}
+                    >
+                      {tab}
+                      {/* Underline indicator for selected tab */}
+                      {selectedRouteTab === tab && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '1px',
+                          left: 0,
+                          right: 0,
+                          height: '2px',
+                          backgroundColor: 'var(--text-secondary)',
+                          borderTopLeftRadius: '2px',
+                          borderTopRightRadius: '2px'
+                        }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {/* Divider */}
+                <div style={{
+                  height: '0.5px',
+                  backgroundColor: 'var(--border-default)',
+                  marginLeft: '16px',
+                  marginRight: '16px',
+                  marginTop: '-1px'
+                }} />
+              </div>
+            )}
 
             {/* Tab Content */}
             {selectedRouteTab === 'Summary' ? (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px', opacity: isGridTransitioning ? 0 : 1, transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms' }}>
+              <div
+                style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: experimentalDetailViewNav ? '0px' : '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px', opacity: isGridTransitioning ? 0 : 1, transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms' }}
+                onScroll={(e) => {
+                  if (experimentalDetailViewNav) {
+                    const target = e.target as HTMLDivElement;
+                    setIsRouteContentScrolled(target.scrollTop > 0);
+                  }
+                }}
+              >
                 <MetricCard
                   title={selectedMetric}
                   value={selectedRouteId
@@ -4052,6 +4138,24 @@ export default function MapCanvas() {
                     opacity: isGridTransitioning ? 0 : 1,
                     transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms'
                   }}>
+                    {/* Static divider - Only show when experimental mode is on */}
+                    {experimentalDetailViewNav && (
+                      <div style={{
+                        position: 'relative',
+                        marginLeft: '-16px',
+                        marginRight: '-16px',
+                        flexShrink: 0
+                      }}>
+                        <div style={{
+                          height: '0.5px',
+                          backgroundColor: 'var(--border-default)',
+                          marginLeft: '16px',
+                          marginRight: '16px',
+                          marginTop: '0px'
+                        }} />
+                      </div>
+                    )}
+
                     {/* Filter Bar */}
                     <div style={{
                       display: 'flex',
@@ -4381,9 +4485,9 @@ export default function MapCanvas() {
                   .filter(patternGroup => patternGroup.trips.length > 0);
 
                 // Cell dimensions
-                const CELL_WIDTH = 90;
-                const CELL_HEIGHT = 48;
-                const LABEL_WIDTH = 240;
+                const CELL_WIDTH = 74;
+                const CELL_HEIGHT = 44;
+                const LABEL_WIDTH = 280;
 
                 // Handle scroll for updating current pattern - directly manipulates DOM for instant update
                 const handleGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -4428,6 +4532,22 @@ export default function MapCanvas() {
                     transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms',
                     marginRight: '-16px'
                   }}>
+                    {/* Static divider - Only show when experimental mode is on */}
+                    {experimentalDetailViewNav && (
+                      <div style={{
+                        position: 'relative',
+                        marginLeft: '-16px',
+                        marginRight: '0px',
+                        flexShrink: 0
+                      }}>
+                        <div style={{
+                          height: '0.5px',
+                          backgroundColor: 'var(--border-default)',
+                          marginTop: '0px'
+                        }} />
+                      </div>
+                    )}
+
                     {isLoadingGridData ? (
                       <div style={{
                         flex: 1,
@@ -4496,7 +4616,7 @@ export default function MapCanvas() {
                                       paddingLeft: '16px',
                                       paddingRight: '12px',
                                       fontFamily: 'Inter, sans-serif',
-                                      fontSize: '14px',
+                                      fontSize: '13px',
                                       fontWeight: 600,
                                       color: 'var(--text-secondary)',
                                       backgroundColor: 'var(--bg-primary)',
@@ -4505,28 +4625,36 @@ export default function MapCanvas() {
                                       Stop Name
                                     </div>
                                     {/* Start Time Cells */}
-                                    {patternGroup.trips.map((trip, tripIndex) => (
-                                      <div
-                                        key={trip.trip_id}
-                                        style={{
-                                          width: `${CELL_WIDTH}px`,
-                                          flexShrink: 0,
-                                          height: `${CELL_HEIGHT}px`,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          fontFamily: 'Inter, sans-serif',
-                                          fontSize: '14px',
-                                          fontWeight: 600,
-                                          color: 'var(--text-primary)',
-                                          backgroundColor: 'var(--bg-primary)',
-                                          borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
-                                          borderRight: '0.5px solid var(--border-default)'
-                                        }}
-                                      >
-                                        {formatTime12Hour(trip.start_time)}
-                                      </div>
-                                    ))}
+                                    {patternGroup.trips.map((trip, tripIndex) => {
+                                      const formattedTime = formatTime12Hour(trip.start_time);
+                                      const [timePart, ampmPart] = formattedTime.split(' ');
+
+                                      return (
+                                        <div
+                                          key={trip.trip_id}
+                                          style={{
+                                            width: `${CELL_WIDTH}px`,
+                                            flexShrink: 0,
+                                            height: `${CELL_HEIGHT}px`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontFamily: 'Inter, sans-serif',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            color: 'var(--text-primary)',
+                                            backgroundColor: 'var(--bg-primary)',
+                                            borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
+                                            borderRight: '0.5px solid var(--border-default)'
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                                            <span>{timePart}</span>
+                                            <span style={{ fontSize: '11px' }}>{ampmPart}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
 
                                   {/* Stop Rows */}
@@ -4551,7 +4679,7 @@ export default function MapCanvas() {
                                         paddingLeft: '16px',
                                         paddingRight: '12px',
                                         fontFamily: 'Inter, sans-serif',
-                                        fontSize: '14px',
+                                        fontSize: '13px',
                                         color: 'var(--text-primary)',
                                         backgroundColor: 'var(--bg-primary)',
                                         borderTop: stopIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
@@ -4582,8 +4710,8 @@ export default function MapCanvas() {
                                               alignItems: 'center',
                                               justifyContent: 'center',
                                               fontFamily: 'Inter, sans-serif',
-                                              fontSize: '18px',
-                                              fontWeight: 500,
+                                              fontSize: '14px',
+                                              fontWeight: 600,
                                               color: '#fff',
                                               backgroundColor: `rgb(${cellColor[0]}, ${cellColor[1]}, ${cellColor[2]})`,
                                               borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface NavRailProps {
   activeTab: 'system' | 'routes' | 'stops' | 'components';
@@ -8,6 +9,8 @@ interface NavRailProps {
   userInitial?: string;
   isFiltersPanelOpen: boolean;
   onToggleFiltersPanel: () => void;
+  experimentalDetailViewNav: boolean;
+  onExperimentalDetailViewNavChange: (value: boolean) => void;
 }
 
 // Inline SVG components for nav icons
@@ -92,11 +95,17 @@ const NavRail: React.FC<NavRailProps> = ({
   onTabChange,
   userInitial = 'S',
   isFiltersPanelOpen,
-  onToggleFiltersPanel
+  onToggleFiltersPanel,
+  experimentalDetailViewNav,
+  onExperimentalDetailViewNavChange
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
   const [hasClicked, setHasClicked] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [profileMenuPosition, setProfileMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
@@ -130,6 +139,41 @@ const NavRail: React.FC<NavRailProps> = ({
     }
     return panelStateOnHover ? <CloseFilters2Icon /> : <OpenFilters2Icon />;
   };
+
+  const handleProfileClick = () => {
+    if (profileButtonRef.current) {
+      const rect = profileButtonRef.current.getBoundingClientRect();
+      const menuWidth = 240;
+      const menuHeight = 60; // Approximate height of the menu
+      setProfileMenuPosition({
+        top: rect.top + window.scrollY - menuHeight - 8, // Position above the button with 8px gap
+        left: rect.right + window.scrollX + 8 // Position to the right of the button with 8px gap
+      });
+    }
+    setIsProfileMenuOpen(!isProfileMenuOpen);
+  };
+
+  // Click outside to close profile menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileButtonRef.current &&
+        !profileButtonRef.current.contains(event.target as Node) &&
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
 
   return (
     <div className={`flex flex-col items-center h-full px-2 relative ${isFiltersPanelOpen ? 'bg-bg-secondary' : 'bg-bg-primary'}`} style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', transition: 'background-color 0.5s ease' }}>
@@ -180,15 +224,72 @@ const NavRail: React.FC<NavRailProps> = ({
       </nav>
 
       {/* User Profile - At Bottom */}
-      <div
-        className="flex items-center justify-center w-10 h-10 rounded-full bg-btn-secondary"
+      <button
+        ref={profileButtonRef}
+        onClick={handleProfileClick}
+        className="flex items-center justify-center w-10 h-10 rounded-full bg-btn-secondary hover:bg-btn-secondary/80 transition-colors cursor-pointer"
         style={{ marginBottom: '0' }}
         aria-label="User profile"
+        aria-expanded={isProfileMenuOpen}
       >
         <span className="body-large text-text-primary">
           {userInitial}
         </span>
-      </div>
+      </button>
+
+      {/* Profile Menu Dropdown */}
+      {isProfileMenuOpen && profileMenuPosition && createPortal(
+        <div
+          ref={profileMenuRef}
+          style={{
+            position: 'fixed',
+            top: `${profileMenuPosition.top}px`,
+            left: `${profileMenuPosition.left}px`,
+            width: '240px',
+            backgroundColor: 'var(--bg-elevated)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--radius-large)',
+            boxShadow: 'var(--shadow-lg)',
+            padding: '12px',
+            zIndex: 9999
+          }}
+        >
+          {/* Toggle Item */}
+          <div
+            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+            onClick={() => onExperimentalDetailViewNavChange(!experimentalDetailViewNav)}
+          >
+            <span className="button-small text-text-primary">
+              Experimental Detail View Nav
+            </span>
+            <div
+              style={{
+                width: '40px',
+                height: '20px',
+                borderRadius: '10px',
+                backgroundColor: experimentalDetailViewNav ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                position: 'relative',
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              <div
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--bg-elevated)',
+                  position: 'absolute',
+                  top: '1px',
+                  left: experimentalDetailViewNav ? '21px' : '1px',
+                  transition: 'left 0.2s ease'
+                }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
