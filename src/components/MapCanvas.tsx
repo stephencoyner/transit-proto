@@ -395,6 +395,7 @@ export default function MapCanvas() {
   // State for selected trip (for trip detail view)
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [selectedTripStops, setSelectedTripStops] = useState<TripStopTime[]>([]);
+  const [isTripContentScrolled, setIsTripContentScrolled] = useState(false);
 
   // Tooltip state for trips
   const [tripTooltip, setTripTooltip] = useState<{
@@ -2127,6 +2128,7 @@ export default function MapCanvas() {
                       if (selectedTrip) {
                         setSelectedTrip(null);
                         setSelectedTripStops([]);
+                        setIsTripContentScrolled(false);
                         setSelectedRouteTab('Summary');
                       }
                       setSelectedRouteId(value);
@@ -3243,6 +3245,7 @@ export default function MapCanvas() {
             onClick={() => {
               setSelectedTrip(null);
               setSelectedTripStops([]);
+              setIsTripContentScrolled(false);
             }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
@@ -3255,7 +3258,7 @@ export default function MapCanvas() {
               {selectedTrip.headsign}
             </div>
 
-            {/* Divider */}
+            {/* Divider - only shown when scrolled */}
             <div style={{
               position: 'relative',
               marginLeft: '-16px',
@@ -3267,12 +3270,20 @@ export default function MapCanvas() {
                 backgroundColor: 'var(--border-default)',
                 marginLeft: '16px',
                 marginRight: '16px',
-                marginTop: '12px'
+                marginTop: '12px',
+                opacity: isTripContentScrolled ? 1 : 0,
+                transition: 'opacity 0.2s ease'
               }} />
             </div>
 
             {/* Trip Content */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
+            <div
+              style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
+              onScroll={(e) => {
+                const target = e.target as HTMLDivElement;
+                setIsTripContentScrolled(target.scrollTop > 0);
+              }}
+            >
               {/* Overall Trip Metric Card */}
               <MetricCard
                 title={selectedMetric}
