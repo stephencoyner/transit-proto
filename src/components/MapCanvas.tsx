@@ -3505,6 +3505,11 @@ export default function MapCanvas() {
 
                             const isSelected = hoveredSegment === index;
 
+                            // Determine if this stop should be dimmed (not part of selected segment)
+                            const isStopDimmed = hoveredSegment !== null && index !== hoveredSegment && index !== hoveredSegment + 1;
+                            // Fade to light gray instead of using opacity
+                            const stopCircleColor = isStopDimmed ? 'rgb(180, 180, 180)' : 'black';
+
                             return (
                               <div
                                 key={index}
@@ -3554,15 +3559,16 @@ export default function MapCanvas() {
                                   width: '17px',
                                   height: '17px',
                                   borderRadius: '50%',
-                                  backgroundColor: 'black',
+                                  backgroundColor: stopCircleColor,
                                   border: '2.5px solid white',
                                   flexShrink: 0,
                                   zIndex: 1,
-                                  marginTop: '2px'
+                                  marginTop: '2px',
+                                  transition: 'background-color 0.2s'
                                 }} />
 
                                 {/* Stop Info */}
-                                <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ flex: 1, minWidth: 0, marginTop: '2px' }}>
                                   <div style={{ fontSize: 'var(--body-regular-size)', display: 'flex', gap: '6px', alignItems: 'baseline', position: 'relative' }}>
                                     <span
                                       style={{
@@ -3597,7 +3603,7 @@ export default function MapCanvas() {
                                     )}
                                     <span style={{
                                       color: hoveredSegment !== null && index !== hoveredSegment && index !== hoveredSegment + 1 ? 'var(--text-disabled)' : 'var(--text-tertiary)',
-                                      fontSize: '12px',
+                                      fontSize: '14px',
                                       transition: 'color 0.2s',
                                       flexShrink: 0,
                                       whiteSpace: 'nowrap'
@@ -3642,6 +3648,11 @@ export default function MapCanvas() {
 
                         const isStopSelected = selectedBoardingStop === stop.id;
 
+                        // Fade color by blending towards a light gray instead of using opacity
+                        const fadedStopColor = selectedBoardingStop !== null && !isStopSelected
+                          ? stopColor.map(c => Math.round(c + (230 - c) * 0.6)) // Blend 60% towards light gray (230)
+                          : stopColor;
+
                         return (
                           <div
                             key={index}
@@ -3677,7 +3688,7 @@ export default function MapCanvas() {
                                 width: '20px',
                                 height: '20px',
                                 borderRadius: '50%',
-                                backgroundColor: `rgb(${stopColor.join(',')})`,
+                                backgroundColor: `rgb(${fadedStopColor.join(',')})`,
                                 border: '2px solid white',
                                 zIndex: 1,
                                 marginTop: '2px',
@@ -3685,8 +3696,7 @@ export default function MapCanvas() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 position: 'relative',
-                                opacity: selectedBoardingStop !== null && !isStopSelected ? 0.4 : 1,
-                                transition: 'opacity 0.2s'
+                                transition: 'background-color 0.2s'
                               }}>
                                 <div style={{
                                   width: '4px',
@@ -3698,7 +3708,7 @@ export default function MapCanvas() {
                             </div>
 
                             {/* Stop Info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ flex: 1, minWidth: 0, marginTop: '2px' }}>
                               <div style={{ fontSize: 'var(--body-regular-size)', display: 'flex', gap: '6px', alignItems: 'baseline', position: 'relative' }}>
                                 <span
                                   style={{
@@ -3733,7 +3743,7 @@ export default function MapCanvas() {
                                 )}
                                 <span style={{
                                   color: selectedBoardingStop !== null && !isStopSelected ? 'var(--text-disabled)' : 'var(--text-tertiary)',
-                                  fontSize: '12px',
+                                  fontSize: '14px',
                                   flexShrink: 0,
                                   whiteSpace: 'nowrap',
                                   transition: 'color 0.2s'
