@@ -304,6 +304,9 @@ export default function MapCanvas() {
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null); // Index of hovered segment
+  const [selectedBoardingStop, setSelectedBoardingStop] = useState<string | null>(null); // Selected stop in boardings card
+  const [tooltipStopIndex, setTooltipStopIndex] = useState<number | null>(null); // Index of stop showing tooltip
+  const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -1328,6 +1331,15 @@ export default function MapCanvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStopFilterMenuOpen]);
 
+  // Cleanup tooltip timer on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current);
+      }
+    };
+  }, []);
+
   // Handle Apply button for trip filter
   const handleApplyTripFilter = () => {
     setAppliedTripFilterMin(stagedTripFilterMin);
@@ -1985,10 +1997,12 @@ export default function MapCanvas() {
 
     // Hovered stop halo (same style as selected stop, render before base layers)
     // Don't show halo when in segment coloring mode
-    if (hoveredStop && hoveredStop !== selectedStopId && !showSegmentColoring) {
-      const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === hoveredStop);
+    // Also show halo for selected boarding stop
+    const stopToHalo = hoveredStop || selectedBoardingStop;
+    if (stopToHalo && stopToHalo !== selectedStopId && !showSegmentColoring) {
+      const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
       if (hoveredStopData.length > 0) {
-        const value = stopValueMap.get(hoveredStop) || 0;
+        const value = stopValueMap.get(stopToHalo) || 0;
         const hoveredStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
         // Halo layer (12px larger than the stop, 50% opacity)
@@ -3482,15 +3496,44 @@ export default function MapCanvas() {
                     return (
                       <div style={{ position: 'relative' }}>
                         {/* Stops */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                           {selectedTripStops.map((stop, index) => {
                             const isLastStop = index === selectedTripStops.length - 1;
                             // Get the segment load value (load for segment starting at this stop)
                             const segmentLoad = segmentLoadMap.get(stop.id) || 0;
                             const segmentColor = valueToColor(segmentLoad, segmentValueRange.min, segmentValueRange.max);
 
+                            const isSelected = hoveredSegment === index;
+
                             return (
-                              <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '19px', position: 'relative' }}>
+                              <div
+                                key={index}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '19px',
+                                  position: 'relative',
+                                  cursor: !isLastStop ? 'pointer' : 'default'
+                                }}
+                                onClick={() => {
+                                  if (!isLastStop) {
+                                    setHoveredSegment(hoveredSegment === index ? null : index);
+                                  }
+                                }}
+                              >
+                                {/* Glow layer behind segment line when selected */}
+                                {!isLastStop && isSelected && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    left: '-5.5px',
+                                    top: '-2px',
+                                    width: '28px',
+                                    height: 'calc(100% + 20px + 24px)',
+                                    backgroundColor: `rgba(${segmentColor.join(',')}, 0.31)`,
+                                    borderRadius: '14px',
+                                    zIndex: 0
+                                  }} />
+                                )}
                                 {/* Colored segment line to next stop - positioned absolutely */}
                                 {!isLastStop && (
                                   <div style={{
@@ -3499,7 +3542,10 @@ export default function MapCanvas() {
                                     top: '12px',
                                     width: '9px',
                                     height: 'calc(100% + 24px - 12px + 14px)',
-                                    backgroundColor: `rgb(${segmentColor.join(',')})`
+                                    backgroundColor: `rgb(${segmentColor.join(',')})`,
+                                    opacity: hoveredSegment !== null && !isSelected ? 0.4 : 1,
+                                    transition: 'opacity 0.2s',
+                                    zIndex: 1
                                   }} />
                                 )}
 
@@ -3509,23 +3555,61 @@ export default function MapCanvas() {
                                   height: '17px',
                                   borderRadius: '50%',
                                   backgroundColor: 'black',
-                                  border: '3px solid white',
+                                  border: '2.5px solid white',
                                   flexShrink: 0,
                                   zIndex: 1,
                                   marginTop: '2px'
                                 }} />
 
                                 {/* Stop Info */}
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: 'var(--body-regular-size)', color: 'var(--text-tertiary)' }}>
-                                    {stop.n} • {formatTime12Hour(stop.t)}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 'var(--body-regular-size)', display: 'flex', gap: '6px', alignItems: 'baseline', position: 'relative' }}>
+                                    <span
+                                      style={{
+                                        color: hoveredSegment !== null && index !== hoveredSegment && index !== hoveredSegment + 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                                        fontWeight: 'var(--font-semibold)',
+                                        transition: 'color 0.2s',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        minWidth: 0
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        const target = e.currentTarget;
+                                        tooltipTimerRef.current = setTimeout(() => {
+                                          if (target.scrollWidth > target.clientWidth) {
+                                            setTooltipStopIndex(index);
+                                          }
+                                        }, 1000);
+                                      }}
+                                      onMouseLeave={() => {
+                                        if (tooltipTimerRef.current) {
+                                          clearTimeout(tooltipTimerRef.current);
+                                          tooltipTimerRef.current = null;
+                                        }
+                                        setTooltipStopIndex(null);
+                                      }}
+                                    >{stop.n}</span>
+                                    {tooltipStopIndex === index && (
+                                      <Tooltip text={stop.n}>
+                                        {null}
+                                      </Tooltip>
+                                    )}
+                                    <span style={{
+                                      color: hoveredSegment !== null && index !== hoveredSegment && index !== hoveredSegment + 1 ? 'var(--text-disabled)' : 'var(--text-tertiary)',
+                                      fontSize: '12px',
+                                      transition: 'color 0.2s',
+                                      flexShrink: 0,
+                                      whiteSpace: 'nowrap'
+                                    }}>{formatTime12Hour(stop.t)}</span>
                                   </div>
                                   <div style={{
-                                    fontSize: 'var(--data-large-size)',
-                                    fontWeight: 'var(--data-large-weight)',
-                                    color: 'var(--text-primary)',
+                                    fontSize: 'var(--data-medium-size)',
+                                    fontWeight: 'var(--data-medium-weight)',
+                                    color: hoveredSegment !== null && index !== hoveredSegment ? 'var(--text-disabled)' : 'var(--text-primary)',
                                     marginTop: '4px',
-                                    lineHeight: '1'
+                                    lineHeight: '1',
+                                    transition: 'color 0.2s'
                                   }}>
                                     {segmentLoad}
                                   </div>
@@ -3556,41 +3640,112 @@ export default function MapCanvas() {
                         const stopValue = stopValueMap.get(stop.id) || 0;
                         const stopColor = valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
 
+                        const isStopSelected = selectedBoardingStop === stop.id;
+
                         return (
-                          <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                            {/* Stop Circle - colored with white border and center dot */}
-                            <div style={{
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '50%',
-                              backgroundColor: `rgb(${stopColor.join(',')})`,
-                              border: '2px solid white',
-                              flexShrink: 0,
-                              zIndex: 1,
-                              marginTop: '2px',
+                          <div
+                            key={index}
+                            style={{
                               display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
+                              alignItems: 'flex-start',
+                              gap: '16px',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              setSelectedBoardingStop(selectedBoardingStop === stop.id ? null : stop.id);
+                            }}
+                          >
+                            {/* Stop Circle with halo ring when selected */}
+                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                              {/* Halo ring (shown when selected) */}
+                              {isStopSelected && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  width: '44px',
+                                  height: '44px',
+                                  borderRadius: '50%',
+                                  backgroundColor: `rgba(${stopColor.join(',')}, 0.5)`,
+                                  zIndex: 0,
+                                  marginTop: '1px'
+                                }} />
+                              )}
+                              {/* Stop Circle - colored with white border and center dot */}
                               <div style={{
-                                width: '4px',
-                                height: '4px',
+                                width: '20px',
+                                height: '20px',
                                 borderRadius: '50%',
-                                backgroundColor: 'white'
-                              }} />
+                                backgroundColor: `rgb(${stopColor.join(',')})`,
+                                border: '2px solid white',
+                                zIndex: 1,
+                                marginTop: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
+                                opacity: selectedBoardingStop !== null && !isStopSelected ? 0.4 : 1,
+                                transition: 'opacity 0.2s'
+                              }}>
+                                <div style={{
+                                  width: '4px',
+                                  height: '4px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'white'
+                                }} />
+                              </div>
                             </div>
 
                             {/* Stop Info */}
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 'var(--body-regular-size)', color: 'var(--text-tertiary)' }}>
-                                {stop.n} • {formatTime12Hour(stop.t)}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 'var(--body-regular-size)', display: 'flex', gap: '6px', alignItems: 'baseline', position: 'relative' }}>
+                                <span
+                                  style={{
+                                    color: selectedBoardingStop !== null && !isStopSelected ? 'var(--text-disabled)' : 'var(--text-primary)',
+                                    fontWeight: 'var(--font-semibold)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 0,
+                                    transition: 'color 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    const target = e.currentTarget;
+                                    tooltipTimerRef.current = setTimeout(() => {
+                                      if (target.scrollWidth > target.clientWidth) {
+                                        setTooltipStopIndex(index + 10000); // Offset to avoid collision with Load viz
+                                      }
+                                    }, 1000);
+                                  }}
+                                  onMouseLeave={() => {
+                                    if (tooltipTimerRef.current) {
+                                      clearTimeout(tooltipTimerRef.current);
+                                      tooltipTimerRef.current = null;
+                                    }
+                                    setTooltipStopIndex(null);
+                                  }}
+                                >{stop.n}</span>
+                                {tooltipStopIndex === index + 10000 && (
+                                  <Tooltip text={stop.n}>
+                                    {null}
+                                  </Tooltip>
+                                )}
+                                <span style={{
+                                  color: selectedBoardingStop !== null && !isStopSelected ? 'var(--text-disabled)' : 'var(--text-tertiary)',
+                                  fontSize: '12px',
+                                  flexShrink: 0,
+                                  whiteSpace: 'nowrap',
+                                  transition: 'color 0.2s'
+                                }}>{formatTime12Hour(stop.t)}</span>
                               </div>
                               <div style={{
-                                fontSize: 'var(--data-large-size)',
-                                fontWeight: 'var(--data-large-weight)',
-                                color: 'var(--text-primary)',
+                                fontSize: 'var(--data-medium-size)',
+                                fontWeight: 'var(--data-medium-weight)',
+                                color: selectedBoardingStop !== null && !isStopSelected ? 'var(--text-disabled)' : 'var(--text-primary)',
                                 marginTop: '4px',
-                                lineHeight: '1'
+                                lineHeight: '1',
+                                transition: 'color 0.2s'
                               }}>
                                 {stopValue}
                               </div>
