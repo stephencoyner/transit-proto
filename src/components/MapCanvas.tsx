@@ -428,6 +428,27 @@ export default function MapCanvas() {
   const tripFilterButtonRef = useRef<HTMLButtonElement>(null);
   const tripSortButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Stop filter/sort state
+  const [appliedStopFilterMin, setAppliedStopFilterMin] = useState<number | null>(null);
+  const [appliedStopFilterMax, setAppliedStopFilterMax] = useState<number | null>(null);
+  const [stagedStopFilterMin, setStagedStopFilterMin] = useState<number | null>(null);
+  const [stagedStopFilterMax, setStagedStopFilterMax] = useState<number | null>(null);
+  const [originalStopFilterMin, setOriginalStopFilterMin] = useState<number | null>(null);
+  const [originalStopFilterMax, setOriginalStopFilterMax] = useState<number | null>(null);
+
+  const [appliedStopAmenityFilters, setAppliedStopAmenityFilters] = useState<Map<string, boolean>>(new Map());
+  const [stagedStopAmenityFilters, setStagedStopAmenityFilters] = useState<Map<string, boolean>>(new Map());
+
+  const [stopSortBy, setStopSortBy] = useState<'name' | 'ridership'>('ridership');
+  const [stopSortOrder, setStopSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isStopFilterMenuOpen, setIsStopFilterMenuOpen] = useState(false);
+  const [isStopSortMenuOpen, setIsStopSortMenuOpen] = useState(false);
+  const [isStopFilterButtonHovered, setIsStopFilterButtonHovered] = useState(false);
+  const [isStopSortButtonHovered, setIsStopSortButtonHovered] = useState(false);
+  const [isStopsListScrolled, setIsStopsListScrolled] = useState(false);
+  const stopFilterButtonRef = useRef<HTMLButtonElement>(null);
+  const stopSortButtonRef = useRef<HTMLButtonElement>(null);
+
   // Date picker state - Applied state (what's actually being used)
   const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
   const [appliedQuickPick, setAppliedQuickPick] = useState<string | null>(null);
@@ -520,10 +541,25 @@ export default function MapCanvas() {
   // State to persist mock ridership values
   const [routeMockValues, setRouteMockValues] = React.useState<{ [key: string]: number }>({});
   const [stopMockValues, setStopMockValues] = React.useState<{ [key: string]: number }>({});
+  const [stopAmenities, setStopAmenities] = React.useState<{ [key: string]: { [amenity: string]: boolean } }>({});
+
+  // Define available amenities
+  const STOP_AMENITIES = [
+    'Bench',
+    'Bike Rack',
+    'Covered Waiting Area',
+    'Lighting',
+    'Real-time Display',
+    'Seating',
+    'Shelter',
+    'Tactile Paving',
+    'Trash Can',
+    'Wheelchair Access'
+  ];
 
   // Extract unique routes from shapes data with mock values
   const routesList = React.useMemo(() => {
-    const uniqueRoutes: { [key: string]: { id: string; name: string; value: number } } = {};
+    const uniqueRoutes: { [key: string]: { id: string; name: string; value: number; shortName: string } } = {};
     const newMockValues: { [key: string]: number } = { ...routeMockValues };
 
     shapes.forEach(shape => {
@@ -537,7 +573,8 @@ export default function MapCanvas() {
         uniqueRoutes[routeId] = {
           id: routeId,
           name: `Route ${routeShortName}`,
-          value: newMockValues[routeId]
+          value: newMockValues[routeId],
+          shortName: routeShortName
         };
       }
     });
@@ -549,17 +586,18 @@ export default function MapCanvas() {
 
     const routes = Object.values(uniqueRoutes);
 
-    // Sort by route number (convert to number for proper numeric sorting)
+    // Sort by route short name number (convert to number for proper numeric sorting)
     return routes.sort((a, b) => {
-      const aNum = parseInt(a.id, 10);
-      const bNum = parseInt(b.id, 10);
+      const aNum = parseInt(a.shortName, 10);
+      const bNum = parseInt(b.shortName, 10);
       return aNum - bNum;
     });
   }, [shapes, routeMockValues]);
 
-  // Extract stops data with mock values
+  // Extract stops data with mock values and amenities
   const stopsList = React.useMemo(() => {
     const newMockValues: { [key: string]: number } = { ...stopMockValues };
+    const newAmenities: { [key: string]: { [amenity: string]: boolean } } = { ...stopAmenities };
 
     const stopsWithValues = stops.map(stop => {
       const stopId = stop.properties.stop_id;
@@ -567,10 +605,19 @@ export default function MapCanvas() {
       if (!newMockValues[stopId]) {
         newMockValues[stopId] = Math.floor(Math.random() * 500) + 50;
       }
+      // Generate amenities if they don't exist
+      if (!newAmenities[stopId]) {
+        newAmenities[stopId] = {};
+        STOP_AMENITIES.forEach(amenity => {
+          // ~60% chance of having each amenity
+          newAmenities[stopId][amenity] = Math.random() > 0.4;
+        });
+      }
       return {
         id: stopId,
         name: stop.properties.name,
-        value: newMockValues[stopId]
+        value: newMockValues[stopId],
+        amenities: newAmenities[stopId]
       };
     });
 
@@ -578,9 +625,52 @@ export default function MapCanvas() {
     if (Object.keys(newMockValues).length !== Object.keys(stopMockValues).length) {
       setStopMockValues(newMockValues);
     }
+    if (Object.keys(newAmenities).length !== Object.keys(stopAmenities).length) {
+      setStopAmenities(newAmenities);
+    }
 
     return stopsWithValues.sort((a, b) => b.value - a.value);
-  }, [stops, stopMockValues]);
+  }, [stops, stopMockValues, stopAmenities, STOP_AMENITIES]);
+
+  // Create filtered and sorted stopsList for display
+  const filteredAndSortedStopsList = React.useMemo(() => {
+    let filtered = stopsList;
+
+    // Apply ridership filter
+    if (appliedStopFilterMin !== null || appliedStopFilterMax !== null) {
+      filtered = filtered.filter(stop => {
+        return (
+          (appliedStopFilterMin === null || stop.value >= appliedStopFilterMin) &&
+          (appliedStopFilterMax === null || stop.value <= appliedStopFilterMax)
+        );
+      });
+    }
+
+    // Apply amenity filters
+    if (appliedStopAmenityFilters.size > 0) {
+      filtered = filtered.filter(stop => {
+        // Stop must match ALL amenity filter conditions
+        return Array.from(appliedStopAmenityFilters.entries()).every(([amenity, required]) =>
+          stop.amenities[amenity] === required
+        );
+      });
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      if (stopSortBy === 'name') {
+        const comparison = a.name.localeCompare(b.name);
+        return stopSortOrder === 'asc' ? comparison : -comparison;
+      } else {
+        // Sort by ridership
+        return stopSortOrder === 'asc'
+          ? a.value - b.value
+          : b.value - a.value;
+      }
+    });
+
+    return sorted;
+  }, [stopsList, appliedStopFilterMin, appliedStopFilterMax, appliedStopAmenityFilters, stopSortBy, stopSortOrder]);
 
   // Filter data based on selection
   const filteredShapes = React.useMemo(() => {
@@ -672,8 +762,14 @@ export default function MapCanvas() {
     }
 
     // Only show all stops when in stops tab view
-    return activeTab === 'stops' ? stops : [];
-  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, selectedTrip, selectedTripStops]);
+    if (activeTab === 'stops') {
+      // Apply stop filters when in stops tab
+      const filteredStopIds = new Set(filteredAndSortedStopsList.map(s => s.id));
+      return stops.filter(stop => filteredStopIds.has(stop.properties.stop_id));
+    }
+
+    return [];
+  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, selectedTrip, selectedTripStops, filteredAndSortedStopsList]);
 
   // Check if we should show segment-based coloring (for load metrics in route detail view)
   const isLoadMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
@@ -1220,6 +1316,18 @@ export default function MapCanvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTripFilterMenuOpen]);
 
+  // When stop filter menu opens, capture current applied state as both original and staged
+  useEffect(() => {
+    if (isStopFilterMenuOpen) {
+      setOriginalStopFilterMin(appliedStopFilterMin);
+      setOriginalStopFilterMax(appliedStopFilterMax);
+      setStagedStopFilterMin(appliedStopFilterMin);
+      setStagedStopFilterMax(appliedStopFilterMax);
+      setStagedStopAmenityFilters(new Map(appliedStopAmenityFilters));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStopFilterMenuOpen]);
+
   // Handle Apply button for trip filter
   const handleApplyTripFilter = () => {
     setAppliedTripFilterMin(stagedTripFilterMin);
@@ -1244,6 +1352,33 @@ export default function MapCanvas() {
   // Check if there are any filters to reset (for Reset button)
   const hasTripFiltersToReset =
     stagedTripFilterMin !== null || stagedTripFilterMax !== null;
+
+  // Stop filter handlers
+  const handleApplyStopFilter = () => {
+    setAppliedStopFilterMin(stagedStopFilterMin);
+    setAppliedStopFilterMax(stagedStopFilterMax);
+    setAppliedStopAmenityFilters(new Map(stagedStopAmenityFilters));
+    setIsStopFilterMenuOpen(false);
+  };
+
+  const handleResetStopFilter = () => {
+    setStagedStopFilterMin(null);
+    setStagedStopFilterMax(null);
+    setStagedStopAmenityFilters(new Map());
+    setAppliedStopFilterMin(null);
+    setAppliedStopFilterMax(null);
+    setAppliedStopAmenityFilters(new Map());
+    setIsStopFilterMenuOpen(false);
+  };
+
+  const hasStopFilterChanges =
+    stagedStopFilterMin !== originalStopFilterMin ||
+    stagedStopFilterMax !== originalStopFilterMax ||
+    stagedStopAmenityFilters.size !== appliedStopAmenityFilters.size ||
+    Array.from(stagedStopAmenityFilters.entries()).some(([k, v]) => appliedStopAmenityFilters.get(k) !== v);
+
+  const hasStopFiltersToReset =
+    stagedStopFilterMin !== null || stagedStopFilterMax !== null || stagedStopAmenityFilters.size > 0;
 
   // Function to update panel position based on which filter is open
   const updatePanelPosition = useCallback(() => {
@@ -1366,9 +1501,35 @@ export default function MapCanvas() {
           setIsTripSortMenuOpen(false);
         }
       }
+
+      if (isStopFilterMenuOpen && stopFilterButtonRef.current && !stopFilterButtonRef.current.contains(target)) {
+        const filterMenus = document.querySelectorAll('[data-stop-filter-menu]');
+        let clickedInMenu = false;
+        filterMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsStopFilterMenuOpen(false);
+        }
+      }
+
+      if (isStopSortMenuOpen && stopSortButtonRef.current && !stopSortButtonRef.current.contains(target)) {
+        const sortMenus = document.querySelectorAll('[data-stop-sort-menu]');
+        let clickedInMenu = false;
+        sortMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsStopSortMenuOpen(false);
+        }
+      }
     };
 
-    if (isTripFilterMenuOpen || isTripSortMenuOpen) {
+    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen) {
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 0);
@@ -1377,7 +1538,7 @@ export default function MapCanvas() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isTripFilterMenuOpen, isTripSortMenuOpen]);
+  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen]);
 
   useEffect(() => {
     (async () => {
@@ -2086,7 +2247,18 @@ export default function MapCanvas() {
             <label className="label text-text-tertiary block mb-1">Metric</label>
             <Select
               value={selectedMetric}
-              onChange={(value) => setSelectedMetric(value)}
+              onChange={(value) => {
+                setSelectedMetric(value);
+                // Clear metric-based filters when metric changes
+                setAppliedTripFilterMin(null);
+                setAppliedTripFilterMax(null);
+                setStagedTripFilterMin(null);
+                setStagedTripFilterMax(null);
+                setAppliedStopFilterMin(null);
+                setAppliedStopFilterMax(null);
+                setStagedStopFilterMin(null);
+                setStagedStopFilterMax(null);
+              }}
               options={[
                 { value: 'Average daily boardings', label: 'Average daily boardings' },
                 { value: 'Total boardings', label: 'Total boardings' },
@@ -4037,58 +4209,186 @@ export default function MapCanvas() {
               </div>
             </div>
           </div>
-        ) : (
-          /* Routes/Stops View - List */
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
-            {/* Sort and Filter Buttons - DISABLED FOR NOW */}
-            {/* <div style={{
-              display: 'flex',
-              gap: '8px',
-              marginBottom: '24px'
-            }}>
-              <SortButton
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                options={[
-                  { value: 'route', label: 'Route' },
-                  { value: 'metric', label: selectedMetric }
-                ]}
-                onSortByChange={(value) => setSortBy(value as 'route' | 'metric')}
-                onSortOrderToggle={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              />
-              <button style={{
-                padding: '8px 20px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D9D9D9',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-                color: '#333',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                + Filter
-              </button>
-            </div> */}
+        ) : activeTab === 'stops' ? (
+          /* Stops View with Filter/Sort */
+          (() => {
+            const isFiltered = appliedStopFilterMin !== null || appliedStopFilterMax !== null || appliedStopAmenityFilters.size > 0;
 
+            return (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'hidden',
+                position: 'relative',
+                marginRight: '-50px',
+                paddingRight: '50px'
+              }}>
+                {/* Filter Bar */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '14px',
+                  paddingBottom: '8px',
+                  paddingLeft: '0px',
+                  paddingRight: '0px',
+                  flexShrink: 0,
+                  backgroundColor: 'var(--bg-primary)',
+                  zIndex: 20
+                }}>
+                  {/* Stop Count */}
+                  <div
+                    className="data-small"
+                    style={{
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    {isFiltered
+                      ? `${filteredAndSortedStopsList.length} of ${stopsList.length} Stops`
+                      : `${stopsList.length} Stops`}
+                  </div>
+
+                  {/* Filter and Sort Buttons */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* Filter Button */}
+                    <button
+                      ref={stopFilterButtonRef}
+                      type="button"
+                      onClick={() => setIsStopFilterMenuOpen(!isStopFilterMenuOpen)}
+                      onMouseEnter={() => setIsStopFilterButtonHovered(true)}
+                      onMouseLeave={() => setIsStopFilterButtonHovered(false)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: isStopFilterMenuOpen
+                          ? '0.5px solid var(--border-focus)'
+                          : isStopFilterButtonHovered
+                            ? '0.5px solid var(--border-default)'
+                            : '0.5px solid transparent',
+                        backgroundColor: isStopFilterMenuOpen || isStopFilterButtonHovered ? 'var(--bg-elevated)' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        padding: 0,
+                        position: 'relative'
+                      }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      {isFiltered && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '1px',
+                          right: '1px',
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--text-secondary)'
+                        }} />
+                      )}
+                    </button>
+
+                    {/* Sort Button */}
+                    <button
+                      ref={stopSortButtonRef}
+                      type="button"
+                      onClick={() => setIsStopSortMenuOpen(!isStopSortMenuOpen)}
+                      onMouseEnter={() => setIsStopSortButtonHovered(true)}
+                      onMouseLeave={() => setIsStopSortButtonHovered(false)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: isStopSortMenuOpen
+                          ? '0.5px solid var(--border-focus)'
+                          : isStopSortButtonHovered
+                            ? '0.5px solid var(--border-default)'
+                            : '0.5px solid transparent',
+                        backgroundColor: isStopSortMenuOpen || isStopSortButtonHovered ? 'var(--bg-elevated)' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        padding: 0
+                      }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5.81667 8.76675C5.57222 8.76675 5.36389 8.68064 5.19167 8.50842C5.01944 8.33619 4.93333 8.12786 4.93333 7.88342V4.20008L4.01667 5.11675C3.85 5.28341 3.64444 5.36675 3.4 5.36675C3.15556 5.36675 2.94444 5.28341 2.76667 5.11675C2.58889 4.93897 2.5 4.73064 2.5 4.49175C2.5 4.25286 2.58889 4.04453 2.76667 3.86675L5.18333 1.43341C5.27222 1.34453 5.36944 1.27786 5.475 1.23341C5.58056 1.18897 5.69444 1.16675 5.81667 1.16675C5.93889 1.16675 6.05278 1.18897 6.15833 1.23341C6.26389 1.27786 6.36111 1.34453 6.45 1.43341L8.86667 3.86675C9.04444 4.04453 9.13056 4.25286 9.125 4.49175C9.11944 4.73064 9.02778 4.93897 8.85 5.11675C8.67222 5.28341 8.46667 5.36953 8.23333 5.37508C8 5.38064 7.79444 5.29453 7.61667 5.11675L6.7 4.20008V7.88342C6.7 8.12786 6.61389 8.33619 6.44167 8.50842C6.26944 8.68064 6.06111 8.76675 5.81667 8.76675ZM10.1833 14.8334C10.0611 14.8334 9.94722 14.8112 9.84167 14.7667C9.73611 14.7223 9.63889 14.6556 9.55 14.5667L7.13333 12.1334C6.95556 11.9556 6.86944 11.7473 6.875 11.5084C6.88056 11.2695 6.97222 11.0612 7.15 10.8834C7.32778 10.7167 7.53333 10.6306 7.76667 10.6251C8 10.6195 8.20556 10.7056 8.38333 10.8834L9.3 11.8001V8.11675C9.3 7.8723 9.38611 7.66397 9.55833 7.49175C9.73056 7.31953 9.93889 7.23342 10.1833 7.23342C10.4278 7.23342 10.6361 7.31953 10.8083 7.49175C10.9806 7.66397 11.0667 7.8723 11.0667 8.11675V11.8001L11.9833 10.8834C12.15 10.7167 12.3556 10.6334 12.6 10.6334C12.8444 10.6334 13.0556 10.7167 13.2333 10.8834C13.4111 11.0612 13.5 11.2695 13.5 11.5084C13.5 11.7473 13.4111 11.9556 13.2333 12.1334L10.8167 14.5667C10.7278 14.6556 10.6306 14.7223 10.525 14.7667C10.4194 14.8112 10.3056 14.8334 10.1833 14.8334Z" fill="#3D2817"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Divider - only shown when scrolled */}
+                <div style={{
+                  position: 'relative',
+                  marginLeft: '-16px',
+                  marginRight: '-16px',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    height: '0.5px',
+                    backgroundColor: 'var(--border-default)',
+                    marginLeft: '16px',
+                    marginRight: '16px',
+                    marginTop: '4px',
+                    opacity: isStopsListScrolled ? 1 : 0,
+                    transition: 'opacity 0.1s ease'
+                  }} />
+                </div>
+
+                {/* List Items */}
+                <div
+                  style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0',
+                    paddingBottom: '24px',
+                    marginRight: '-8px',
+                    paddingRight: '8px'
+                  }}
+                  onScroll={(e) => {
+                    const target = e.target as HTMLDivElement;
+                    setIsStopsListScrolled(target.scrollTop > 0);
+                  }}
+                >
+                  {filteredAndSortedStopsList.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedStopId(item.id);
+                      }}
+                      style={{
+                        cursor: 'pointer'
+                      }}>
+                      <MetricCard value={item.value} title={item.name} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()
+        ) : (
+          /* Routes View - Simple List */
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* List Items */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
               gap: '0'
             }}>
-              {(activeTab === 'routes' ? routesList : stopsList).map((item) => (
+              {routesList.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => {
-                    if (activeTab === 'routes') {
-                      setSelectedRouteId(item.id);
-                      setSelectedRouteTab('Summary'); // Always start in Summary when coming from list
-                    } else {
-                      setSelectedStopId(item.id);
-                    }
+                    setSelectedRouteId(item.id);
+                    setSelectedRouteTab('Summary');
                   }}
                   style={{
                     cursor: 'pointer'
@@ -4145,18 +4445,13 @@ export default function MapCanvas() {
               padding: '16px'
             }}
           >
-            <div
-              className="label text-text-tertiary"
-              style={{
-                marginBottom: '18px'
-              }}
-            >
-              Filter by {selectedMetric}
-            </div>
+            <span className="button-small" style={{ color: 'var(--text-secondary)', fontWeight: '500', marginBottom: '18px', display: 'block' }}>
+              {selectedMetric}
+            </span>
             <div style={{ marginBottom: '18px' }}>
               <Input
                 type="number"
-                label="Minimum"
+                label="More Than"
                 value={stagedTripFilterMin ?? ''}
                 onChange={(e) => setStagedTripFilterMin(e.target.value ? Number(e.target.value) : null)}
                 placeholder="None"
@@ -4166,7 +4461,7 @@ export default function MapCanvas() {
             <div style={{ marginBottom: '16px' }}>
               <Input
                 type="number"
-                label="Maximum"
+                label="Less Than"
                 value={stagedTripFilterMax ?? ''}
                 onChange={(e) => setStagedTripFilterMax(e.target.value ? Number(e.target.value) : null)}
                 placeholder="None"
@@ -4254,6 +4549,285 @@ export default function MapCanvas() {
                     setTripSortBy(option.sortBy);
                     setTripSortOrder(option.order);
                     setIsTripSortMenuOpen(false);
+                  }}
+                  className="button-small"
+                  style={{
+                    padding: '12px 28px 12px 16px',
+                    cursor: 'pointer',
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    transition: 'background-color 0.2s ease',
+                    backgroundColor: 'transparent',
+                    margin: index === sortOptions.length - 1 ? '4px 0 12px 0' : '4px 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                  <span style={{ marginLeft: isSelected ? '0' : '32px' }}>{option.label}</span>
+                </div>
+              );
+            })}
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* Stop Filter Menu */}
+      {isStopFilterMenuOpen && stopFilterButtonRef.current && (() => {
+        const buttonRect = stopFilterButtonRef.current.getBoundingClientRect();
+        return createPortal(
+          <div
+            data-stop-filter-menu
+            style={{
+              position: 'fixed',
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${buttonRect.left}px`,
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-large)',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 10002,
+              width: 'fit-content',
+              maxHeight: '480px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Scrollable content area */}
+            <div style={{
+              overflowY: 'auto',
+              padding: '16px',
+              paddingBottom: '0'
+            }}
+            >
+            <span className="button-small" style={{ color: 'var(--text-secondary)', fontWeight: '500', marginBottom: '16px', display: 'block' }}>
+              {selectedMetric}
+            </span>
+            <div style={{ marginBottom: '16px', width: '230px' }}>
+              <Input
+                type="number"
+                label="More Than"
+                value={stagedStopFilterMin ?? ''}
+                onChange={(e) => setStagedStopFilterMin(e.target.value ? Number(e.target.value) : null)}
+                placeholder="None"
+                variant="elevated"
+              />
+            </div>
+            <div style={{ marginBottom: '16px', width: '230px' }}>
+              <Input
+                type="number"
+                label="Less Than"
+                value={stagedStopFilterMax ?? ''}
+                onChange={(e) => setStagedStopFilterMax(e.target.value ? Number(e.target.value) : null)}
+                placeholder="None"
+                variant="elevated"
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{
+              height: '0.5px',
+              backgroundColor: 'var(--border-default)',
+              marginBottom: '16px'
+            }} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+              {STOP_AMENITIES.map(amenity => {
+                const currentValue = stagedStopAmenityFilters.get(amenity);
+                return (
+                  <div key={amenity} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span className="button-small" style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>{amenity}</span>
+                    {/* Mini Split Control */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '0px',
+                      backgroundColor: 'var(--bg-secondary)',
+                      borderRadius: '20px',
+                      padding: '2px',
+                      width: 'fit-content',
+                      height: '40px'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFilters = new Map(stagedStopAmenityFilters);
+                          newFilters.delete(amenity);
+                          setStagedStopAmenityFilters(newFilters);
+                        }}
+                        style={{
+                          padding: '0 16px',
+                          height: '36px',
+                          backgroundColor: currentValue === undefined ? 'var(--bg-elevated)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '18px',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--label-size)',
+                          fontWeight: 'var(--label-weight)',
+                          color: currentValue === undefined ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          lineHeight: 'var(--label-line-height)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        Any
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFilters = new Map(stagedStopAmenityFilters);
+                          newFilters.set(amenity, true);
+                          setStagedStopAmenityFilters(newFilters);
+                        }}
+                        style={{
+                          padding: '0 16px',
+                          height: '36px',
+                          backgroundColor: currentValue === true ? 'var(--bg-elevated)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '18px',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--label-size)',
+                          fontWeight: 'var(--label-weight)',
+                          color: currentValue === true ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          lineHeight: 'var(--label-line-height)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        Has
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFilters = new Map(stagedStopAmenityFilters);
+                          newFilters.set(amenity, false);
+                          setStagedStopAmenityFilters(newFilters);
+                        }}
+                        style={{
+                          padding: '0 16px',
+                          height: '36px',
+                          backgroundColor: currentValue === false ? 'var(--bg-elevated)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '18px',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--label-size)',
+                          fontWeight: 'var(--label-weight)',
+                          color: currentValue === false ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          lineHeight: 'var(--label-line-height)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        Does Not Have
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            </div>
+
+            {/* Sticky footer with buttons */}
+            <div style={{
+              padding: '16px',
+              paddingTop: '16px',
+              borderTop: '0.5px solid var(--border-default)',
+              backgroundColor: 'var(--bg-elevated)',
+              borderBottomLeftRadius: 'var(--radius-large)',
+              borderBottomRightRadius: 'var(--radius-large)'
+            }}>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'flex-end'
+              }}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  onClick={handleResetStopFilter}
+                  disabled={!hasStopFiltersToReset}
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasStopFiltersToReset) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleApplyStopFilter}
+                  disabled={!hasStopFilterChanges}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* Stop Sort Menu */}
+      {isStopSortMenuOpen && stopSortButtonRef.current && (() => {
+        const buttonRect = stopSortButtonRef.current.getBoundingClientRect();
+        const sortOptions = [
+          { sortBy: 'name' as const, order: 'asc' as const, label: 'Name (A-Z)' },
+          { sortBy: 'name' as const, order: 'desc' as const, label: 'Name (Z-A)' },
+          { sortBy: 'ridership' as const, order: 'desc' as const, label: `${selectedMetric} (highest first)` },
+          { sortBy: 'ridership' as const, order: 'asc' as const, label: `${selectedMetric} (lowest first)` }
+        ];
+        return createPortal(
+          <div
+            data-stop-sort-menu
+            style={{
+              position: 'fixed',
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${buttonRect.left}px`,
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-large)',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 10002,
+              minWidth: '220px',
+              overflowY: 'auto',
+              paddingTop: '16px'
+            }}
+          >
+            <div
+              className="label text-text-tertiary"
+              style={{
+                padding: '0 16px 8px 16px'
+              }}
+            >
+              Sort by
+            </div>
+            {sortOptions.map((option, index) => {
+              const isSelected = stopSortBy === option.sortBy && stopSortOrder === option.order;
+              return (
+                <div
+                  key={`${option.sortBy}-${option.order}`}
+                  onClick={() => {
+                    setStopSortBy(option.sortBy);
+                    setStopSortOrder(option.order);
+                    setIsStopSortMenuOpen(false);
                   }}
                   className="button-small"
                   style={{
