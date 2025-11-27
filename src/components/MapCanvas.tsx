@@ -307,6 +307,8 @@ export default function MapCanvas() {
   const [selectedBoardingStop, setSelectedBoardingStop] = useState<string | null>(null); // Selected stop in boardings card
   const [tooltipStopIndex, setTooltipStopIndex] = useState<number | null>(null); // Index of stop showing tooltip
   const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedStopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -1670,35 +1672,45 @@ export default function MapCanvas() {
   // Load trip stop times when Grid tab is selected
   useEffect(() => {
     if (selectedRouteTab === 'Grid' && routeTrips.length > 0) {
-      const loadGridData = async () => {
-        setIsLoadingGridData(true);
-        try {
-          const allTripStopTimes = await fetchTripStopTimes();
+      // Check if we already have grid data loaded for the current trips
+      const relevantTrips = routeTrips
+        .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
+        .flatMap(pg => pg.trips);
 
-          // Get all trip IDs from routeTrips (filtered by pattern if selected)
-          const relevantTrips = routeTrips
-            .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
-            .flatMap(pg => pg.trips);
+      const hasAllData = relevantTrips.every(trip => gridTripStops[trip.trip_id]);
 
-          // Build a map of trip stops for relevant trips
-          const tripStopsMap: { [tripId: string]: TripStopTime[] } = {};
-          for (const trip of relevantTrips) {
-            if (allTripStopTimes[trip.trip_id]) {
-              tripStopsMap[trip.trip_id] = allTripStopTimes[trip.trip_id];
+      // Only load if we don't have the data yet
+      if (!hasAllData) {
+        const loadGridData = async () => {
+          setIsLoadingGridData(true);
+          try {
+            const allTripStopTimes = await fetchTripStopTimes();
+
+            // Get all trip IDs from routeTrips (filtered by pattern if selected)
+            const relevantTrips = routeTrips
+              .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
+              .flatMap(pg => pg.trips);
+
+            // Build a map of trip stops for relevant trips
+            const tripStopsMap: { [tripId: string]: TripStopTime[] } = {};
+            for (const trip of relevantTrips) {
+              if (allTripStopTimes[trip.trip_id]) {
+                tripStopsMap[trip.trip_id] = allTripStopTimes[trip.trip_id];
+              }
             }
+
+            setGridTripStops(tripStopsMap);
+          } catch (error) {
+            console.error('Failed to load grid data:', error);
+          } finally {
+            setIsLoadingGridData(false);
           }
+        };
 
-          setGridTripStops(tripStopsMap);
-        } catch (error) {
-          console.error('Failed to load grid data:', error);
-        } finally {
-          setIsLoadingGridData(false);
-        }
-      };
-
-      loadGridData();
+        loadGridData();
+      }
     }
-  }, [selectedRouteTab, routeTrips, selectedPattern]);
+  }, [selectedRouteTab, routeTrips, selectedPattern, gridTripStops]);
 
   // Update view state when route or stop is selected
   useEffect(() => {
@@ -1760,6 +1772,26 @@ export default function MapCanvas() {
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
   }, [selectedRouteId, selectedStopId, shapes, stops, fitToBounds, isFiltersPanelOpen]);
+
+  // Scroll selected stop into view in TDV
+  useEffect(() => {
+    if (selectedBoardingStop) {
+      const element = selectedStopRefs.current.get(selectedBoardingStop);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedBoardingStop]);
+
+  // Scroll selected segment into view in TDV load visualization
+  useEffect(() => {
+    if (hoveredSegment !== null) {
+      const element = selectedSegmentRefs.current.get(hoveredSegment);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [hoveredSegment]);
 
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2388,11 +2420,15 @@ export default function MapCanvas() {
                           onClick={() => {
                             const wasGrid = selectedRouteTab === 'Grid';
                             const willBeGrid = view === 'Grid';
+
+                            // Update tab immediately for instant panel expansion
+                            setSelectedRouteTab(view);
+
+                            // Then handle transition state
                             if (wasGrid !== willBeGrid) {
                               setIsGridTransitioning(true);
                               setTimeout(() => setIsGridTransitioning(false), 300);
                             }
-                            setSelectedRouteTab(view);
                           }}
                           onMouseEnter={() => setHoveredViewButton(view)}
                           onMouseLeave={() => setHoveredViewButton(null)}
@@ -3548,6 +3584,8 @@ export default function MapCanvas() {
               setSelectedTrip(null);
               setSelectedTripStops([]);
               setIsTripContentScrolled(false);
+              setSelectedBoardingStop(null);
+              setHoveredSegment(null);
             }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
@@ -3629,6 +3667,13 @@ export default function MapCanvas() {
                             return (
                               <div
                                 key={index}
+                                ref={(el) => {
+                                  if (el && !isLastStop) {
+                                    selectedSegmentRefs.current.set(index, el);
+                                  } else {
+                                    selectedSegmentRefs.current.delete(index);
+                                  }
+                                }}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'flex-start',
@@ -3772,6 +3817,13 @@ export default function MapCanvas() {
                         return (
                           <div
                             key={index}
+                            ref={(el) => {
+                              if (el) {
+                                selectedStopRefs.current.set(stop.id, el);
+                              } else {
+                                selectedStopRefs.current.delete(stop.id);
+                              }
+                            }}
                             style={{
                               display: 'flex',
                               alignItems: 'flex-start',
@@ -3910,7 +3962,9 @@ export default function MapCanvas() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 pointerEvents: 'none',
-                zIndex: 40
+                zIndex: 40,
+                opacity: isGridTransitioning ? 0 : 1,
+                transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms'
               }}>
                 <div
                   ref={gridHeadsignRef}
@@ -4020,8 +4074,10 @@ export default function MapCanvas() {
                 left: `${LABEL_WIDTH - 16}px`,
                 width: '8px',
                 background: 'linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent)',
-                zIndex: 35,
-                pointerEvents: 'none'
+                zIndex: 102,
+                pointerEvents: 'none',
+                opacity: isGridTransitioning ? 0 : 1,
+                transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms'
               }} />
             )}
             {/* Back Button and Header */}
@@ -4098,11 +4154,15 @@ export default function MapCanvas() {
                       onClick={() => {
                         const wasGrid = selectedRouteTab === 'Grid';
                         const willBeGrid = tab === 'Grid';
+
+                        // Update tab immediately for instant panel expansion
+                        setSelectedRouteTab(tab);
+
+                        // Then handle transition state
                         if (wasGrid !== willBeGrid) {
                           setIsGridTransitioning(true);
                           setTimeout(() => setIsGridTransitioning(false), 300);
                         }
-                        setSelectedRouteTab(tab);
                       }}
                       style={{
                         position: 'relative',
@@ -4149,7 +4209,7 @@ export default function MapCanvas() {
             {/* Tab Content */}
             {selectedRouteTab === 'Summary' ? (
               <div
-                style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: experimentalDetailViewNav ? '0px' : '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px', opacity: isGridTransitioning ? 0 : 1, transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms' }}
+                style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: experimentalDetailViewNav ? '0px' : '12px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px', opacity: isGridTransitioning ? 0 : 1, transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms' }}
                 onScroll={(e) => {
                   if (experimentalDetailViewNav) {
                     const target = e.target as HTMLDivElement;
@@ -4231,7 +4291,7 @@ export default function MapCanvas() {
                     marginRight: '-50px',
                     paddingRight: '50px',
                     opacity: isGridTransitioning ? 0 : 1,
-                    transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms'
+                    transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms'
                   }}>
                     {/* Static divider - Only show when experimental mode is on */}
                     {experimentalDetailViewNav && (
@@ -4623,7 +4683,7 @@ export default function MapCanvas() {
                     flexDirection: 'column',
                     overflow: 'hidden',
                     opacity: isGridTransitioning ? 0 : 1,
-                    transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 75ms',
+                    transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms',
                     marginRight: '-16px'
                   }}>
                     {/* Static divider - Only show when experimental mode is on */}
@@ -4692,10 +4752,10 @@ export default function MapCanvas() {
                                     position: 'sticky',
                                     top: 0,
                                     backgroundColor: 'var(--bg-primary)',
-                                    zIndex: 20,
+                                    zIndex: 101,
                                     display: 'flex',
                                     flexDirection: 'row',
-                                    boxShadow: 'inset 0 -1px 0 var(--border-primary)'
+                                    boxShadow: 'inset 0 -0.5px 0 var(--border-default)'
                                   }}>
                                     {/* Start Time Label - Sticky left */}
                                     <div style={{
@@ -4714,7 +4774,8 @@ export default function MapCanvas() {
                                       fontWeight: 600,
                                       color: 'var(--text-secondary)',
                                       backgroundColor: 'var(--bg-primary)',
-                                      zIndex: 21
+                                      zIndex: 101,
+                                      borderBottom: '0.5px solid var(--border-default)'
                                     }}>
                                       Stop Name
                                     </div>
@@ -4739,7 +4800,8 @@ export default function MapCanvas() {
                                             color: 'var(--text-primary)',
                                             backgroundColor: 'var(--bg-primary)',
                                             borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
-                                            borderRight: '0.5px solid var(--border-default)'
+                                            borderRight: '0.5px solid var(--border-default)',
+                                            borderBottom: '0.5px solid var(--border-default)'
                                           }}
                                         >
                                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
@@ -4771,19 +4833,46 @@ export default function MapCanvas() {
                                         alignItems: 'center',
                                         justifyContent: 'flex-start',
                                         paddingLeft: '16px',
-                                        paddingRight: '12px',
+                                        paddingRight: '8px',
                                         fontFamily: 'Inter, sans-serif',
                                         fontSize: `${config.labelFont}px`,
                                         color: 'var(--text-primary)',
                                         backgroundColor: 'var(--bg-primary)',
-                                        borderTop: stopIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
                                         borderBottom: '0.5px solid var(--border-default)',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        zIndex: 10
+                                        zIndex: 100
                                       }}>
-                                        {stop.n}
+                                        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                                          <span
+                                            style={{
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                              display: 'block'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              const target = e.currentTarget;
+                                              tooltipTimerRef.current = setTimeout(() => {
+                                                if (target.scrollWidth > target.clientWidth) {
+                                                  setTooltipStopIndex(stopIndex + 20000); // Offset to avoid collision with TDV
+                                                }
+                                              }, 1000);
+                                            }}
+                                            onMouseLeave={() => {
+                                              if (tooltipTimerRef.current) {
+                                                clearTimeout(tooltipTimerRef.current);
+                                                tooltipTimerRef.current = null;
+                                              }
+                                              setTooltipStopIndex(null);
+                                            }}
+                                          >
+                                            {stop.n}
+                                          </span>
+                                          {tooltipStopIndex === stopIndex + 20000 && (
+                                            <Tooltip text={stop.n}>
+                                              {null}
+                                            </Tooltip>
+                                          )}
+                                        </div>
                                       </div>
                                       {/* Stop Value Cells */}
                                       {patternGroup.trips.map((trip, tripIndex) => {
@@ -4792,6 +4881,12 @@ export default function MapCanvas() {
                                         const stopTime = stopTimeMap.get(stop.id);
                                         const stopValue = stopTime ? (stopValueMap.get(stop.id) || 0) : 0;
                                         const cellColor = valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
+
+                                        const darkerColor = [
+                                          Math.max(0, cellColor[0] - 40),
+                                          Math.max(0, cellColor[1] - 40),
+                                          Math.max(0, cellColor[2] - 40)
+                                        ];
 
                                         return (
                                           <div
@@ -4810,7 +4905,78 @@ export default function MapCanvas() {
                                               backgroundColor: `rgb(${cellColor[0]}, ${cellColor[1]}, ${cellColor[2]})`,
                                               borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
                                               borderRight: '0.5px solid var(--border-default)',
-                                              borderBottom: '0.5px solid var(--border-default)'
+                                              borderBottom: '0.5px solid var(--border-default)',
+                                              cursor: `url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cg clip-path='url(%23clip0_248_2004)'%3E%3Cpath d='M12 1C14.3771 1 16.4795 1.8429 18.2656 3.49023C20.1092 5.19067 21 7.46492 21 10.2002C20.9999 12.1341 20.2327 14.141 18.8408 16.1982C17.4469 18.2583 15.3703 20.4456 12.6484 22.7617L12 23.3135L11.3516 22.7617C8.6297 20.4456 6.55307 18.2583 5.15918 16.1982C3.76727 14.141 3.00005 12.1341 3 10.2002C3 7.46492 3.89078 5.19067 5.73438 3.49023C7.52053 1.8429 9.62291 1 12 1ZM12 9C11.7173 9 11.5005 9.0893 11.2949 9.29492C11.0893 9.50055 11 9.71732 11 10C11 10.2827 11.0893 10.4995 11.2949 10.7051C11.5005 10.9107 11.7173 11 12 11C12.2827 11 12.4995 10.9107 12.7051 10.7051C12.9107 10.4995 13 10.2827 13 10C13 9.71732 12.9107 9.50055 12.7051 9.29492C12.4995 9.0893 12.2827 9 12 9Z' fill='%23FAF9F5' stroke='%233D2817' stroke-width='2'/%3E%3C/g%3E%3Cdefs%3E%3CclipPath id='clip0_248_2004'%3E%3Crect width='24' height='24' fill='white'/%3E%3C/clipPath%3E%3C/defs%3E%3C/svg%3E") 12 12, pointer`,
+                                              transition: 'box-shadow 0.15s ease'
+                                            }}
+                                            onClick={async () => {
+                                              // Set the selected trip and load its stop times
+                                              setSelectedTrip(trip);
+                                              const stopTimes = await getTripStopTimes(trip.trip_id);
+                                              if (stopTimes) {
+                                                setSelectedTripStops(stopTimes);
+                                              }
+
+                                              // Highlight based on metric type
+                                              if (isLoadMetric) {
+                                                // For load metrics, highlight the segment (stopIndex represents the segment)
+                                                setHoveredSegment(stopIndex);
+                                                // Clear boarding stop selection
+                                                setSelectedBoardingStop(null);
+                                              } else {
+                                                // For boarding metrics, highlight the stop
+                                                setSelectedBoardingStop(stop.id);
+                                                // Clear segment selection
+                                                setHoveredSegment(null);
+                                              }
+
+                                              // Find the full stop object from the stops array to get coordinates
+                                              const fullStop = stops.find(s => s.properties.stop_id === stop.id);
+                                              if (!fullStop) return;
+
+                                              // Center the map on the clicked stop
+                                              const stopCoordinates = fullStop.geometry.coordinates as number[];
+                                              const [stopLng, stopLat] = stopCoordinates;
+
+                                              // Calculate the center point accounting for the left panel offset
+                                              const el = mapContainerRef.current;
+                                              const width = el?.clientWidth ?? window.innerWidth;
+                                              const height = el?.clientHeight ?? window.innerHeight;
+                                              const padding = getUIPadding(isFiltersPanelOpen);
+
+                                              // Create a viewport at zoom 13 centered on the stop
+                                              const viewport = new WebMercatorViewport({
+                                                width,
+                                                height,
+                                                longitude: stopLng,
+                                                latitude: stopLat,
+                                                zoom: 13
+                                              });
+
+                                              // The stop is currently at screen center (width/2)
+                                              // We want it at the center of the visible area
+                                              const screenCenterX = width / 2;
+                                              const visibleCenterX = padding.left + ((width - padding.left - padding.right) / 2);
+                                              const offsetX = visibleCenterX - screenCenterX;
+
+                                              // Project the stop to screen coordinates, shift it, then unproject
+                                              const [stopX, stopY] = viewport.project([stopLng, stopLat]);
+                                              const [newLng, newLat] = viewport.unproject([stopX - offsetX, stopY]);
+
+                                              setViewState({
+                                                longitude: newLng,
+                                                latitude: newLat,
+                                                zoom: 13,
+                                                pitch: 0,
+                                                bearing: 0,
+                                                transitionDuration: 200
+                                              });
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.boxShadow = `inset 0 0 0 4px rgb(${darkerColor[0]}, ${darkerColor[1]}, ${darkerColor[2]})`;
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.boxShadow = 'none';
                                             }}
                                           >
                                             {stopValue}
