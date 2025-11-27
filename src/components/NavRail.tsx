@@ -11,6 +11,8 @@ interface NavRailProps {
   onToggleFiltersPanel: () => void;
   experimentalDetailViewNav: boolean;
   onExperimentalDetailViewNavChange: (value: boolean) => void;
+  routeControlsTitleSemibold: boolean;
+  onRouteControlsTitleSemiboldChange: (value: boolean) => void;
 }
 
 // Inline SVG components for nav icons
@@ -97,7 +99,9 @@ const NavRail: React.FC<NavRailProps> = ({
   isFiltersPanelOpen,
   onToggleFiltersPanel,
   experimentalDetailViewNav,
-  onExperimentalDetailViewNavChange
+  onExperimentalDetailViewNavChange,
+  routeControlsTitleSemibold,
+  onRouteControlsTitleSemiboldChange
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
@@ -254,7 +258,7 @@ const NavRail: React.FC<NavRailProps> = ({
             zIndex: 9999
           }}
         >
-          {/* Toggle Item */}
+          {/* Toggle Item - Experimental Detail View Nav */}
           <div
             className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
             onClick={() => onExperimentalDetailViewNavChange(!experimentalDetailViewNav)}
@@ -282,6 +286,39 @@ const NavRail: React.FC<NavRailProps> = ({
                   position: 'absolute',
                   top: '1px',
                   left: experimentalDetailViewNav ? '21px' : '1px',
+                  transition: 'left 0.2s ease'
+                }}
+              />
+            </div>
+          </div>
+          {/* Toggle Item - Route Controls Title Semibold */}
+          <div
+            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+            onClick={() => onRouteControlsTitleSemiboldChange(!routeControlsTitleSemibold)}
+          >
+            <span className="button-small text-text-primary">
+              Route Controls Title Semibold
+            </span>
+            <div
+              style={{
+                width: '40px',
+                height: '20px',
+                borderRadius: '10px',
+                backgroundColor: routeControlsTitleSemibold ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                position: 'relative',
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              <div
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--bg-elevated)',
+                  position: 'absolute',
+                  top: '1px',
+                  left: routeControlsTitleSemibold ? '21px' : '1px',
                   transition: 'left 0.2s ease'
                 }}
               />
