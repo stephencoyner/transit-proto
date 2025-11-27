@@ -316,7 +316,9 @@ export default function MapCanvas() {
   const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [experimentalDetailViewNav, setExperimentalDetailViewNav] = useState<boolean>(true);
+  const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(true);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
+  const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
   const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
@@ -1793,6 +1795,18 @@ export default function MapCanvas() {
     }
   }, [hoveredSegment]);
 
+  // Close route dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (isRouteDropdownOpen) {
+        setIsRouteDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isRouteDropdownOpen]);
+
   // Memoize DeckGL accessor functions to prevent unnecessary recalculations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopPosition = React.useCallback((d: any) => d.geometry.coordinates, []);
@@ -2243,6 +2257,8 @@ export default function MapCanvas() {
           onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
           experimentalDetailViewNav={experimentalDetailViewNav}
           onExperimentalDetailViewNavChange={setExperimentalDetailViewNav}
+          routeControlsTitleSemibold={routeControlsTitleSemibold}
+          onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
         />
       </div>
 
@@ -2401,13 +2417,22 @@ export default function MapCanvas() {
                   height: '0.5px',
                   backgroundColor: 'var(--border-default)',
                   marginTop: '16px',
-                  marginBottom: '16px'
+                  marginBottom: '12px'
                 }} />
 
-                {/* View Selector - Only show when experimental mode is on */}
+                {/* Route Controls Section - Only show when experimental mode is on */}
                 {experimentalDetailViewNav && (
                   <div style={{ marginBottom: '16px' }}>
-                    <label className="label text-text-tertiary block mb-1">View</label>
+                    <div style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '14px',
+                      fontWeight: routeControlsTitleSemibold ? 600 : 400,
+                      color: routeControlsTitleSemibold ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                      marginBottom: '16px'
+                    }}>
+                      Route Controls
+                    </div>
+                    <label className="label text-text-tertiary block mb-1">Analysis</label>
                     <div style={{
                       display: 'flex',
                       gap: '8px',
@@ -4106,8 +4131,108 @@ export default function MapCanvas() {
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
                 </svg>
-                <div className="heading-3">
-                  {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    position: 'relative'
+                  }}
+                >
+                  <div
+                    className="heading-3"
+                    style={{
+                      cursor: !isFiltersPanelOpen && selectedRouteId ? 'pointer' : 'default'
+                    }}
+                    onClick={(e) => {
+                      if (!isFiltersPanelOpen && selectedRouteId) {
+                        e.stopPropagation();
+                        setIsRouteDropdownOpen(!isRouteDropdownOpen);
+                      }
+                    }}
+                  >
+                    {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
+                  </div>
+                  {!isFiltersPanelOpen && selectedRouteId && (
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                        transform: isRouteDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsRouteDropdownOpen(!isRouteDropdownOpen);
+                      }}
+                    >
+                      <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                    </svg>
+                  )}
+                  {/* Route Dropdown */}
+                  {isRouteDropdownOpen && !isFiltersPanelOpen && selectedRouteId && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: '8px',
+                        backgroundColor: 'var(--bg-elevated)',
+                        border: '0.5px solid var(--border-default)',
+                        borderRadius: 'var(--radius-large)',
+                        boxShadow: 'var(--shadow-lg)',
+                        zIndex: 1000,
+                        minWidth: '200px',
+                        maxHeight: '640px',
+                        overflowY: 'auto'
+                      }}
+                    >
+                      {routesList.map((route, index) => {
+                        const isSelected = route.id === selectedRouteId;
+                        return (
+                          <div
+                            key={route.id}
+                            className="button-small"
+                            style={{
+                              padding: '12px 28px 12px 16px',
+                              cursor: 'pointer',
+                              color: 'var(--text-primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              transition: 'background-color 0.2s ease',
+                              margin: index === 0 ? '12px 0 4px 0' : (index === routesList.length - 1 ? '4px 0 12px 0' : '4px 0')
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRouteId(route.id);
+                              setIsRouteDropdownOpen(false);
+                            }}
+                          >
+                            {isSelected && (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            )}
+                            <span style={{ marginLeft: isSelected ? '0' : '32px' }}>
+                              {route.name}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
