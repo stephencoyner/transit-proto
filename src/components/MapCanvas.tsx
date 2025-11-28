@@ -9,7 +9,7 @@ import { CompositeLayer, Layer } from '@deck.gl/core';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern, getTripStopTimes, TripStopTime, fetchTripStopTimes } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
-import { Button, Card, Input, Select, StatefulButton } from '@/components/ui';
+import { Button, Card, Input, Select, SearchableSelect, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 import MapScale from '@/components/MapScale';
@@ -313,11 +313,13 @@ export default function MapCanvas() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
+  const [selectedStopTab, setSelectedStopTab] = useState<'Summary' | 'Amenities'>('Summary');
   const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [experimentalDetailViewNav, setExperimentalDetailViewNav] = useState<boolean>(true);
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(true);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
+  const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
   const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -2559,6 +2561,83 @@ export default function MapCanvas() {
               </>
             );
           })()}
+
+          {/* Stop Controls - Only show when a stop is selected */}
+          {selectedStopId && (
+            <>
+              {/* Divider */}
+              <div style={{
+                width: '100%',
+                height: '0.5px',
+                backgroundColor: 'var(--border-default)',
+                marginTop: '16px',
+                marginBottom: '12px'
+              }} />
+
+              {/* Stop Controls Section */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '14px',
+                  fontWeight: routeControlsTitleSemibold ? 600 : 400,
+                  color: routeControlsTitleSemibold ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                  marginBottom: '16px'
+                }}>
+                  Stop Controls
+                </div>
+                <label className="label text-text-tertiary block mb-1">Analysis</label>
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  width: '100%'
+                }}>
+                  {(['Summary', 'Amenities'] as const).map(view => (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => setSelectedStopTab(view)}
+                      onMouseEnter={() => setHoveredStopViewButton(view)}
+                      onMouseLeave={() => setHoveredStopViewButton(null)}
+                      className="button-small"
+                      style={{
+                        flex: 1,
+                        height: '40px',
+                        borderRadius: 'var(--radius-large)',
+                        backgroundColor: selectedStopTab === view
+                          ? 'var(--btn-secondary)'
+                          : (hoveredStopViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
+                        color: 'var(--text-secondary)',
+                        border: selectedStopTab === view ? 'none' : '0.5px solid var(--border-default)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease, border 0.2s ease',
+                        padding: '0 12px'
+                      }}
+                    >
+                      {view}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stop Filter */}
+              <div>
+                <label className="label text-text-tertiary block mb-1">Stop</label>
+                <SearchableSelect
+                  value={selectedStopId}
+                  onChange={(value) => {
+                    setSelectedStopId(value);
+                    setSelectedStopTab('Summary');
+                  }}
+                  options={stopsList.map(stop => ({
+                    value: stop.id,
+                    label: stop.name
+                  }))}
+                  searchPlaceholder="Search stops..."
+                  maxHeight={300}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -3962,8 +4041,162 @@ export default function MapCanvas() {
               </div>
             </div>
           </div>
-        ) : selectedRouteId || selectedStopId ? (
-          /* Detail View for Selected Route/Stop */
+        ) : selectedStopId ? (
+          /* Stop Detail View (SDV) */
+          (() => {
+            // Get amenities for the selected stop
+            const selectedStopAmenities = stopAmenities[selectedStopId] || {};
+            const amenitiesList = STOP_AMENITIES.filter(amenity => selectedStopAmenities[amenity]);
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
+                {/* Back Button and Header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: '0px',
+                  marginBottom: '4px',
+                  flexShrink: 0
+                }}>
+                  {/* Left side: Back button and Stop name */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      color: 'var(--text-secondary)'
+                    }}
+                    onClick={() => {
+                      setSelectedStopId(null);
+                      setSelectedStopTab('Summary');
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
+                    </svg>
+                    <div className="heading-3">
+                      {stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scroll-based divider */}
+                <div style={{
+                  position: 'relative',
+                  marginLeft: '-16px',
+                  marginRight: '-16px',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    height: '0.5px',
+                    backgroundColor: 'var(--border-default)',
+                    marginLeft: '16px',
+                    marginRight: '16px',
+                    marginTop: '12px',
+                    opacity: isRouteContentScrolled ? 1 : 0,
+                    transition: 'opacity 0.2s ease'
+                  }} />
+                </div>
+
+                {/* Stop Content - Summary or Amenities */}
+                {selectedStopTab === 'Summary' ? (
+                  <div
+                    style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '0px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
+                    onScroll={(e) => {
+                      const target = e.target as HTMLDivElement;
+                      setIsRouteContentScrolled(target.scrollTop > 0);
+                    }}
+                  >
+                    <MetricCard
+                      title={selectedMetric}
+                      value={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
+                    />
+                    <ByDateChart data={chartDataByDate} gradientId="colorValueStop" metric={selectedMetric} />
+                    <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />
+                    <ByPeriodChart
+                      data={mockDataByPeriod}
+                      colors={PERIOD_COLORS}
+                      activePieIndex={activePieIndex}
+                      setActivePieIndex={setActivePieIndex}
+                      metric={selectedMetric}
+                    />
+                  </div>
+                ) : (
+                  /* Amenities View */
+                  <div
+                    style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '0px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
+                    onScroll={(e) => {
+                      const target = e.target as HTMLDivElement;
+                      setIsRouteContentScrolled(target.scrollTop > 0);
+                    }}
+                  >
+                    {amenitiesList.length === 0 ? (
+                      <div style={{
+                        padding: '24px',
+                        textAlign: 'center',
+                        color: 'var(--text-tertiary)',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--body-size)'
+                      }}>
+                        No amenities available for this stop
+                      </div>
+                    ) : (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        marginTop: '16px'
+                      }}>
+                        {amenitiesList.map(amenity => (
+                          <div
+                            key={amenity}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '16px',
+                              backgroundColor: 'var(--bg-primary)',
+                              borderRadius: 'var(--radius-large)',
+                              border: '0.5px solid var(--border-default)'
+                            }}
+                          >
+                            {/* Amenity Icon */}
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              backgroundColor: 'var(--bg-elevated)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </div>
+                            {/* Amenity Name */}
+                            <div style={{
+                              fontFamily: 'Inter, sans-serif',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              color: 'var(--text-primary)'
+                            }}>
+                              {amenity}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        ) : selectedRouteId ? (
+          /* Route Detail View (RDV) */
           (() => {
             // Grid size configuration - defined at top level so it's available for shadow divider
             const gridSizeConfig = {
@@ -4125,7 +4358,6 @@ export default function MapCanvas() {
                 }}
                 onClick={() => {
                   setSelectedRouteId(null);
-                  setSelectedStopId(null);
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -4151,7 +4383,7 @@ export default function MapCanvas() {
                       }
                     }}
                   >
-                    {selectedRouteId ? (routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`) : (stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop')}
+                    {routesList.find((r) => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`}
                   </div>
                   {!isFiltersPanelOpen && selectedRouteId && (
                     <svg
@@ -4344,10 +4576,7 @@ export default function MapCanvas() {
               >
                 <MetricCard
                   title={selectedMetric}
-                  value={selectedRouteId
-                    ? (routesList.find((r) => r.id === selectedRouteId)?.value || 0)
-                    : (stopsList.find((s) => s.id === selectedStopId)?.value || 0)
-                  }
+                  value={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
                 />
                 <ByDateChart data={chartDataByDate} gradientId="colorValue" metric={selectedMetric} />
                 <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />

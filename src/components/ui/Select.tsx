@@ -197,7 +197,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               <SelectDropdownIcon />
             </div>
             {showTooltip && displayText && (
-              <Tooltip text={displayText}>
+              <Tooltip text={displayText} containerRef={containerRef as React.RefObject<HTMLElement>}>
                 {null}
               </Tooltip>
             )}
