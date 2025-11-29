@@ -303,6 +303,7 @@ export default function MapCanvas() {
   const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
+  const [hoveredStopCoords, setHoveredStopCoords] = useState<{ x: number; y: number } | null>(null);
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null); // Index of hovered segment
   const [selectedBoardingStop, setSelectedBoardingStop] = useState<string | null>(null); // Selected stop in boardings card
   const [tooltipStopIndex, setTooltipStopIndex] = useState<number | null>(null); // Index of stop showing tooltip
@@ -325,9 +326,6 @@ export default function MapCanvas() {
   const [stopDropdownPosition, setStopDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const stopNameRef = useRef<HTMLDivElement>(null);
   const filterPanelJustClosedRef = useRef<boolean>(false);
-  const [isAddAmenityMenuOpen, setIsAddAmenityMenuOpen] = useState<boolean>(false);
-  const [isAddAmenityButtonHovered, setIsAddAmenityButtonHovered] = useState<boolean>(false);
-  const addAmenityButtonRef = useRef<HTMLButtonElement>(null);
   const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
@@ -353,6 +351,7 @@ export default function MapCanvas() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFittedViewRef = useRef<typeof INITIAL_VIEW_STATE | null>(null);
+  const prevSelectedStopIdRef = useRef<string | null>(null);
 
   // State for panel position
   const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
@@ -583,14 +582,14 @@ export default function MapCanvas() {
   // State to persist mock ridership values
   const [routeMockValues, setRouteMockValues] = React.useState<{ [key: string]: number }>({});
   const [stopMockValues, setStopMockValues] = React.useState<{ [key: string]: number }>({});
-  const [stopAmenities, setStopAmenities] = React.useState<{ [key: string]: { [amenity: string]: boolean } }>({});
+  const [stopAmenities, setStopAmenities] = React.useState<{ [key: string]: { [amenity: string]: string | false } }>({});
 
   // Define available amenities
   const STOP_AMENITIES = [
-    'Bench',
+    'Advertisement',
     'Bike Rack',
-    'Covered Waiting Area',
     'Lighting',
+    'Loud Speaker',
     'Real-time Display',
     'Seating',
     'Shelter',
@@ -639,7 +638,16 @@ export default function MapCanvas() {
   // Extract stops data with mock values and amenities
   const stopsList = React.useMemo(() => {
     const newMockValues: { [key: string]: number } = { ...stopMockValues };
-    const newAmenities: { [key: string]: { [amenity: string]: boolean } } = { ...stopAmenities };
+    const newAmenities: { [key: string]: { [amenity: string]: string | false } } = { ...stopAmenities };
+
+    // Helper to generate a random date in the past 3 years
+    const generateRandomDate = () => {
+      const now = new Date();
+      const threeYearsAgo = new Date(now.getFullYear() - 3, now.getMonth(), now.getDate());
+      const randomTime = threeYearsAgo.getTime() + Math.random() * (now.getTime() - threeYearsAgo.getTime());
+      const date = new Date(randomTime);
+      return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    };
 
     const stopsWithValues = stops.map(stop => {
       const stopId = stop.properties.stop_id;
@@ -651,8 +659,8 @@ export default function MapCanvas() {
       if (!newAmenities[stopId]) {
         newAmenities[stopId] = {};
         STOP_AMENITIES.forEach(amenity => {
-          // ~60% chance of having each amenity
-          newAmenities[stopId][amenity] = Math.random() > 0.4;
+          // ~60% chance of having each amenity, store date string if present
+          newAmenities[stopId][amenity] = Math.random() > 0.4 ? generateRandomDate() : false;
         });
       }
       return {
@@ -816,6 +824,19 @@ export default function MapCanvas() {
   // Check if we should show segment-based coloring (for load metrics in route detail view)
   const isLoadMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
   const showSegmentColoring = selectedRouteId && isLoadMetric;
+
+  // Check if we're in stop-level view (stops tab or SDV) - load metrics not available
+  const isStopLevelView = activeTab === 'stops' || selectedStopId !== null;
+
+  // Check if we're in amenities view (SDV with Amenities tab selected) - show stops as black with white outline
+  const isAmenitiesView = selectedStopId !== null && selectedStopTab === 'Amenities';
+
+  // Auto-switch from load metrics when entering stop-level view
+  useEffect(() => {
+    if (isStopLevelView && isLoadMetric) {
+      setSelectedMetric('Average daily boardings');
+    }
+  }, [isStopLevelView, isLoadMetric]);
 
   // Check if we're in Grid view (full screen data panel)
   const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip);
@@ -1610,21 +1631,9 @@ export default function MapCanvas() {
         }
       }
 
-      if (isAddAmenityMenuOpen && addAmenityButtonRef.current && !addAmenityButtonRef.current.contains(target)) {
-        const amenityMenus = document.querySelectorAll('[data-add-amenity-menu]');
-        let clickedInMenu = false;
-        amenityMenus.forEach(menu => {
-          if (menu.contains(target)) {
-            clickedInMenu = true;
-          }
-        });
-        if (!clickedInMenu) {
-          setIsAddAmenityMenuOpen(false);
-        }
-      }
     };
 
-    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen || isAddAmenityMenuOpen) {
+    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen) {
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 0);
@@ -1633,7 +1642,7 @@ export default function MapCanvas() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen, isAddAmenityMenuOpen]);
+  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen]);
 
   useEffect(() => {
     (async () => {
@@ -1782,6 +1791,15 @@ export default function MapCanvas() {
         }
       }
     } else if (selectedStopId) {
+      // Only zoom/center on the stop if the stop actually changed (not just panel toggle)
+      const stopChanged = selectedStopId !== prevSelectedStopIdRef.current;
+      prevSelectedStopIdRef.current = selectedStopId;
+
+      if (!stopChanged) {
+        // Panel toggled but stop didn't change - don't recenter or zoom
+        return;
+      }
+
       // Find the actual selected stop
       const stop = stops.find(s => s.properties.stop_id === selectedStopId);
       if (!stop) return;
@@ -1821,6 +1839,8 @@ export default function MapCanvas() {
         transitionDuration: 200
       });
     } else if (!selectedRouteId && !selectedStopId) {
+      // Reset the previous stop ref when deselecting
+      prevSelectedStopIdRef.current = null;
       // Reset to the originally fitted system view, not the hardcoded Gas Works view
       setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
     }
@@ -1866,31 +1886,29 @@ export default function MapCanvas() {
   const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
     const stopId = d.properties.stop_id;
 
-    // When showing segment coloring (load metrics), use white border
-    if (showSegmentColoring) {
+    // When showing segment coloring (load metrics) or amenities view, use white border
+    if (showSegmentColoring || isAmenitiesView) {
       return [255, 255, 255, 255] as [number, number, number, number];
     }
 
     // Otherwise use data-driven color
     const value = stopValueMap.get(stopId) || 0;
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
-    const isSelected = selectedStopId === stopId;
-    const alpha = selectedStopId ? (isSelected ? 200 : 100) : 200;
+    const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId, stopValueMap, stopValueRange, showSegmentColoring]);
+  }, [selectedStopId, stopValueMap, stopValueRange, showSegmentColoring, isAmenitiesView]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
-    // When showing segment coloring (load metrics), use black center
-    if (showSegmentColoring) {
+    // When showing segment coloring (load metrics) or amenities view, use black center
+    if (showSegmentColoring || isAmenitiesView) {
       return [0, 0, 0, 255] as [number, number, number, number];
     }
 
     // Otherwise use white center
-    const isSelected = selectedStopId === d.properties.stop_id;
-    const alpha = selectedStopId ? (isSelected ? 255 : 128) : 255;
+    const alpha = 255;
     return [255, 255, 255, alpha] as [number, number, number, number];
-  }, [selectedStopId, showSegmentColoring]);
+  }, [selectedStopId, showSegmentColoring, isAmenitiesView]);
 
   const layers = [];
 
@@ -2143,14 +2161,18 @@ export default function MapCanvas() {
         const value = stopValueMap.get(selectedStopId) || 0;
         const selectedStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
-        // Halo layer (12px larger than the stop, 50% opacity)
+        // Halo layer (12px larger than the stop, 50% opacity - or black 40% in amenities view)
+        const haloColor = isAmenitiesView
+          ? [0, 0, 0, 102] as [number, number, number, number]  // Black at 40% opacity
+          : [...selectedStopColor, 128] as [number, number, number, number];  // 50% opacity
+
         layers.push(
           new ScatterplotLayer({
             id: 'selected-stop-halo',
             data: selectedStopData,
             getPosition: getStopPosition,
             getRadius: 24, // 12px (base) + 12px = 24px
-            getFillColor: [...selectedStopColor, 128], // 50% opacity
+            getFillColor: haloColor,
             radiusMinPixels: 18, // 6px (base min) + 12px = 18px
             radiusMaxPixels: 36, // 24px (base max) + 12px = 36px
           })
@@ -2168,14 +2190,18 @@ export default function MapCanvas() {
         const value = stopValueMap.get(stopToHalo) || 0;
         const hoveredStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
 
-        // Halo layer (12px larger than the stop, 50% opacity)
+        // Halo layer (12px larger than the stop, 50% opacity - or black 40% in amenities view)
+        const hoveredHaloColor = isAmenitiesView
+          ? [0, 0, 0, 102] as [number, number, number, number]  // Black at 40% opacity
+          : [...hoveredStopColor, 128] as [number, number, number, number];  // 50% opacity
+
         layers.push(
           new ScatterplotLayer({
             id: 'hovered-stop-halo',
             data: hoveredStopData,
             getPosition: getStopPosition,
             getRadius: 24, // 12px (base) + 12px = 24px
-            getFillColor: [...hoveredStopColor, 128], // 50% opacity
+            getFillColor: hoveredHaloColor,
             radiusMinPixels: 18, // 6px (base min) + 12px = 18px
             radiusMaxPixels: 36, // 24px (base max) + 12px = 36px
           })
@@ -2184,16 +2210,19 @@ export default function MapCanvas() {
     }
 
     // Base stops layers
+    // Use simplified black/white styling for segment coloring mode OR amenities view
+    const useSimplifiedStops = showSegmentColoring || isAmenitiesView;
+
     layers.push(
         // Colored border layer (outer ring)
         new ScatterplotLayer({
           id: 'stops-border',
           data: filteredStops,
           getPosition: getStopPosition,
-          getRadius: showSegmentColoring ? 10 : 12, // Smaller in segment mode (4px border + 6px), normal size otherwise
+          getRadius: useSimplifiedStops ? 10 : 12, // Smaller in simplified mode (4px border + 6px), normal size otherwise
           getFillColor: getStopBorderColor,
-          radiusMinPixels: showSegmentColoring ? 5 : 6,
-          radiusMaxPixels: showSegmentColoring ? 20 : 24,
+          radiusMinPixels: useSimplifiedStops ? 5 : 6,
+          radiusMaxPixels: useSimplifiedStops ? 20 : 24,
           pickable: !showSegmentColoring, // Disable hover in segment coloring mode
           visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
           onHover: ({ object }) => {
@@ -2208,8 +2237,8 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring], // Force recalculation when selection or coloring mode changes
-            getRadius: [showSegmentColoring] // Update radius when mode changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView], // Force recalculation when selection, coloring mode, or amenities view changes
+            getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         }),
         // Black/white center layer (inner circle)
@@ -2217,10 +2246,10 @@ export default function MapCanvas() {
           id: 'stops-center',
           data: filteredStops,
           getPosition: getStopPosition,
-          getRadius: showSegmentColoring ? 8 : 4, // Larger in segment mode (8px black), smaller otherwise (4px white)
+          getRadius: useSimplifiedStops ? 8 : 4, // Larger in simplified mode (8px black), smaller otherwise (4px white)
           getFillColor: getStopCenterColor,
-          radiusMinPixels: showSegmentColoring ? 3 : 2,
-          radiusMaxPixels: showSegmentColoring ? 16 : 8,
+          radiusMinPixels: useSimplifiedStops ? 3 : 2,
+          radiusMaxPixels: useSimplifiedStops ? 16 : 8,
           pickable: !showSegmentColoring, // Disable hover in segment coloring mode
           visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
           onHover: ({ object }) => {
@@ -2235,8 +2264,8 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring], // Force recalculation when selection or coloring mode changes
-            getRadius: [showSegmentColoring] // Update radius when mode changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView], // Force recalculation when selection, coloring mode, or amenities view changes
+            getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         })
     );
@@ -2447,8 +2476,8 @@ export default function MapCanvas() {
                 { value: 'Total daily boardings', label: 'Total daily boardings' },
                 { value: 'Average daily activity', label: 'Average daily activity' },
                 { value: 'Total activity', label: 'Total activity' },
-                { value: 'Average load', label: 'Average load' },
-                { value: 'Maxload', label: 'Maxload' }
+                { value: 'Average load', label: 'Average load', disabled: isStopLevelView },
+                { value: 'Maxload', label: 'Maxload', disabled: isStopLevelView }
               ]}
             />
           </div>
@@ -3666,18 +3695,21 @@ export default function MapCanvas() {
         onViewStateChange={(params: any) => setViewState(params.viewState)}
         controller={true}
         layers={layers}
-        onHover={({ object }) => {
+        onHover={({ object, x, y }) => {
           if (object && object.properties) {
             if ('route_id' in object.properties) {
               setHoveredRoute((object as RouteFeature).properties.route_id);
               setHoveredStop(null);
+              setHoveredStopCoords(null);
             } else if ('stop_id' in object.properties) {
               setHoveredStop((object as StopFeature).properties.stop_id);
+              setHoveredStopCoords({ x, y });
               setHoveredRoute(null);
             }
           } else {
             setHoveredRoute(null);
             setHoveredStop(null);
+            setHoveredStopCoords(null);
           }
         }}
         onClick={({ object }) => {
@@ -3713,8 +3745,112 @@ export default function MapCanvas() {
         />
       </DeckGL>
 
-      {/* Map Scale */}
-      {(routeValueRange.max > 0 || stopValueRange.max > 0) && (
+      {/* Stop Tooltip - shows when hovering stops in amenities view or stops tab at zoom >= 12 */}
+      {(isAmenitiesView || activeTab === 'stops') && hoveredStop && hoveredStopCoords && viewState.zoom >= 12 && (() => {
+        const hoveredStopData = stops.find(s => s.properties.stop_id === hoveredStop);
+        const hoveredStopAmenities = stopAmenities[hoveredStop] || {};
+        const amenitiesWithDates = Object.entries(hoveredStopAmenities)
+          .filter(([_, value]) => value !== false)
+          .map(([amenity]) => amenity);
+        const ridership = stopValueMap.get(hoveredStop) || 0;
+
+        if (!hoveredStopData) return null;
+        // In amenities view, only show if there are amenities
+        if (isAmenitiesView && amenitiesWithDates.length === 0) return null;
+
+        const iconMap: { [key: string]: string } = {
+          'Advertisement': '/icons/Advertisement.svg',
+          'Bike Rack': '/icons/Bike-Rack.svg',
+          'Lighting': '/icons/Lighting.svg',
+          'Loud Speaker': '/icons/Loud-Speaker.svg',
+          'Real-time Display': '/icons/Real-Time-Display.svg',
+          'Seating': '/icons/Seating.svg',
+          'Shelter': '/icons/Shelter.svg',
+          'Tactile Paving': '/icons/Pavement.svg',
+          'Trash Can': '/icons/Trash.svg',
+          'Wheelchair Access': '/icons/Wheelchair.svg'
+        };
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              left: hoveredStopCoords.x,
+              top: hoveredStopCoords.y - 20,
+              transform: 'translate(-50%, -100%)',
+              backgroundColor: 'white',
+              borderRadius: 'var(--radius-default)',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '12px',
+              zIndex: 10000,
+              pointerEvents: 'none',
+              minWidth: '120px',
+              maxWidth: '200px'
+            }}
+          >
+            {/* Stop Name */}
+            <div
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                marginBottom: activeTab === 'stops' || amenitiesWithDates.length > 0 ? '2px' : '0',
+                wordWrap: 'break-word',
+                lineHeight: '16px'
+              }}
+            >
+              {hoveredStopData.properties.name}
+            </div>
+            {/* Ridership - only in stops tab, not in amenities view */}
+            {activeTab === 'stops' && !isAmenitiesView && (
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                {ridership.toLocaleString()} {selectedMetric.toLowerCase()}
+              </div>
+            )}
+            {/* Divider - above amenities */}
+            {amenitiesWithDates.length > 0 && (
+              <div
+                style={{
+                  height: '0.5px',
+                  backgroundColor: 'var(--border-default)',
+                  margin: '8px 0'
+                }}
+              />
+            )}
+            {/* Amenity Icons */}
+            {amenitiesWithDates.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px'
+                }}
+              >
+                {amenitiesWithDates.map((amenity) => (
+                  <img
+                    key={amenity}
+                    src={iconMap[amenity]}
+                    alt={amenity}
+                    width="16"
+                    height="16"
+                    title={amenity}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Map Scale - hide in amenities view since we're not showing map data */}
+      {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && (
         <MapScale
           title={scaleTitle}
           min={(selectedRouteId || activeTab === 'stops') ? stopValueRange.min : routeValueRange.min}
@@ -4218,7 +4354,6 @@ export default function MapCanvas() {
                     value={selectedStopId}
                     onChange={(value) => {
                       setSelectedStopId(value);
-                      setSelectedStopTab('Summary');
                       setIsStopDropdownOpen(false);
                     }}
                     options={stopsList.map(stop => ({
@@ -4273,120 +4408,47 @@ export default function MapCanvas() {
                   </div>
                 ) : (
                   /* Amenities View */
-                  <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflowY: 'hidden'
-                  }}>
-                    {/* Static divider */}
+                  <div
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {/* Static divider - fixed at top */}
                     <div style={{
-                      width: '100%',
+                      width: 'calc(100% + 16px)',
+                      marginLeft: '-16px',
                       height: '0.5px',
                       backgroundColor: 'var(--border-default)',
                       flexShrink: 0
                     }} />
-
-                    {/* Amenities Bar */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingTop: '8px',
-                      paddingBottom: '8px',
-                      paddingLeft: '0px',
-                      paddingRight: '0px',
-                      flexShrink: 0,
-                      backgroundColor: 'var(--bg-primary)',
-                      zIndex: 20
-                    }}>
+                    {/* Scrollable content */}
+                    <div
+                      style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        paddingBottom: '24px',
+                        marginRight: '-8px',
+                        paddingRight: '8px'
+                      }}
+                    >
                       {/* Amenity Count */}
                       <div
                         className="data-small"
                         style={{
-                          color: 'var(--text-secondary)'
+                          color: 'var(--text-secondary)',
+                          height: '44px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexShrink: 0
                         }}
                       >
                         {amenitiesList.length} {amenitiesList.length === 1 ? 'Amenity' : 'Amenities'}
                       </div>
-
-                      {/* Add Amenity Button */}
-                      <button
-                        ref={addAmenityButtonRef}
-                        type="button"
-                        onClick={() => setIsAddAmenityMenuOpen(!isAddAmenityMenuOpen)}
-                        onMouseEnter={() => setIsAddAmenityButtonHovered(true)}
-                        onMouseLeave={() => setIsAddAmenityButtonHovered(false)}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          border: isAddAmenityMenuOpen
-                            ? '0.5px solid var(--border-focus)'
-                            : isAddAmenityButtonHovered
-                              ? '0.5px solid var(--border-default)'
-                              : '0.5px solid transparent',
-                          backgroundColor: (isAddAmenityMenuOpen || isAddAmenityButtonHovered) ? 'var(--bg-elevated)' : 'transparent',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background-color 0.2s ease, border-color 0.2s ease'
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1.05087 9.05023C0.498583 9.05023 0.0509737 8.60262 0.050974 8.05034C0.0510406 7.49811 0.498623 7.05044 1.05087 7.05044L7.05092 7.05113L7.05092 1.05039C7.05102 0.498193 7.49859 0.0505002 8.05081 0.0505002C8.60298 0.0505629 9.0506 0.498231 9.0507 1.05039L9.0507 7.05113L15.0508 7.05044C15.6029 7.05053 16.0506 7.49816 16.0506 8.05034C16.0506 8.60257 15.603 9.05014 15.0508 9.05023L9.0507 9.05092V15.0503C9.0507 15.6025 8.60304 16.0501 8.05081 16.0502C7.49853 16.0502 7.05092 15.6026 7.05092 15.0503L7.05092 9.05092L1.05087 9.05023Z" fill="var(--text-secondary)"/>
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Add Amenity Menu (placeholder) */}
-                    {isAddAmenityMenuOpen && addAmenityButtonRef.current && createPortal(
-                      <div
-                        data-add-amenity-menu
-                        style={{
-                          position: 'fixed',
-                          top: `${addAmenityButtonRef.current.getBoundingClientRect().bottom + 8}px`,
-                          left: `${addAmenityButtonRef.current.getBoundingClientRect().left - 168}px`,
-                          width: '200px',
-                          backgroundColor: 'var(--bg-elevated)',
-                          border: '0.5px solid var(--border-default)',
-                          borderRadius: 'var(--radius-large)',
-                          boxShadow: 'var(--shadow-lg)',
-                          zIndex: 10002,
-                          padding: '16px',
-                          color: 'var(--text-tertiary)',
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: '14px',
-                          textAlign: 'center'
-                        }}
-                      >
-                        Add amenity menu coming soon
-                      </div>,
-                      document.body
-                    )}
-
-                    {/* Amenities List */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-                      {/* Scroll divider */}
-                      <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: '0.5px',
-                        backgroundColor: 'var(--border-default)',
-                        opacity: isAmenitiesScrolled ? 1 : 0,
-                        transition: 'opacity 0.15s ease',
-                        zIndex: 10
-                      }} />
-                      <div
-                        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '0px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
-                        onScroll={(e) => {
-                          const scrollTop = (e.target as HTMLDivElement).scrollTop;
-                          setIsAmenitiesScrolled(scrollTop > 0);
-                        }}
-                      >
                       {amenitiesList.length === 0 ? (
                         <div style={{
                           padding: '24px',
@@ -4403,48 +4465,94 @@ export default function MapCanvas() {
                           flexDirection: 'column',
                           gap: '8px'
                         }}>
-                          {amenitiesList.map((amenity) => (
-                            <div
-                              key={amenity}
-                              style={{
-                                backgroundColor: 'var(--bg-elevated)',
-                                borderRadius: 'var(--radius-default)',
-                                boxShadow: 'inset 0 0 0 var(--border-width) var(--border-default)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '16px'
-                              }}
-                            >
-                              {/* Amenity Icon */}
-                              <div style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%',
-                                backgroundColor: 'var(--bg-primary)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0
-                              }}>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
-                                  <polyline points="20 6 9 17 4 12"></polyline>
+                          {amenitiesList.map((amenity) => {
+                            const addedDate = selectedStopAmenities[amenity];
+                            // Amenity icon mapping - uses custom SVG icons
+                            const getAmenityIcon = (name: string) => {
+                              const iconMap: { [key: string]: string } = {
+                                'Advertisement': '/icons/Advertisement.svg',
+                                'Bike Rack': '/icons/Bike-Rack.svg',
+                                'Lighting': '/icons/Lighting.svg',
+                                'Loud Speaker': '/icons/Loud-Speaker.svg',
+                                'Real-time Display': '/icons/Real-Time-Display.svg',
+                                'Seating': '/icons/Seating.svg',
+                                'Shelter': '/icons/Shelter.svg',
+                                'Tactile Paving': '/icons/Pavement.svg',
+                                'Trash Can': '/icons/Trash.svg',
+                                'Wheelchair Access': '/icons/Wheelchair.svg'
+                              };
+
+                              const iconPath = iconMap[name];
+                              if (iconPath) {
+                                return <img src={iconPath} alt={name} width="20" height="20" />;
+                              }
+
+                              // Fallback icon for unknown amenities
+                              return (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10" />
+                                  <path d="M12 8v4" />
+                                  <path d="M12 16h.01" />
                                 </svg>
+                              );
+                            };
+
+                            return (
+                              <div
+                                key={amenity}
+                                style={{
+                                  backgroundColor: 'var(--bg-elevated)',
+                                  borderRadius: 'var(--radius-default)',
+                                  boxShadow: 'inset 0 0 0 var(--border-width) var(--border-default)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  padding: '16px'
+                                }}
+                              >
+                                {/* Amenity Icon */}
+                                <div style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '50%',
+                                  backgroundColor: 'var(--bg-primary)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  color: 'var(--text-secondary)'
+                                }}>
+                                  {getAmenityIcon(amenity)}
+                                </div>
+                                {/* Amenity Name and Date */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px'
+                                }}>
+                                  <div style={{
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: 'var(--text-primary)'
+                                  }}>
+                                    {amenity}
+                                  </div>
+                                  {addedDate && (
+                                    <div style={{
+                                      fontFamily: 'Inter, sans-serif',
+                                      fontSize: '12px',
+                                      color: 'var(--text-tertiary)'
+                                    }}>
+                                      Added {addedDate}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              {/* Amenity Name */}
-                              <div style={{
-                                fontFamily: 'Inter, sans-serif',
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                color: 'var(--text-primary)'
-                              }}>
-                                {amenity}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
-                      </div>
                     </div>
                   </div>
                 )}
