@@ -9,15 +9,14 @@ const SelectDropdownIcon = () => (
 );
 
 const CheckIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"></polyline>
+  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6.36682 9.86655L12.0002 4.23322C12.1789 4.05544 12.3875 3.96655 12.626 3.96655C12.8643 3.96655 13.0724 4.05427 13.2502 4.22972C13.4279 4.40516 13.5168 4.6135 13.5168 4.85472C13.5168 5.09594 13.4279 5.30544 13.2502 5.48322L6.98349 11.7499C6.80771 11.9277 6.60266 12.0166 6.36832 12.0166C6.13399 12.0166 5.92793 11.9277 5.75016 11.7499L2.78349 8.78322C2.60571 8.60844 2.5196 8.40083 2.52515 8.16039C2.53071 7.92005 2.62121 7.711 2.79665 7.53322C2.9721 7.35544 3.18043 7.26655 3.42165 7.26655C3.66288 7.26655 3.87238 7.35544 4.05015 7.53322L6.36682 9.86655Z" fill="currentColor"/>
   </svg>
 );
 
 const SearchIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M14 14L11.1 11.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6.28314 11.0333C4.96092 11.0333 3.84147 10.575 2.9248 9.65832C2.00814 8.74165 1.5498 7.62221 1.5498 6.29998C1.5498 4.97776 2.00814 3.85832 2.9248 2.94165C3.84147 2.02498 4.96092 1.56665 6.28314 1.56665C7.60536 1.56665 8.72481 2.02498 9.64147 2.94165C10.5581 3.85832 11.0165 4.97776 11.0165 6.29998C11.0165 6.79998 10.947 7.27776 10.8081 7.73332C10.6693 8.18887 10.4665 8.59443 10.1998 8.94998L13.8331 12.5833C13.9998 12.75 14.0831 12.9555 14.0831 13.2C14.0831 13.4444 13.9998 13.65 13.8331 13.8167C13.6665 13.9833 13.4609 14.0667 13.2165 14.0667C12.972 14.0667 12.7665 13.9833 12.5998 13.8167L8.98314 10.2C8.64981 10.4555 8.24147 10.6583 7.75814 10.8083C7.27481 10.9583 6.78314 11.0333 6.28314 11.0333ZM6.28314 9.26665C7.11647 9.26665 7.81925 8.98054 8.39147 8.40832C8.96369 7.8361 9.24981 7.13332 9.24981 6.29998C9.24981 5.46665 8.96369 4.76387 8.39147 4.19165C7.81925 3.61943 7.11647 3.33332 6.28314 3.33332C5.44981 3.33332 4.74703 3.61943 4.17481 4.19165C3.60258 4.76387 3.31647 5.46665 3.31647 6.29998C3.31647 7.13332 3.60258 7.8361 4.17481 8.40832C4.74703 8.98054 5.44981 9.26665 6.28314 9.26665Z" fill="currentColor"/>
   </svg>
 );
 
@@ -313,10 +312,10 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                 backgroundColor: 'var(--bg-elevated)',
                 borderRadius: 'var(--radius-default)',
                 border: '0.5px solid var(--border-default)',
-                outline: isSearchFocused ? '2px solid var(--border-focus)' : 'none',
+                outline: isSearchFocused ? '1px solid var(--border-focus)' : 'none',
                 outlineOffset: '-1px'
               }}>
-                <div style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                <div style={{ color: isSearchFocused ? 'var(--text-primary)' : 'var(--text-disabled)', flexShrink: 0 }}>
                   <SearchIcon />
                 </div>
                 <input
@@ -327,14 +326,13 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setIsSearchFocused(false)}
                   placeholder={searchPlaceholder}
+                  className="button-small"
                   style={{
                     flex: 1,
                     border: 'none',
                     outline: 'none',
                     backgroundColor: 'transparent',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '14px',
-                    color: 'var(--text-primary)'
+                    color: isSearchFocused ? 'var(--text-primary)' : 'var(--text-disabled)'
                   }}
                 />
               </div>
@@ -372,12 +370,12 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                         onMouseLeave={() => setHoveredItemIndex(null)}
                         className="button-small"
                         style={{
-                          padding: '12px 28px 12px 16px',
+                          padding: '12px 16px',
                           cursor: option.disabled ? 'not-allowed' : 'pointer',
                           color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
                           display: 'flex',
                           alignItems: option.description ? 'flex-start' : 'center',
-                          gap: '12px',
+                          gap: '16px',
                           transition: 'background-color 0.2s ease',
                           backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-primary)' : 'transparent',
                           margin: index === 0 ? '4px 0' : (index === filteredOptions.length - 1 ? '4px 0 12px 0' : '4px 0'),
@@ -387,12 +385,12 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                         aria-selected={isSelected}
                       >
                         {isSelected && (
-                          <div style={{ color: 'var(--text-primary)', flexShrink: 0 }}>
+                          <div style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                             <CheckIcon />
                           </div>
                         )}
                         <div style={{
-                          marginLeft: isSelected ? '0' : '32px',
+                          marginLeft: isSelected ? '0' : '36px',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '2px'
@@ -411,7 +409,7 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                       </div>
                       {showDividerAfter && (
                         <div style={{
-                          height: '1px',
+                          height: '0.5px',
                           backgroundColor: 'var(--border-default)',
                           margin: '0'
                         }} />

@@ -324,6 +324,7 @@ export default function MapCanvas() {
   const [isStopDropdownOpen, setIsStopDropdownOpen] = useState<boolean>(false);
   const [stopDropdownPosition, setStopDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const stopNameRef = useRef<HTMLDivElement>(null);
+  const filterPanelJustClosedRef = useRef<boolean>(false);
   const [isAddAmenityMenuOpen, setIsAddAmenityMenuOpen] = useState<boolean>(false);
   const [isAddAmenityButtonHovered, setIsAddAmenityButtonHovered] = useState<boolean>(false);
   const addAmenityButtonRef = useRef<HTMLButtonElement>(null);
@@ -1388,6 +1389,17 @@ export default function MapCanvas() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStopFilterMenuOpen]);
+
+  // Track when filter panel closes to prevent stop dropdown from auto-opening
+  useEffect(() => {
+    if (!isFiltersPanelOpen) {
+      filterPanelJustClosedRef.current = true;
+      const timer = setTimeout(() => {
+        filterPanelJustClosedRef.current = false;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isFiltersPanelOpen]);
 
   // Cleanup tooltip timer on unmount
   useEffect(() => {
@@ -4152,7 +4164,7 @@ export default function MapCanvas() {
                         cursor: !isFiltersPanelOpen ? 'pointer' : 'default'
                       }}
                       onClick={(e) => {
-                        if (!isFiltersPanelOpen && stopNameRef.current) {
+                        if (!isFiltersPanelOpen && !filterPanelJustClosedRef.current && stopNameRef.current) {
                           e.stopPropagation();
                           if (!isStopDropdownOpen) {
                             const rect = stopNameRef.current.getBoundingClientRect();
@@ -4177,13 +4189,12 @@ export default function MapCanvas() {
                         style={{
                           cursor: 'pointer',
                           color: 'var(--text-secondary)',
-                          transform: isStopDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s ease',
                           marginTop: '6px',
                           flexShrink: 0
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (filterPanelJustClosedRef.current) return;
                           if (!isStopDropdownOpen && stopNameRef.current) {
                             const rect = stopNameRef.current.getBoundingClientRect();
                             setStopDropdownPosition({
@@ -4323,7 +4334,7 @@ export default function MapCanvas() {
                           transition: 'background-color 0.2s ease, border-color 0.2s ease'
                         }}
                       >
-                        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="14" height="14" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M1.05087 9.05023C0.498583 9.05023 0.0509737 8.60262 0.050974 8.05034C0.0510406 7.49811 0.498623 7.05044 1.05087 7.05044L7.05092 7.05113L7.05092 1.05039C7.05102 0.498193 7.49859 0.0505002 8.05081 0.0505002C8.60298 0.0505629 9.0506 0.498231 9.0507 1.05039L9.0507 7.05113L15.0508 7.05044C15.6029 7.05053 16.0506 7.49816 16.0506 8.05034C16.0506 8.60257 15.603 9.05014 15.0508 9.05023L9.0507 9.05092V15.0503C9.0507 15.6025 8.60304 16.0501 8.05081 16.0502C7.49853 16.0502 7.05092 15.6026 7.05092 15.0503L7.05092 9.05092L1.05087 9.05023Z" fill="var(--text-secondary)"/>
                         </svg>
                       </button>
@@ -4622,7 +4633,7 @@ export default function MapCanvas() {
                       cursor: !isFiltersPanelOpen && selectedRouteId ? 'pointer' : 'default'
                     }}
                     onClick={(e) => {
-                      if (!isFiltersPanelOpen && selectedRouteId) {
+                      if (!isFiltersPanelOpen && !filterPanelJustClosedRef.current && selectedRouteId) {
                         e.stopPropagation();
                         setIsRouteDropdownOpen(!isRouteDropdownOpen);
                       }
@@ -4639,12 +4650,11 @@ export default function MapCanvas() {
                       xmlns="http://www.w3.org/2000/svg"
                       style={{
                         cursor: 'pointer',
-                        color: 'var(--text-secondary)',
-                        transform: isRouteDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease'
+                        color: 'var(--text-secondary)'
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (filterPanelJustClosedRef.current) return;
                         setIsRouteDropdownOpen(!isRouteDropdownOpen);
                       }}
                     >
