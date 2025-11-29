@@ -62,7 +62,7 @@ export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButton
 
     const sizeClasses = {
       small: 'h-7 px-4',
-      medium: 'h-10 px-5',
+      medium: 'h-10 px-4',
     };
 
     const classes = `${baseClasses} ${stateClasses} ${sizeClasses[size]} ${className}`.trim();
@@ -77,9 +77,8 @@ export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButton
 
     const style = {
       ...propStyle,
-      border: selected
-        ? '0.5px solid var(--border-focus)'
-        : '0.5px solid var(--border-default)'
+      border: '0.5px solid var(--border-default)',
+      boxShadow: selected ? 'inset 0 0 0 0.5px var(--border-focus)' : 'none'
     };
 
     return (

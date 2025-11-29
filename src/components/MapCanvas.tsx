@@ -1098,10 +1098,10 @@ export default function MapCanvas() {
   // Handlers for days filter tooltip
   const handleDaysFilterMouseEnter = () => {
     setIsDaysHovered(true);
-    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
+    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off and menu is not open
     daysTooltipTimerRef.current = setTimeout(() => {
-      // Check if text is overflowing
-      if (daysTextRef.current) {
+      // Check if text is overflowing and menu is not open
+      if (daysTextRef.current && openFilter !== 'days') {
         const isOverflowing = daysTextRef.current.scrollWidth > daysTextRef.current.clientWidth;
         if (isOverflowing) {
           setShowDaysTooltip(true);
@@ -1145,11 +1145,35 @@ export default function MapCanvas() {
   //   setShowMetricTooltip(false);
   // };
 
-  // Helper function to format date as "Mon DD, YYYY" or "Mon DD" (without year)
-  const formatDate = (date: Date, includeYear: boolean = true) => {
+  // Helper function to format date as "Mon DD, YYYY" or "Mon DD" (without year) or just "DD" (day only)
+  const formatDate = (date: Date, options: { includeYear?: boolean; includeMonth?: boolean } = {}) => {
+    const { includeYear = true, includeMonth = true } = options;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    if (!includeMonth) {
+      // Just the day number
+      return `${date.getDate()}`;
+    }
+
     const formatted = `${months[date.getMonth()]} ${date.getDate()}`;
     return includeYear ? `${formatted}, ${date.getFullYear()}` : formatted;
+  };
+
+  // Helper function to format a date range intelligently
+  const formatDateRange = (startDate: Date, endDate: Date) => {
+    const sameYear = startDate.getFullYear() === endDate.getFullYear();
+    const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
+
+    if (sameMonth) {
+      // Same month & year: "Nov 5 - 6, 2025"
+      return `${formatDate(startDate, { includeYear: false })} - ${formatDate(endDate, { includeMonth: false })}, ${endDate.getFullYear()}`;
+    } else if (sameYear) {
+      // Different month, same year: "Oct 5 - Nov 6, 2025"
+      return `${formatDate(startDate, { includeYear: false })} - ${formatDate(endDate, { includeYear: false })}, ${endDate.getFullYear()}`;
+    } else {
+      // Different year: "Dec 5, 2024 - Jan 6, 2025"
+      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    }
   };
 
   // Helper function to calculate date range for quick picks
@@ -1189,14 +1213,7 @@ export default function MapCanvas() {
         return quickPick;
     }
 
-    // Check if both dates are in the same year
-    const sameYear = startDate.getFullYear() === endDate.getFullYear();
-    
-    if (sameYear) {
-      return `${formatDate(startDate, false)} - ${formatDate(endDate, true)}`;
-    } else {
-      return `${formatDate(startDate, true)} - ${formatDate(endDate, true)}`;
-    }
+    return formatDateRange(startDate, endDate);
   };
 
   // Compute the display text for the date filter button (using applied state)
@@ -1214,7 +1231,7 @@ export default function MapCanvas() {
       return `${seasonLabels[appliedSeason.season]} Service ${appliedSeason.year}`;
     }
     if (appliedStartDate && appliedEndDate) {
-      return `${formatDate(appliedStartDate)} - ${formatDate(appliedEndDate)}`;
+      return formatDateRange(appliedStartDate, appliedEndDate);
     }
     return 'Select Date Range';
   };
@@ -2372,8 +2389,8 @@ export default function MapCanvas() {
                   <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                 </svg>
               </div>
-              {showDaysTooltip && (
-                <Tooltip text={getDaysFilterText()}>
+              {showDaysTooltip && openFilter !== 'days' && (
+                <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
                   {null}
                 </Tooltip>
               )}
@@ -2677,7 +2694,7 @@ export default function MapCanvas() {
             color: 'var(--text-primary)',
             zIndex: 2000,
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            width: openFilter === 'date' ? '620px' : openFilter === 'days' ? '452px' : '300px',
+            width: openFilter === 'date' ? '620px' : openFilter === 'days' ? '420px' : '300px',
           }}
         >
           {openFilter === 'date' ? (
@@ -2698,7 +2715,7 @@ export default function MapCanvas() {
                   style={{
                     padding: '8px 32px',
                     backgroundColor: datePickerMode === 'shortcuts' ? 'var(--bg-elevated)' : 'transparent',
-                    border: datePickerMode === 'shortcuts' ? 'var(--border-width) solid var(--border-default)' : 'none',
+                    border: 'none',
                     borderRadius: '20px',
                     cursor: 'pointer',
                     fontFamily: 'Inter, sans-serif',
@@ -2717,7 +2734,7 @@ export default function MapCanvas() {
                   style={{
                     padding: '8px 32px',
                     backgroundColor: datePickerMode === 'custom' ? 'var(--bg-elevated)' : 'transparent',
-                    border: datePickerMode === 'custom' ? 'var(--border-width) solid var(--border-default)' : 'none',
+                    border: 'none',
                     borderRadius: '20px',
                     cursor: 'pointer',
                     fontFamily: 'Inter, sans-serif',
@@ -2874,7 +2891,8 @@ export default function MapCanvas() {
                           paddingLeft: '12px',
                           paddingRight: '12px',
                           backgroundColor: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? 'var(--bg-primary)' : (hoveredSeason === season.key ? 'var(--bg-primary)' : 'var(--bg-elevated)'),
-                          border: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? '0.5px solid var(--border-focus)' : '0.5px solid var(--border-default)',
+                          border: '0.5px solid var(--border-default)',
+                          boxShadow: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? 'inset 0 0 0 0.5px var(--border-focus)' : 'none',
                           borderRadius: '20px',
                           cursor: 'pointer',
                           display: 'flex',
@@ -3263,7 +3281,7 @@ export default function MapCanvas() {
                                     left: wrapperMarginLeft,
                                     right: wrapperMarginRight,
                                     bottom: 0,
-                                    background: isSelected ? 'var(--btn-primary)' : (isInRange ? 'var(--bg-primary)' : 'transparent'),
+                                    background: isSelected ? 'var(--bg-secondary)' : (isInRange ? 'var(--bg-primary)' : 'transparent'),
                                     borderRadius: wrapperBorderRadius,
                                     zIndex: backgroundZIndex
                                   }} />
@@ -3286,10 +3304,10 @@ export default function MapCanvas() {
                                     style={{
                                       position: 'relative',
                                       zIndex: 3,
-                                      background: isSelected ? 'var(--btn-primary)' : 'transparent',
-                                      border: 'none',
+                                      background: isSelected ? 'var(--bg-secondary)' : 'transparent',
+                                      border: isSelected ? '1px solid var(--border-focus)' : 'none',
                                       borderRadius: buttonBorderRadius,
-                                      color: isSelected ? 'var(--text-on-primary)' : 'var(--text-primary)',
+                                      color: 'var(--text-primary)',
                                       cursor: 'pointer',
                                       width: '48px',
                                       height: '48px',
@@ -3385,82 +3403,87 @@ export default function MapCanvas() {
                 }}>
                   Days of the week
                 </div>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                  <StatefulButton
-                    size="medium"
-                    selected={stagedDaysMode === 'all'}
-                    onToggle={() => setStagedDaysMode('all')}
-                  >
-                    All
-                  </StatefulButton>
-                  <StatefulButton
-                    size="medium"
-                    selected={stagedDaysMode === 'weekdays'}
-                    onToggle={() => {
-                      setStagedDaysMode('weekdays');
-                      setStagedCustomDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-                    }}
-                  >
-                    Weekdays
-                  </StatefulButton>
-                  <StatefulButton
-                    size="medium"
-                    selected={stagedDaysMode === 'weekends'}
-                    onToggle={() => {
-                      setStagedDaysMode('weekends');
-                      setStagedCustomDays(['Sat', 'Sun']);
-                    }}
-                  >
-                    Weekends
-                  </StatefulButton>
-                  <StatefulButton
-                    size="medium"
-                    selected={stagedDaysMode === 'custom'}
-                    onToggle={() => setStagedDaysMode('custom')}
-                  >
-                    Custom
-                  </StatefulButton>
-                </div>
+                {/* Container to align segmented control and custom options */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  {/* Segmented Control */}
+                  <div style={{
+                    display: 'flex',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderRadius: '24px',
+                    padding: '4px',
+                  }}>
+                    {(['all', 'weekdays', 'weekends', 'custom'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setStagedDaysMode(mode);
+                          if (mode === 'weekdays') {
+                            setStagedCustomDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+                          } else if (mode === 'weekends') {
+                            setStagedCustomDays(['Sat', 'Sun']);
+                          }
+                        }}
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: stagedDaysMode === mode ? 'var(--bg-elevated)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '20px',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--button-small-size)',
+                          fontWeight: 'var(--button-small-weight)',
+                          color: stagedDaysMode === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          lineHeight: 'var(--button-small-line-height)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {mode === 'all' ? 'All' : mode === 'weekdays' ? 'Weekdays' : mode === 'weekends' ? 'Weekends' : 'Custom'}
+                      </button>
+                    ))}
+                  </div>
 
-                {/* Custom day selector */}
-                {stagedDaysMode === 'custom' && (
-                  <>
-                    {/* Divider */}
-                    <div style={{
-                      borderTop: 'var(--border-width) solid var(--border-default)',
-                      marginTop: '12px',
-                      marginBottom: '12px'
-                    }} />
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
-                      const isSelected = stagedCustomDays.includes(day);
-                      const shortDay = day === 'Mon' ? 'M' : day === 'Tue' ? 'T' : day === 'Wed' ? 'W' : day === 'Thu' ? 'T' : day === 'Fri' ? 'F' : day === 'Sat' ? 'Sa' : 'Su';
-                      return (
-                        <StatefulButton
-                          key={day}
-                          size="medium"
-                          selected={isSelected}
-                          onToggle={() => {
-                            if (isSelected) {
-                              setStagedCustomDays(stagedCustomDays.filter(d => d !== day));
-                            } else {
-                              setStagedCustomDays([...stagedCustomDays, day]);
-                            }
-                          }}
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            padding: 0
-                          }}
-                        >
-                          {shortDay}
-                        </StatefulButton>
-                      );
-                    })}
-                    </div>
-                  </>
-                )}
+                  {/* Custom day selector */}
+                  {stagedDaysMode === 'custom' && (
+                    <>
+                      {/* Divider */}
+                      <div style={{
+                        borderTop: 'var(--border-width) solid var(--border-default)',
+                        marginTop: '12px',
+                        marginBottom: '12px',
+                        width: '100%'
+                      }} />
+                      <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                        const isSelected = stagedCustomDays.includes(day);
+                        const shortDay = day === 'Mon' ? 'M' : day === 'Tue' ? 'T' : day === 'Wed' ? 'W' : day === 'Thu' ? 'T' : day === 'Fri' ? 'F' : day === 'Sat' ? 'Sa' : 'Su';
+                        return (
+                          <StatefulButton
+                            key={day}
+                            size="medium"
+                            selected={isSelected}
+                            onToggle={() => {
+                              if (isSelected) {
+                                setStagedCustomDays(stagedCustomDays.filter(d => d !== day));
+                              } else {
+                                setStagedCustomDays([...stagedCustomDays, day]);
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              height: '40px',
+                              borderRadius: '20px',
+                              padding: 0
+                            }}
+                          >
+                            {shortDay}
+                          </StatefulButton>
+                        );
+                      })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Time of day section */}
@@ -3476,24 +3499,42 @@ export default function MapCanvas() {
                 }}>
                   Time of day
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', justifyContent: 'center' }}>
-                  <StatefulButton
-                    size="medium"
-                    selected={stagedTimeMode === 'all'}
-                    onToggle={() => {
-                      setStagedTimeMode('all');
-                      setStagedTimePeriods([]);
-                    }}
-                  >
-                    All
-                  </StatefulButton>
-                  <StatefulButton
-                    size="medium"
-                    selected={stagedTimeMode === 'custom'}
-                    onToggle={() => setStagedTimeMode('custom')}
-                  >
-                    Custom
-                  </StatefulButton>
+                {/* Segmented Control */}
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: 'var(--bg-secondary)',
+                  borderRadius: '24px',
+                  padding: '4px',
+                  width: 'fit-content',
+                  margin: '0 auto 12px auto'
+                }}>
+                  {(['all', 'custom'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        setStagedTimeMode(mode);
+                        if (mode === 'all') {
+                          setStagedTimePeriods([]);
+                        }
+                      }}
+                      style={{
+                        padding: '8px 32px',
+                        backgroundColor: stagedTimeMode === mode ? 'var(--bg-elevated)' : 'transparent',
+                        border: 'none',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--button-small-size)',
+                        fontWeight: 'var(--button-small-weight)',
+                        color: stagedTimeMode === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                        lineHeight: 'var(--button-small-line-height)',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {mode === 'all' ? 'All' : 'By Period'}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Custom time periods */}
@@ -3505,14 +3546,14 @@ export default function MapCanvas() {
                       marginTop: '12px',
                       marginBottom: '12px'
                     }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {[
-                      { label: 'Early AM', time: '12AM - 6AM' },
-                      { label: 'AM Peak', time: '6AM - 9AM' },
-                      { label: 'Midday', time: '9AM - 3PM' },
-                      { label: 'PM Peak', time: '3PM - 7PM' },
-                      { label: 'Evening', time: '7PM - 10PM' },
-                      { label: 'Night', time: '10PM - 12AM' }
+                      { label: 'Early AM', time: '12am - 6am' },
+                      { label: 'AM Peak', time: '6am - 9am' },
+                      { label: 'Midday', time: '9am - 3pm' },
+                      { label: 'PM Peak', time: '3pm - 7pm' },
+                      { label: 'Evening', time: '7pm - 10pm' },
+                      { label: 'Night', time: '10pm - 12am' }
                     ].map(({ label, time }) => {
                       const isSelected = stagedTimePeriods.includes(label);
                       return (
@@ -3529,15 +3570,16 @@ export default function MapCanvas() {
                           }}
                           style={{
                             display: 'flex',
-                            justifyContent: 'space-between',
                             alignItems: 'center',
+                            justifyContent: 'space-between',
                             borderRadius: '100px',
-                            textAlign: 'left',
-                            width: '100%'
+                            width: 'calc(50% - 4px)',
+                            paddingLeft: '16px',
+                            paddingRight: '16px'
                           }}
                         >
                           <span>{label}</span>
-                          <span style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>{time}</span>
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>{time}</span>
                         </StatefulButton>
                       );
                     })}
