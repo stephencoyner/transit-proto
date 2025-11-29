@@ -41,17 +41,28 @@ export interface SearchableSelectProps {
   className?: string;
   id?: string;
   maxHeight?: number;
+  /** When true, only renders the dropdown menu (no trigger button) */
+  menuOnly?: boolean;
+  /** External control for open state (used with menuOnly) */
+  isOpen?: boolean;
+  /** Callback when menu should close (used with menuOnly) */
+  onClose?: () => void;
+  /** Position for the menu when using menuOnly mode */
+  menuPosition?: { top: number; left: number };
 }
 
 export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>(
-  ({ label, error, helperText, options, placeholder, searchPlaceholder = 'Search...', value, onChange, disabled, className = '', id, maxHeight = 300 }, ref) => {
-    const [isOpen, setIsOpen] = useState(false);
+  ({ label, error, helperText, options, placeholder, searchPlaceholder = 'Search...', value, onChange, disabled, className = '', id, maxHeight = 300, menuOnly = false, isOpen: externalIsOpen, onClose, menuPosition }, ref) => {
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
+    const isOpen = menuOnly ? (externalIsOpen ?? false) : internalIsOpen;
+    const setIsOpen = menuOnly ? (open: boolean) => { if (!open && onClose) onClose(); } : setInternalIsOpen;
     const [selectedValue, setSelectedValue] = useState(value || '');
     const [isHovered, setIsHovered] = useState(false);
     const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null);
     const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showTooltip, setShowTooltip] = useState(false);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -100,17 +111,22 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
     }, [value]);
 
     useEffect(() => {
-      if (isOpen && containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.left + window.scrollX,
-          width: rect.width
-        });
-        // Focus search input when dropdown opens
-        setTimeout(() => {
-          searchInputRef.current?.focus();
-        }, 0);
+      if (isOpen) {
+        if (menuOnly && menuPosition) {
+          // Use provided position for menuOnly mode
+          setDropdownPosition({
+            top: menuPosition.top,
+            left: menuPosition.left,
+            width: 340 // Fixed width for menuOnly
+          });
+        } else if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          setDropdownPosition({
+            top: rect.bottom + window.scrollY + 8,
+            left: rect.left + window.scrollX,
+            width: rect.width
+          });
+        }
         // Clear tooltip timer and hide tooltip when menu opens
         if (tooltipTimerRef.current) {
           clearTimeout(tooltipTimerRef.current);
@@ -128,7 +144,7 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
         // Clear search when closing
         setSearchQuery('');
       }
-    }, [isOpen]);
+    }, [isOpen, menuOnly, menuPosition]);
 
     // Cleanup tooltip timer on unmount
     useEffect(() => {
@@ -213,55 +229,57 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
 
     return (
       <>
-        <div className="w-full" ref={ref}>
-          {label && (
-            <label htmlFor={selectId} className="label text-text-tertiary mb-1 block">
-              {label}
-            </label>
-          )}
-          <div className="relative">
-            <div
-              ref={containerRef}
-              id={selectId}
-              className={selectClasses}
-              style={style}
-              onClick={() => !disabled && setIsOpen(!isOpen)}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              role="button"
-              tabIndex={disabled ? -1 : 0}
-              aria-expanded={isOpen}
-              aria-haspopup="listbox"
-            >
-              <span ref={textRef} style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                display: 'block'
-              }}>
-                {displayText}
+        {!menuOnly && (
+          <div className="w-full" ref={ref}>
+            {label && (
+              <label htmlFor={selectId} className="label text-text-tertiary mb-1 block">
+                {label}
+              </label>
+            )}
+            <div className="relative">
+              <div
+                ref={containerRef}
+                id={selectId}
+                className={selectClasses}
+                style={style}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                aria-expanded={isOpen}
+                aria-haspopup="listbox"
+              >
+                <span ref={textRef} style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  display: 'block'
+                }}>
+                  {displayText}
+                </span>
+              </div>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none" style={{ color: 'var(--text-secondary)' }}>
+                <SelectDropdownIcon />
+              </div>
+              {showTooltip && displayText && (
+                <Tooltip text={displayText} containerRef={containerRef as React.RefObject<HTMLElement>}>
+                  {null}
+                </Tooltip>
+              )}
+            </div>
+            {error && (
+              <span className="caption text-error mt-1 block">
+                {error}
               </span>
-            </div>
-            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none" style={{ color: 'var(--text-secondary)' }}>
-              <SelectDropdownIcon />
-            </div>
-            {showTooltip && displayText && (
-              <Tooltip text={displayText} containerRef={containerRef as React.RefObject<HTMLElement>}>
-                {null}
-              </Tooltip>
+            )}
+            {!error && helperText && (
+              <span className="caption text-text-tertiary mt-1 block">
+                {helperText}
+              </span>
             )}
           </div>
-          {error && (
-            <span className="caption text-error mt-1 block">
-              {error}
-            </span>
-          )}
-          {!error && helperText && (
-            <span className="caption text-text-tertiary mt-1 block">
-              {helperText}
-            </span>
-          )}
-        </div>
+        )}
 
         {isOpen && dropdownPosition && createPortal(
           <div
@@ -270,20 +288,21 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
               position: 'fixed',
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
-              minWidth: `${dropdownPosition.width}px`,
+              width: '340px',
               backgroundColor: 'var(--bg-elevated)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--radius-large)',
               boxShadow: 'var(--shadow-lg)',
               zIndex: 9999,
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}
             role="listbox"
           >
             {/* Search Input */}
             <div style={{
-              padding: '12px 16px',
+              padding: '16px 16px',
               borderBottom: '0.5px solid var(--border-default)'
             }}>
               <div style={{
@@ -291,9 +310,11 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                 alignItems: 'center',
                 gap: '8px',
                 padding: '8px 12px',
-                backgroundColor: 'var(--bg-primary)',
+                backgroundColor: 'var(--bg-elevated)',
                 borderRadius: 'var(--radius-default)',
-                border: '0.5px solid var(--border-default)'
+                border: '0.5px solid var(--border-default)',
+                outline: isSearchFocused ? '2px solid var(--border-focus)' : 'none',
+                outlineOffset: '-1px'
               }}>
                 <div style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
                   <SearchIcon />
@@ -303,6 +324,8 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
                   placeholder={searchPlaceholder}
                   style={{
                     flex: 1,
@@ -320,7 +343,8 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
             {/* Options List */}
             <div style={{
               maxHeight: `${maxHeight}px`,
-              overflowY: 'auto'
+              overflowY: 'auto',
+              overflowX: 'hidden'
             }}>
               {filteredOptions.length === 0 ? (
                 <div style={{
@@ -336,53 +360,63 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                 filteredOptions.map((option, index) => {
                   const isSelected = selectedValue === option.value;
                   const isItemHovered = hoveredItemIndex === index;
+                  // Show divider after the first item (selected item) when not searching and there are more items
+                  const showDividerAfter = !searchQuery.trim() && index === 0 && selectedValue && filteredOptions.length > 1;
 
                   return (
-                    <div
-                      key={option.value}
-                      ref={isSelected ? selectedItemRef : undefined}
-                      onClick={() => !option.disabled && handleSelect(option.value)}
-                      onMouseEnter={() => setHoveredItemIndex(index)}
-                      onMouseLeave={() => setHoveredItemIndex(null)}
-                      className="button-small"
-                      style={{
-                        padding: '12px 28px 12px 16px',
-                        cursor: option.disabled ? 'not-allowed' : 'pointer',
-                        color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                        display: 'flex',
-                        alignItems: option.description ? 'flex-start' : 'center',
-                        gap: '12px',
-                        transition: 'background-color 0.2s ease',
-                        backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-primary)' : 'transparent',
-                        margin: index === 0 ? '12px 0 4px 0' : (index === filteredOptions.length - 1 ? '4px 0 12px 0' : '4px 0'),
-                        opacity: option.disabled ? 0.5 : 1
-                      }}
-                      role="option"
-                      aria-selected={isSelected}
-                    >
-                      {isSelected && (
-                        <div style={{ color: 'var(--text-primary)', flexShrink: 0 }}>
-                          <CheckIcon />
-                        </div>
-                      )}
-                      <div style={{
-                        marginLeft: isSelected ? '0' : '32px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
-                      }}>
-                        <span>{option.label}</span>
-                        {option.description && (
-                          <span style={{
-                            fontSize: '12px',
-                            color: 'var(--text-tertiary)',
-                            lineHeight: '16px'
-                          }}>
-                            {option.description}
-                          </span>
+                    <React.Fragment key={option.value}>
+                      <div
+                        ref={isSelected ? selectedItemRef : undefined}
+                        onClick={() => !option.disabled && handleSelect(option.value)}
+                        onMouseEnter={() => setHoveredItemIndex(index)}
+                        onMouseLeave={() => setHoveredItemIndex(null)}
+                        className="button-small"
+                        style={{
+                          padding: '12px 28px 12px 16px',
+                          cursor: option.disabled ? 'not-allowed' : 'pointer',
+                          color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                          display: 'flex',
+                          alignItems: option.description ? 'flex-start' : 'center',
+                          gap: '12px',
+                          transition: 'background-color 0.2s ease',
+                          backgroundColor: isItemHovered && !option.disabled ? 'var(--bg-primary)' : 'transparent',
+                          margin: index === 0 ? '4px 0' : (index === filteredOptions.length - 1 ? '4px 0 12px 0' : '4px 0'),
+                          opacity: option.disabled ? 0.5 : 1
+                        }}
+                        role="option"
+                        aria-selected={isSelected}
+                      >
+                        {isSelected && (
+                          <div style={{ color: 'var(--text-primary)', flexShrink: 0 }}>
+                            <CheckIcon />
+                          </div>
                         )}
+                        <div style={{
+                          marginLeft: isSelected ? '0' : '32px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px'
+                        }}>
+                          <span>{option.label}</span>
+                          {option.description && (
+                            <span style={{
+                              fontSize: '12px',
+                              color: 'var(--text-tertiary)',
+                              lineHeight: '16px'
+                            }}>
+                              {option.description}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                      {showDividerAfter && (
+                        <div style={{
+                          height: '1px',
+                          backgroundColor: 'var(--border-default)',
+                          margin: '0'
+                        }} />
+                      )}
+                    </React.Fragment>
                   );
                 })
               )}
