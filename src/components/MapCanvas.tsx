@@ -700,9 +700,11 @@ export default function MapCanvas() {
     if (appliedStopAmenityFilters.size > 0) {
       filtered = filtered.filter(stop => {
         // Stop must match ALL amenity filter conditions
-        return Array.from(appliedStopAmenityFilters.entries()).every(([amenity, required]) =>
-          stop.amenities[amenity] === required
-        );
+        // Amenity values are date strings (truthy) if present, or false if not
+        return Array.from(appliedStopAmenityFilters.entries()).every(([amenity, required]) => {
+          const hasAmenity = stop.amenities[amenity] !== false;
+          return hasAmenity === required;
+        });
       });
     }
 
