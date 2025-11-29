@@ -315,7 +315,7 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                 outline: isSearchFocused ? '1px solid var(--border-focus)' : 'none',
                 outlineOffset: '-1px'
               }}>
-                <div style={{ color: isSearchFocused ? 'var(--text-primary)' : 'var(--text-disabled)', flexShrink: 0 }}>
+                <div style={{ color: (isSearchFocused || searchQuery) ? 'var(--text-primary)' : 'var(--text-disabled)', flexShrink: 0 }}>
                   <SearchIcon />
                 </div>
                 <input
@@ -332,7 +332,7 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
                     border: 'none',
                     outline: 'none',
                     backgroundColor: 'transparent',
-                    color: isSearchFocused ? 'var(--text-primary)' : 'var(--text-disabled)'
+                    color: (isSearchFocused || searchQuery) ? 'var(--text-primary)' : 'var(--text-tertiary)'
                   }}
                 />
               </div>

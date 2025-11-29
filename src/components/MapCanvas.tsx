@@ -6017,14 +6017,17 @@ export default function MapCanvas() {
               paddingTop: '16px'
             }}
           >
-            <div
-              className="label text-text-tertiary"
+            <span
+              className="button-small"
               style={{
-                padding: '0 16px 8px 16px'
+                padding: '0 16px 8px 16px',
+                color: 'var(--text-secondary)',
+                fontWeight: '500',
+                display: 'block'
               }}
             >
               Sort by
-            </div>
+            </span>
             {sortOptions.map((option, index) => {
               const isSelected = tripSortBy === option.sortBy && tripSortOrder === option.order;
               return (
@@ -6042,7 +6045,7 @@ export default function MapCanvas() {
                     color: 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
+                    gap: '16px',
                     transition: 'background-color 0.2s ease',
                     backgroundColor: 'transparent',
                     margin: index === sortOptions.length - 1 ? '4px 0 12px 0' : '4px 0'
@@ -6055,11 +6058,11 @@ export default function MapCanvas() {
                   }}
                 >
                   {isSelected && (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <polyline points="20 6 9 17 4 12"></polyline>
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, color: 'var(--text-secondary)' }}>
+                      <path d="M6.36682 9.86655L12.0002 4.23322C12.1789 4.05544 12.3875 3.96655 12.626 3.96655C12.8643 3.96655 13.0724 4.05427 13.2502 4.22972C13.4279 4.40516 13.5168 4.6135 13.5168 4.85472C13.5168 5.09594 13.4279 5.30544 13.2502 5.48322L6.98349 11.7499C6.80771 11.9277 6.60266 12.0166 6.36832 12.0166C6.13399 12.0166 5.92793 11.9277 5.75016 11.7499L2.78349 8.78322C2.60571 8.60844 2.5196 8.40083 2.52515 8.16039C2.53071 7.92005 2.62121 7.711 2.79665 7.53322C2.9721 7.35544 3.18043 7.26655 3.42165 7.26655C3.66288 7.26655 3.87238 7.35544 4.05015 7.53322L6.36682 9.86655Z" fill="currentColor"/>
                     </svg>
                   )}
-                  <span style={{ marginLeft: isSelected ? '0' : '32px' }}>{option.label}</span>
+                  <span style={{ marginLeft: isSelected ? '0' : '36px' }}>{option.label}</span>
                 </div>
               );
             })}
@@ -6296,14 +6299,17 @@ export default function MapCanvas() {
               paddingTop: '16px'
             }}
           >
-            <div
-              className="label text-text-tertiary"
+            <span
+              className="button-small"
               style={{
-                padding: '0 16px 8px 16px'
+                padding: '0 16px 8px 16px',
+                color: 'var(--text-secondary)',
+                fontWeight: '500',
+                display: 'block'
               }}
             >
               Sort by
-            </div>
+            </span>
             {sortOptions.map((option, index) => {
               const isSelected = stopSortBy === option.sortBy && stopSortOrder === option.order;
               return (
@@ -6321,7 +6327,7 @@ export default function MapCanvas() {
                     color: 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
+                    gap: '16px',
                     transition: 'background-color 0.2s ease',
                     backgroundColor: 'transparent',
                     margin: index === sortOptions.length - 1 ? '4px 0 12px 0' : '4px 0'
@@ -6334,11 +6340,11 @@ export default function MapCanvas() {
                   }}
                 >
                   {isSelected && (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <polyline points="20 6 9 17 4 12"></polyline>
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, color: 'var(--text-secondary)' }}>
+                      <path d="M6.36682 9.86655L12.0002 4.23322C12.1789 4.05544 12.3875 3.96655 12.626 3.96655C12.8643 3.96655 13.0724 4.05427 13.2502 4.22972C13.4279 4.40516 13.5168 4.6135 13.5168 4.85472C13.5168 5.09594 13.4279 5.30544 13.2502 5.48322L6.98349 11.7499C6.80771 11.9277 6.60266 12.0166 6.36832 12.0166C6.13399 12.0166 5.92793 11.9277 5.75016 11.7499L2.78349 8.78322C2.60571 8.60844 2.5196 8.40083 2.52515 8.16039C2.53071 7.92005 2.62121 7.711 2.79665 7.53322C2.9721 7.35544 3.18043 7.26655 3.42165 7.26655C3.66288 7.26655 3.87238 7.35544 4.05015 7.53322L6.36682 9.86655Z" fill="currentColor"/>
                     </svg>
                   )}
-                  <span style={{ marginLeft: isSelected ? '0' : '32px' }}>{option.label}</span>
+                  <span style={{ marginLeft: isSelected ? '0' : '36px' }}>{option.label}</span>
                 </div>
               );
             })}
