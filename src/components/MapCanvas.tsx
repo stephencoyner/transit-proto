@@ -321,6 +321,12 @@ export default function MapCanvas() {
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
+  const [isStopDropdownOpen, setIsStopDropdownOpen] = useState<boolean>(false);
+  const [stopDropdownPosition, setStopDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const stopNameRef = useRef<HTMLDivElement>(null);
+  const [isAddAmenityMenuOpen, setIsAddAmenityMenuOpen] = useState<boolean>(false);
+  const [isAddAmenityButtonHovered, setIsAddAmenityButtonHovered] = useState<boolean>(false);
+  const addAmenityButtonRef = useRef<HTMLButtonElement>(null);
   const [gridSize, setGridSize] = useState<'large' | 'medium' | 'small'>('large');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedMetric, setSelectedMetric] = useState<string>('Average daily boardings');
@@ -410,6 +416,7 @@ export default function MapCanvas() {
   const [selectedTripStops, setSelectedTripStops] = useState<TripStopTime[]>([]);
   const [isTripContentScrolled, setIsTripContentScrolled] = useState(false);
   const [isRouteContentScrolled, setIsRouteContentScrolled] = useState(false);
+  const [isAmenitiesScrolled, setIsAmenitiesScrolled] = useState(false);
 
   // Tooltip state for trips
   const [tripTooltip, setTripTooltip] = useState<{
@@ -1573,9 +1580,22 @@ export default function MapCanvas() {
           setIsStopSortMenuOpen(false);
         }
       }
+
+      if (isAddAmenityMenuOpen && addAmenityButtonRef.current && !addAmenityButtonRef.current.contains(target)) {
+        const amenityMenus = document.querySelectorAll('[data-add-amenity-menu]');
+        let clickedInMenu = false;
+        amenityMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsAddAmenityMenuOpen(false);
+        }
+      }
     };
 
-    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen) {
+    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen || isAddAmenityMenuOpen) {
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 0);
@@ -1584,7 +1604,7 @@ export default function MapCanvas() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen]);
+  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen, isAddAmenityMenuOpen]);
 
   useEffect(() => {
     (async () => {
@@ -2468,9 +2488,9 @@ export default function MapCanvas() {
                               ? 'var(--btn-secondary)'
                               : (hoveredViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
                             color: 'var(--text-secondary)',
-                            border: selectedRouteTab === view ? 'none' : '0.5px solid var(--border-default)',
+                            border: selectedRouteTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
                             cursor: 'pointer',
-                            transition: 'background-color 0.2s ease, border 0.2s ease',
+                            transition: 'background-color 0.2s ease, border-color 0.2s ease',
                             padding: '0 12px'
                           }}
                         >
@@ -2600,16 +2620,15 @@ export default function MapCanvas() {
                       onMouseLeave={() => setHoveredStopViewButton(null)}
                       className="button-small"
                       style={{
-                        flex: 1,
                         height: '40px',
                         borderRadius: 'var(--radius-large)',
                         backgroundColor: selectedStopTab === view
                           ? 'var(--btn-secondary)'
                           : (hoveredStopViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
                         color: 'var(--text-secondary)',
-                        border: selectedStopTab === view ? 'none' : '0.5px solid var(--border-default)',
+                        border: selectedStopTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
                         cursor: 'pointer',
-                        transition: 'background-color 0.2s ease, border 0.2s ease',
+                        transition: 'background-color 0.2s ease, border-color 0.2s ease',
                         padding: '0 12px'
                       }}
                     >
@@ -4053,33 +4072,109 @@ export default function MapCanvas() {
                 {/* Back Button and Header */}
                 <div style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   marginTop: '0px',
                   marginBottom: '4px',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  position: 'relative'
                 }}>
                   {/* Left side: Back button and Stop name */}
                   <div
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: 'flex-start',
                       gap: '12px',
-                      cursor: 'pointer',
                       color: 'var(--text-secondary)'
                     }}
-                    onClick={() => {
-                      setSelectedStopId(null);
-                      setSelectedStopTab('Summary');
-                    }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{ cursor: 'pointer', marginTop: '4px', flexShrink: 0 }}
+                      onClick={() => {
+                        setSelectedStopId(null);
+                        setSelectedStopTab('Summary');
+                        setIsStopDropdownOpen(false);
+                      }}
+                    >
                       <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
                     </svg>
-                    <div className="heading-3">
+                    <div
+                      ref={stopNameRef}
+                      className="heading-3"
+                      style={{
+                        cursor: !isFiltersPanelOpen ? 'pointer' : 'default'
+                      }}
+                      onClick={(e) => {
+                        if (!isFiltersPanelOpen && stopNameRef.current) {
+                          e.stopPropagation();
+                          if (!isStopDropdownOpen) {
+                            const rect = stopNameRef.current.getBoundingClientRect();
+                            setStopDropdownPosition({
+                              top: rect.bottom + 8,
+                              left: rect.left
+                            });
+                          }
+                          setIsStopDropdownOpen(!isStopDropdownOpen);
+                        }
+                      }}
+                    >
                       {stopsList.find((s) => s.id === selectedStopId)?.name || 'Stop'}
                     </div>
+                    {!isFiltersPanelOpen && (
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{
+                          cursor: 'pointer',
+                          color: 'var(--text-secondary)',
+                          transform: isStopDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                          marginTop: '6px',
+                          flexShrink: 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isStopDropdownOpen && stopNameRef.current) {
+                            const rect = stopNameRef.current.getBoundingClientRect();
+                            setStopDropdownPosition({
+                              top: rect.bottom + 8,
+                              left: rect.left
+                            });
+                          }
+                          setIsStopDropdownOpen(!isStopDropdownOpen);
+                        }}
+                      >
+                        <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                      </svg>
+                    )}
                   </div>
+                  {/* Stop Dropdown - uses menuOnly mode with portal */}
+                  <SearchableSelect
+                    menuOnly
+                    isOpen={isStopDropdownOpen && !isFiltersPanelOpen}
+                    onClose={() => setIsStopDropdownOpen(false)}
+                    menuPosition={stopDropdownPosition || undefined}
+                    value={selectedStopId}
+                    onChange={(value) => {
+                      setSelectedStopId(value);
+                      setSelectedStopTab('Summary');
+                      setIsStopDropdownOpen(false);
+                    }}
+                    options={stopsList.map(stop => ({
+                      value: stop.id,
+                      label: stop.name
+                    }))}
+                    searchPlaceholder="Search stops..."
+                    maxHeight={300}
+                  />
                 </div>
 
                 {/* Scroll-based divider */}
@@ -4125,71 +4220,179 @@ export default function MapCanvas() {
                   </div>
                 ) : (
                   /* Amenities View */
-                  <div
-                    style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '0px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
-                    onScroll={(e) => {
-                      const target = e.target as HTMLDivElement;
-                      setIsRouteContentScrolled(target.scrollTop > 0);
-                    }}
-                  >
-                    {amenitiesList.length === 0 ? (
-                      <div style={{
-                        padding: '24px',
-                        textAlign: 'center',
-                        color: 'var(--text-tertiary)',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 'var(--body-size)'
-                      }}>
-                        No amenities available for this stop
+                  <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflowY: 'hidden'
+                  }}>
+                    {/* Static divider */}
+                    <div style={{
+                      width: '100%',
+                      height: '0.5px',
+                      backgroundColor: 'var(--border-default)',
+                      flexShrink: 0
+                    }} />
+
+                    {/* Amenities Bar */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
+                      paddingLeft: '0px',
+                      paddingRight: '0px',
+                      flexShrink: 0,
+                      backgroundColor: 'var(--bg-primary)',
+                      zIndex: 20
+                    }}>
+                      {/* Amenity Count */}
+                      <div
+                        className="data-small"
+                        style={{
+                          color: 'var(--text-secondary)'
+                        }}
+                      >
+                        {amenitiesList.length} {amenitiesList.length === 1 ? 'Amenity' : 'Amenities'}
                       </div>
-                    ) : (
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        marginTop: '16px'
-                      }}>
-                        {amenitiesList.map(amenity => (
-                          <div
-                            key={amenity}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              padding: '16px',
-                              backgroundColor: 'var(--bg-primary)',
-                              borderRadius: 'var(--radius-large)',
-                              border: '0.5px solid var(--border-default)'
-                            }}
-                          >
-                            {/* Amenity Icon */}
-                            <div style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '50%',
-                              backgroundColor: 'var(--bg-elevated)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0
-                            }}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                              </svg>
-                            </div>
-                            {/* Amenity Name */}
-                            <div style={{
-                              fontFamily: 'Inter, sans-serif',
-                              fontSize: '14px',
-                              fontWeight: 500,
-                              color: 'var(--text-primary)'
-                            }}>
-                              {amenity}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+
+                      {/* Add Amenity Button */}
+                      <button
+                        ref={addAmenityButtonRef}
+                        type="button"
+                        onClick={() => setIsAddAmenityMenuOpen(!isAddAmenityMenuOpen)}
+                        onMouseEnter={() => setIsAddAmenityButtonHovered(true)}
+                        onMouseLeave={() => setIsAddAmenityButtonHovered(false)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          border: isAddAmenityMenuOpen
+                            ? '0.5px solid var(--border-focus)'
+                            : isAddAmenityButtonHovered
+                              ? '0.5px solid var(--border-default)'
+                              : '0.5px solid transparent',
+                          backgroundColor: (isAddAmenityMenuOpen || isAddAmenityButtonHovered) ? 'var(--bg-elevated)' : 'transparent',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'background-color 0.2s ease, border-color 0.2s ease'
+                        }}
+                      >
+                        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1.05087 9.05023C0.498583 9.05023 0.0509737 8.60262 0.050974 8.05034C0.0510406 7.49811 0.498623 7.05044 1.05087 7.05044L7.05092 7.05113L7.05092 1.05039C7.05102 0.498193 7.49859 0.0505002 8.05081 0.0505002C8.60298 0.0505629 9.0506 0.498231 9.0507 1.05039L9.0507 7.05113L15.0508 7.05044C15.6029 7.05053 16.0506 7.49816 16.0506 8.05034C16.0506 8.60257 15.603 9.05014 15.0508 9.05023L9.0507 9.05092V15.0503C9.0507 15.6025 8.60304 16.0501 8.05081 16.0502C7.49853 16.0502 7.05092 15.6026 7.05092 15.0503L7.05092 9.05092L1.05087 9.05023Z" fill="var(--text-secondary)"/>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Add Amenity Menu (placeholder) */}
+                    {isAddAmenityMenuOpen && addAmenityButtonRef.current && createPortal(
+                      <div
+                        data-add-amenity-menu
+                        style={{
+                          position: 'fixed',
+                          top: `${addAmenityButtonRef.current.getBoundingClientRect().bottom + 8}px`,
+                          left: `${addAmenityButtonRef.current.getBoundingClientRect().left - 168}px`,
+                          width: '200px',
+                          backgroundColor: 'var(--bg-elevated)',
+                          border: '0.5px solid var(--border-default)',
+                          borderRadius: 'var(--radius-large)',
+                          boxShadow: 'var(--shadow-lg)',
+                          zIndex: 10002,
+                          padding: '16px',
+                          color: 'var(--text-tertiary)',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: '14px',
+                          textAlign: 'center'
+                        }}
+                      >
+                        Add amenity menu coming soon
+                      </div>,
+                      document.body
                     )}
+
+                    {/* Amenities List */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+                      {/* Scroll divider */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '0.5px',
+                        backgroundColor: 'var(--border-default)',
+                        opacity: isAmenitiesScrolled ? 1 : 0,
+                        transition: 'opacity 0.15s ease',
+                        zIndex: 10
+                      }} />
+                      <div
+                        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '0px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
+                        onScroll={(e) => {
+                          const scrollTop = (e.target as HTMLDivElement).scrollTop;
+                          setIsAmenitiesScrolled(scrollTop > 0);
+                        }}
+                      >
+                      {amenitiesList.length === 0 ? (
+                        <div style={{
+                          padding: '24px',
+                          textAlign: 'center',
+                          color: 'var(--text-tertiary)',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--body-size)'
+                        }}>
+                          No amenities available for this stop
+                        </div>
+                      ) : (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          {amenitiesList.map((amenity) => (
+                            <div
+                              key={amenity}
+                              style={{
+                                backgroundColor: 'var(--bg-elevated)',
+                                borderRadius: 'var(--radius-default)',
+                                boxShadow: 'inset 0 0 0 var(--border-width) var(--border-default)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '16px'
+                              }}
+                            >
+                              {/* Amenity Icon */}
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                backgroundColor: 'var(--bg-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                              </div>
+                              {/* Amenity Name */}
+                              <div style={{
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                color: 'var(--text-primary)'
+                              }}>
+                                {amenity}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -4647,23 +4850,13 @@ export default function MapCanvas() {
                     opacity: isGridTransitioning ? 0 : 1,
                     transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms'
                   }}>
-                    {/* Static divider - Only show when experimental mode is on */}
-                    {experimentalDetailViewNav && (
-                      <div style={{
-                        position: 'relative',
-                        marginLeft: '-16px',
-                        marginRight: '-16px',
-                        flexShrink: 0
-                      }}>
-                        <div style={{
-                          height: '0.5px',
-                          backgroundColor: 'var(--border-default)',
-                          marginLeft: '16px',
-                          marginRight: '16px',
-                          marginTop: '0px'
-                        }} />
-                      </div>
-                    )}
+                    {/* Static divider */}
+                    <div style={{
+                      width: '100%',
+                      height: '0.5px',
+                      backgroundColor: 'var(--border-default)',
+                      flexShrink: 0
+                    }} />
 
                     {/* Filter Bar */}
                     <div style={{
@@ -5040,21 +5233,14 @@ export default function MapCanvas() {
                     transition: isGridTransitioning ? 'none' : 'opacity 150ms ease-in-out 300ms',
                     marginRight: '-16px'
                   }}>
-                    {/* Static divider - Only show when experimental mode is on */}
-                    {experimentalDetailViewNav && (
-                      <div style={{
-                        position: 'relative',
-                        marginLeft: '-16px',
-                        marginRight: '0px',
-                        flexShrink: 0
-                      }}>
-                        <div style={{
-                          height: '0.5px',
-                          backgroundColor: 'var(--border-default)',
-                          marginTop: '0px'
-                        }} />
-                      </div>
-                    )}
+                    {/* Static divider */}
+                    <div style={{
+                      width: 'calc(100% + 16px)',
+                      height: '0.5px',
+                      backgroundColor: 'var(--border-default)',
+                      flexShrink: 0,
+                      marginLeft: '-16px'
+                    }} />
 
                     {isLoadingGridData ? (
                       <div style={{
