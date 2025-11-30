@@ -315,6 +315,11 @@ export default function MapCanvas() {
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
   const [selectedStopTab, setSelectedStopTab] = useState<'Summary' | 'Amenities'>('Summary');
+  // Navigation back stack - stores previous contexts when drilling down (RDV -> SDV -> SDV -> ...)
+  type NavStackItem =
+    | { type: 'route'; routeId: string; routeTab: 'Summary' | 'Trips' | 'Grid' }
+    | { type: 'stop'; stopId: string; stopTab: 'Summary' | 'Amenities' };
+  const [navigationStack, setNavigationStack] = useState<NavStackItem[]>([]);
   const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
   const [experimentalDetailViewNav, setExperimentalDetailViewNav] = useState<boolean>(true);
@@ -963,7 +968,7 @@ export default function MapCanvas() {
   // This needs to be based on what's currently visible on the map
   const { routeValueRange, stopValueRange, scaleTitle } = React.useMemo(() => {
     // Determine which data to show based on view
-    if (selectedRouteId || activeTab === 'stops') {
+    if (selectedRouteId || activeTab === 'stops' || selectedStopId) {
       // If showing segment coloring, use segment range
       if (showSegmentColoring) {
         return {
@@ -997,7 +1002,7 @@ export default function MapCanvas() {
         scaleTitle: selectedMetric,
       };
     }
-  }, [selectedRouteId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric, showSegmentColoring, segmentValueRange]);
+  }, [selectedRouteId, selectedStopId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric, showSegmentColoring, segmentValueRange]);
 
   // Create lookup maps for values
   const routeValueMap = React.useMemo(() => {
@@ -2364,8 +2369,42 @@ export default function MapCanvas() {
           },
           onClick: ({ object }) => {
             if (object) {
-              setSelectedStopId((object as StopFeature).properties.stop_id);
-              setActiveTab('stops'); // Switch to stops tab to show stop detail
+              const stopId = (object as StopFeature).properties.stop_id;
+              setHoveredStop(null); // Clear hover immediately
+              // Use navigation stack for drill-down in routes, system, or stops tab
+              if (activeTab === 'routes' || activeTab === 'system' || activeTab === 'stops') {
+                if (selectedRouteId) {
+                  // Coming from RDV - push route context
+                  setNavigationStack(prev => [...prev, { type: 'route', routeId: selectedRouteId, routeTab: selectedRouteTab }]);
+                  setSelectedRouteId(null);
+                  setSelectedStopTab('Summary');
+                } else if (selectedStopId) {
+                  // Coming from SDV - push stop context, preserve current tab
+                  setNavigationStack(prev => [...prev, { type: 'stop', stopId: selectedStopId, stopTab: selectedStopTab }]);
+                  // Don't reset selectedStopTab - preserve Amenities if that's where we are
+                } else {
+                  // Coming from root level - reset to Summary
+                  setSelectedStopTab('Summary');
+                }
+              } else {
+                // Coming from components tab
+                setActiveTab('stops');
+                setSelectedStopTab('Summary');
+              }
+              setSelectedStopId(stopId);
+              // Zoom to the stop
+              const stopFeature = stops.find(s => s.properties.stop_id === stopId);
+              if (stopFeature && stopFeature.geometry.coordinates) {
+                const [lng, lat] = stopFeature.geometry.coordinates;
+                setViewState({
+                  longitude: lng,
+                  latitude: lat,
+                  zoom: 16,
+                  pitch: 0,
+                  bearing: 0,
+                  transitionDuration: 500
+                });
+              }
             }
           },
           updateTriggers: {
@@ -2391,8 +2430,42 @@ export default function MapCanvas() {
           },
           onClick: ({ object }) => {
             if (object) {
-              setSelectedStopId((object as StopFeature).properties.stop_id);
-              setActiveTab('stops'); // Switch to stops tab to show stop detail
+              const stopId = (object as StopFeature).properties.stop_id;
+              setHoveredStop(null); // Clear hover immediately
+              // Use navigation stack for drill-down in routes, system, or stops tab
+              if (activeTab === 'routes' || activeTab === 'system' || activeTab === 'stops') {
+                if (selectedRouteId) {
+                  // Coming from RDV - push route context
+                  setNavigationStack(prev => [...prev, { type: 'route', routeId: selectedRouteId, routeTab: selectedRouteTab }]);
+                  setSelectedRouteId(null);
+                  setSelectedStopTab('Summary');
+                } else if (selectedStopId) {
+                  // Coming from SDV - push stop context, preserve current tab
+                  setNavigationStack(prev => [...prev, { type: 'stop', stopId: selectedStopId, stopTab: selectedStopTab }]);
+                  // Don't reset selectedStopTab - preserve Amenities if that's where we are
+                } else {
+                  // Coming from root level - reset to Summary
+                  setSelectedStopTab('Summary');
+                }
+              } else {
+                // Coming from components tab
+                setActiveTab('stops');
+                setSelectedStopTab('Summary');
+              }
+              setSelectedStopId(stopId);
+              // Zoom to the stop
+              const stopFeature = stops.find(s => s.properties.stop_id === stopId);
+              if (stopFeature && stopFeature.geometry.coordinates) {
+                const [lng, lat] = stopFeature.geometry.coordinates;
+                setViewState({
+                  longitude: lng,
+                  latitude: lat,
+                  zoom: 16,
+                  pitch: 0,
+                  bearing: 0,
+                  transitionDuration: 500
+                });
+              }
             }
           },
           updateTriggers: {
@@ -2463,6 +2536,11 @@ export default function MapCanvas() {
             setActiveTab(tab);
             setSelectedRouteId(null);
             setSelectedStopId(null);
+            // Reset detail view tabs when switching main tabs
+            setSelectedStopTab('Summary');
+            setSelectedRouteTab('Summary');
+            // Clear navigation back stack when switching tabs
+            setNavigationStack([]);
           }}
           userInitial="S"
           isFiltersPanelOpen={isFiltersPanelOpen}
@@ -2834,8 +2912,8 @@ export default function MapCanvas() {
                 <SearchableSelect
                   value={selectedStopId}
                   onChange={(value) => {
+                    // Preserve current tab (e.g., Amenities) when changing stops via filter
                     setSelectedStopId(value);
-                    setSelectedStopTab('Summary');
                   }}
                   options={stopsList.map(stop => ({
                     value: stop.id,
@@ -3849,17 +3927,16 @@ export default function MapCanvas() {
             if ('route_id' in object.properties) {
               const routeId = (object as RouteFeature).properties.route_id;
               setHoveredRoute(null); // Clear hover immediately
+              // Stay in current tab (system or routes) - don't switch tabs
               // Only reset to Summary if coming from no route (list/map view)
               if (!selectedRouteId) {
                 setSelectedRouteTab('Summary');
               }
               setSelectedRouteId(routeId);
               setSelectedStopId(null);
-            } else if ('stop_id' in object.properties) {
-              const stopId = (object as StopFeature).properties.stop_id;
-              setHoveredStop(null); // Clear hover immediately
-              setSelectedStopId(stopId);
             }
+            // Note: Stop clicks are handled by ScatterplotLayer onClick handlers
+            // to avoid double-firing of navigation stack pushes
           }
         }}
         style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
@@ -3877,8 +3954,8 @@ export default function MapCanvas() {
         />
       </DeckGL>
 
-      {/* Stop Tooltip - shows when hovering stops in amenities view or stops tab at zoom >= 12 */}
-      {(isAmenitiesView || activeTab === 'stops') && hoveredStop && hoveredStopCoords && viewState.zoom >= 12 && (() => {
+      {/* Stop Tooltip - shows when hovering stops in amenities view, stops tab, or SDV drill-down from routes/system tab at zoom >= 12 */}
+      {(isAmenitiesView || activeTab === 'stops' || ((activeTab === 'routes' || activeTab === 'system') && selectedStopId)) && hoveredStop && hoveredStopCoords && viewState.zoom >= 12 && (() => {
         const hoveredStopData = stops.find(s => s.properties.stop_id === hoveredStop);
         const hoveredStopAmenities = stopAmenities[hoveredStop] || {};
         const amenitiesWithDates = Object.entries(hoveredStopAmenities)
@@ -4418,9 +4495,28 @@ export default function MapCanvas() {
                       xmlns="http://www.w3.org/2000/svg"
                       style={{ cursor: 'pointer', marginTop: '4px', flexShrink: 0 }}
                       onClick={() => {
-                        setSelectedStopId(null);
-                        setSelectedStopTab('Summary');
                         setIsStopDropdownOpen(false);
+
+                        // Pop from navigation stack
+                        if (navigationStack.length > 0) {
+                          const prevContext = navigationStack[navigationStack.length - 1];
+                          setNavigationStack(prev => prev.slice(0, -1));
+
+                          if (prevContext.type === 'route') {
+                            setSelectedStopId(null);
+                            setSelectedStopTab('Summary');
+                            setSelectedRouteId(prevContext.routeId);
+                            setSelectedRouteTab(prevContext.routeTab);
+                          } else {
+                            // prevContext.type === 'stop'
+                            setSelectedStopId(prevContext.stopId);
+                            setSelectedStopTab(prevContext.stopTab);
+                          }
+                        } else {
+                          // No stack - just close SDV
+                          setSelectedStopId(null);
+                          setSelectedStopTab('Summary');
+                        }
                       }}
                     >
                       <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
@@ -6091,6 +6187,7 @@ export default function MapCanvas() {
                       key={item.id}
                       onClick={() => {
                         setSelectedStopId(item.id);
+                        setSelectedStopTab('Summary');
                       }}
                       style={{
                         cursor: 'pointer'
