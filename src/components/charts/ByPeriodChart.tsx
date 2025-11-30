@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CustomTooltip from './CustomTooltip';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface PeriodDataPoint {
   period: string;
@@ -10,6 +11,7 @@ interface PeriodDataPoint {
 
 interface ByPeriodChartProps {
   data: PeriodDataPoint[];
+  comparisonData?: PeriodDataPoint[];
   colors: string[];
   activePieIndex: number | null;
   setActivePieIndex: (index: number | null) => void;
@@ -22,6 +24,7 @@ const CHART_HEIGHT = 240;
 
 export default function ByPeriodChart({
   data,
+  comparisonData,
   colors: _colors,
   activePieIndex: _activePieIndex,
   setActivePieIndex: _setActivePieIndex,
@@ -42,6 +45,26 @@ export default function ByPeriodChart({
     ? data.filter(d => selectedPeriods.includes(d.period))
     : data;
 
+  const filteredComparisonData = comparisonData && selectedPeriods && selectedPeriods.length > 0 && selectedPeriods.length < 6
+    ? comparisonData.filter(d => selectedPeriods.includes(d.period))
+    : comparisonData;
+
+  // Merge data for grouped bar chart when in comparison mode
+  const chartData = useMemo(() => {
+    if (!comparisonData) {
+      return filteredData;
+    }
+
+    // Merge primary and comparison data by period
+    return filteredData.map((item, index) => ({
+      period: item.period,
+      value1: item.value,
+      value2: filteredComparisonData?.[index]?.value ?? 0
+    }));
+  }, [filteredData, filteredComparisonData, comparisonData]);
+
+  const isComparisonMode = !!comparisonData;
+
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',
@@ -59,7 +82,7 @@ export default function ByPeriodChart({
         By Period
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <BarChart data={filteredData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} horizontal={false} />
           <defs>
             <linearGradient id="barCursorPeriod" x1="0" y1="0" x2="0" y2="1">
@@ -83,16 +106,35 @@ export default function ByPeriodChart({
             tickFormatter={(value) => value === 0 ? '0' : `${(value / 1000).toFixed(0)}K`}
           />
           <Tooltip
-            content={<CustomTooltip />}
+            content={<CustomTooltip isComparisonMode={isComparisonMode} />}
             wrapperStyle={{ zIndex: 9999 }}
             cursor={{ fill: `url(#barCursorPeriod)` }}
           />
-          <Bar
-            dataKey="value"
-            fill="var(--border-hover)"
-            radius={[0, 4, 4, 0]}
-            isAnimationActive={false}
-          />
+          {isComparisonMode ? (
+            <>
+              <Bar
+                dataKey="value1"
+                name="Date-time 1"
+                fill={DATETIME_1_COLOR}
+                radius={[0, 4, 4, 0]}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey="value2"
+                name="Date-time 2"
+                fill={DATETIME_2_COLOR}
+                radius={[0, 4, 4, 0]}
+                isAnimationActive={false}
+              />
+            </>
+          ) : (
+            <Bar
+              dataKey="value"
+              fill="var(--border-hover)"
+              radius={[0, 4, 4, 0]}
+              isAnimationActive={false}
+            />
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -11,9 +11,10 @@ import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, SearchableSelect, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
+import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -310,7 +311,7 @@ export default function MapCanvas() {
   const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const selectedStopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
+  const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'compare' | 'date2' | 'days2' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
@@ -352,6 +353,8 @@ export default function MapCanvas() {
   // Refs for the filter elements and panel
   const dateRef = useRef<HTMLDivElement | null>(null);
   const daysRef = useRef<HTMLDivElement | null>(null);
+  const date2Ref = useRef<HTMLDivElement | null>(null);
+  const days2Ref = useRef<HTMLDivElement | null>(null);
   // const metricRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -373,6 +376,41 @@ export default function MapCanvas() {
   const [isDaysHovered, setIsDaysHovered] = useState(false);
   const [isCompareHovered, setIsCompareHovered] = useState(false);
 
+  // Comparison mode state
+  const [comparisonMode, setComparisonMode] = useState<boolean>(false);
+  const [comparisonDateRange, setComparisonDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
+  const [comparisonPreset, setComparisonPreset] = useState<'previous-period' | 'previous-year' | 'custom' | null>(null);
+
+  // Date-time 2 picker state (comparison range)
+  const [date2PickerMode, setDate2PickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
+  const [selectedYear2, setSelectedYear2] = useState(2025);
+  const [stagedSeason2, setStagedSeason2] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
+  const [stagedQuickPick2, setStagedQuickPick2] = useState<string | null>(null);
+  const [calendarStartMonth2, setCalendarStartMonth2] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth());
+  });
+  const [stagedStartDate2, setStagedStartDate2] = useState<Date | null>(null);
+  const [stagedEndDate2, setStagedEndDate2] = useState<Date | null>(null);
+  const [originalSeason2, setOriginalSeason2] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
+  const [originalQuickPick2, setOriginalQuickPick2] = useState<string | null>(null);
+  const [originalStartDate2, setOriginalStartDate2] = useState<Date | null>(null);
+  const [originalEndDate2, setOriginalEndDate2] = useState<Date | null>(null);
+
+  // Day/Time period picker state for Date-time 2
+  const [appliedDaysMode2, setAppliedDaysMode2] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [appliedCustomDays2, setAppliedCustomDays2] = useState<string[]>([]);
+  const [appliedTimeMode2, setAppliedTimeMode2] = useState<'all' | 'custom'>('all');
+  const [appliedTimePeriods2, setAppliedTimePeriods2] = useState<string[]>([]);
+  const [stagedDaysMode2, setStagedDaysMode2] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [stagedCustomDays2, setStagedCustomDays2] = useState<string[]>([]);
+  const [stagedTimeMode2, setStagedTimeMode2] = useState<'all' | 'custom'>('all');
+  const [stagedTimePeriods2, setStagedTimePeriods2] = useState<string[]>([]);
+  const [originalDaysMode2, setOriginalDaysMode2] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
+  const [originalCustomDays2, setOriginalCustomDays2] = useState<string[]>([]);
+  const [originalTimeMode2, setOriginalTimeMode2] = useState<'all' | 'custom'>('all');
+  const [originalTimePeriods2, setOriginalTimePeriods2] = useState<string[]>([]);
+
   // Add hover state tracking for date picker elements
   const [hoveredSeason, setHoveredSeason] = useState<string | null>(null);
 
@@ -393,8 +431,6 @@ export default function MapCanvas() {
   const daysTextRef = useRef<HTMLSpanElement | null>(null);
 
   // Suppress unused variable warnings for future use
-  void isCompareHovered;
-  void setIsCompareHovered;
   void showDateTooltip;
   void showMetricTooltip;
   void setShowMetricTooltip;
@@ -570,6 +606,35 @@ export default function MapCanvas() {
 
   // Calculate average for By Day chart
   const averageDailyByDay = mockDataByDay.reduce((sum, item) => sum + item.value, 0) / mockDataByDay.length;
+
+  // Comparison mock data (simulating ~15% lower ridership in comparison period)
+  const comparisonDataByDay = [
+    { day: 'Mon', value: 16200 },  // -12%
+    { day: 'Tue', value: 16500 },  // -14%
+    { day: 'Wed', value: 16000 },  // -15%
+    { day: 'Thu', value: 17000 },  // -13%
+    { day: 'Fri', value: 20800 },  // -13%
+    { day: 'Sat', value: 10800 },  // -10%
+    { day: 'Sun', value: 9500 }    // -10%
+  ];
+
+  const comparisonDataByPeriod = [
+    { period: 'Early AM', value: 7200 },  // -10%
+    { period: 'AM Peak', value: 19000 },  // -14%
+    { period: 'Midday', value: 12600 },   // -10%
+    { period: 'PM Peak', value: 20400 },  // -15%
+    { period: 'Evening', value: 10800 },  // -10%
+    { period: 'Night', value: 2700 }      // -10%
+  ];
+
+  const comparisonDataByDate = [
+    12800, 11700, 13000, 15600, 17000, 17800, 18000, 18200, 17800, 17400
+  ];
+
+  const comparisonChartDataByDate = comparisonDataByDate.map((value, index) => ({
+    date: `Day ${index + 1}`,
+    value: value
+  }));
 
   // Color palette for pie chart - using brown/beige design tokens
   const PERIOD_COLORS = [
@@ -964,6 +1029,31 @@ export default function MapCanvas() {
     return getValueRange(values);
   }, [segmentGeoms]);
 
+  // Create comparison data for segments (percent change)
+  const segmentComparisonMap = React.useMemo(() => {
+    if (!comparisonMode || segmentGeoms.length === 0) return new Map<string, number>();
+    const map = new Map<string, number>();
+    segmentGeoms.forEach(seg => {
+      const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
+      // Generate varied mock comparison data based on segment hash
+      const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      // Generate percent changes ranging from -40% to +50%
+      const percentChange = ((hash % 91) - 40);
+      map.set(segmentKey, percentChange);
+    });
+    return map;
+  }, [segmentGeoms, comparisonMode]);
+
+  // Get the range of segment comparison values
+  const segmentComparisonRange = React.useMemo(() => {
+    if (!comparisonMode || segmentComparisonMap.size === 0) return { min: 0, max: 0 };
+    const allValues = [...segmentComparisonMap.values()];
+    return {
+      min: Math.min(...allValues),
+      max: Math.max(...allValues)
+    };
+  }, [segmentComparisonMap, comparisonMode]);
+
   // Calculate value ranges for the color scale
   // This needs to be based on what's currently visible on the map
   const { routeValueRange, stopValueRange, scaleTitle } = React.useMemo(() => {
@@ -1016,6 +1106,45 @@ export default function MapCanvas() {
     stopsList.forEach(stop => map.set(stop.id, stop.value));
     return map;
   }, [stopsList]);
+
+  // Create comparison value maps (percent change from period 1 to period 2)
+  // In comparison mode, these show the change from Date-time 2 to Date-time 1
+  const routeComparisonMap = React.useMemo(() => {
+    if (!comparisonMode) return new Map<string, number>();
+    const map = new Map<string, number>();
+    // Generate varied mock comparison data based on route id hash
+    routesList.forEach(route => {
+      const hash = route.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      // Generate percent changes ranging from -35% to +45%
+      const percentChange = ((hash % 81) - 35);
+      map.set(route.id, percentChange);
+    });
+    return map;
+  }, [routesList, comparisonMode]);
+
+  const stopComparisonMap = React.useMemo(() => {
+    if (!comparisonMode) return new Map<string, number>();
+    const map = new Map<string, number>();
+    // Generate varied mock comparison data based on stop id hash
+    stopsList.forEach(stop => {
+      const hash = stop.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      // Generate percent changes ranging from -30% to +40%
+      const percentChange = ((hash % 71) - 30);
+      map.set(stop.id, percentChange);
+    });
+    return map;
+  }, [stopsList, comparisonMode]);
+
+  // Get the range of comparison values for color scaling
+  const comparisonValueRange = React.useMemo(() => {
+    if (!comparisonMode) return { min: 0, max: 0 };
+    const allValues = [...routeComparisonMap.values(), ...stopComparisonMap.values()];
+    if (allValues.length === 0) return { min: 0, max: 0 };
+    return {
+      min: Math.min(...allValues),
+      max: Math.max(...allValues)
+    };
+  }, [routeComparisonMap, stopComparisonMap, comparisonMode]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -1441,6 +1570,114 @@ export default function MapCanvas() {
     return `${daysText} • ${timeText}`;
   };
 
+  // Calculate comparison date range based on preset
+  const calculateComparisonDateRange = (preset: 'previous-period' | 'previous-year' | 'custom') => {
+    // Get effective date range - either from explicit dates or from season/quickpick
+    let effectiveStart = appliedStartDate;
+    let effectiveEnd = appliedEndDate;
+
+    // If no explicit dates, try to get from season or quick pick
+    if (!effectiveStart || !effectiveEnd) {
+      if (appliedQuickPick) {
+        const quickDates = getQuickPickDates(appliedQuickPick);
+        if (quickDates) {
+          effectiveStart = quickDates.start;
+          effectiveEnd = quickDates.end;
+        }
+      } else if (appliedSeason) {
+        const seasonDates = getSeasonDates(appliedSeason.season, appliedSeason.year);
+        effectiveStart = seasonDates.start;
+        effectiveEnd = seasonDates.end;
+      }
+    }
+
+    if (!effectiveStart || !effectiveEnd) {
+      return { start: null, end: null };
+    }
+
+    if (preset === 'previous-period') {
+      // Same duration, immediately before
+      const duration = effectiveEnd.getTime() - effectiveStart.getTime();
+      const comparisonEnd = new Date(effectiveStart.getTime() - 1); // day before current start
+      const comparisonStart = new Date(comparisonEnd.getTime() - duration);
+      return { start: comparisonStart, end: comparisonEnd };
+    } else if (preset === 'previous-year') {
+      // Same dates, 1 year prior
+      const comparisonStart = new Date(effectiveStart);
+      comparisonStart.setFullYear(effectiveStart.getFullYear() - 1);
+      const comparisonEnd = new Date(effectiveEnd);
+      comparisonEnd.setFullYear(effectiveEnd.getFullYear() - 1);
+      return { start: comparisonStart, end: comparisonEnd };
+    }
+    // For custom, return current comparison dates (will be set separately)
+    return comparisonDateRange;
+  };
+
+  // Helper to get the previous season
+  const getPreviousSeason = (season: 'winter' | 'spring' | 'summer' | 'fall', year: number): { season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } => {
+    const seasonOrder: ('winter' | 'spring' | 'summer' | 'fall')[] = ['winter', 'spring', 'summer', 'fall'];
+    const currentIndex = seasonOrder.indexOf(season);
+    if (currentIndex === 0) {
+      // Winter -> previous Fall (previous year)
+      return { season: 'fall', year: year - 1 };
+    }
+    return { season: seasonOrder[currentIndex - 1], year };
+  };
+
+  // Handle comparison preset selection
+  const handleComparisonPresetSelect = (preset: 'previous-period' | 'previous-year' | 'custom') => {
+    setComparisonPreset(preset);
+    const range = calculateComparisonDateRange(preset);
+    setComparisonDateRange(range);
+
+    // Set the staged season/quickpick for Date-time 2 based on the preset
+    if (preset === 'previous-year') {
+      // If Date-time 1 has a season, set Date-time 2 to the same season but previous year
+      if (appliedSeason) {
+        setStagedSeason2({ season: appliedSeason.season, year: appliedSeason.year - 1 });
+        setStagedQuickPick2(null);
+      } else if (appliedQuickPick) {
+        // Quick picks like "Last 7 days" don't have a "previous year" equivalent, show raw dates
+        setStagedSeason2(null);
+        setStagedQuickPick2(null);
+      }
+    } else if (preset === 'previous-period') {
+      // If Date-time 1 has a season, set Date-time 2 to the previous season
+      if (appliedSeason) {
+        const prevSeason = getPreviousSeason(appliedSeason.season, appliedSeason.year);
+        setStagedSeason2(prevSeason);
+        setStagedQuickPick2(null);
+        // Also update the comparison date range to match the previous season's dates
+        const seasonDates = getSeasonDates(prevSeason.season, prevSeason.year);
+        setComparisonDateRange({ start: seasonDates.start, end: seasonDates.end });
+      } else {
+        // No season selected, show raw dates
+        setStagedSeason2(null);
+        setStagedQuickPick2(null);
+      }
+    } else {
+      // Custom - reset to allow user selection
+      setStagedSeason2(null);
+      setStagedQuickPick2(null);
+    }
+
+    setComparisonMode(true);
+    setOpenFilter(null);
+  };
+
+  // Exit comparison mode
+  const exitComparisonMode = () => {
+    setComparisonMode(false);
+    setComparisonPreset(null);
+    setComparisonDateRange({ start: null, end: null });
+  };
+
+  // Format comparison date range (handles null values)
+  const formatComparisonDateRange = (start: Date | null, end: Date | null): string => {
+    if (!start || !end) return '';
+    return formatDateRange(start, end);
+  };
+
   // When date picker opens, capture the current applied state as both original and staged
   useEffect(() => {
     if (openFilter === 'date') {
@@ -1522,6 +1759,139 @@ export default function MapCanvas() {
     JSON.stringify(stagedCustomDays) !== JSON.stringify(originalCustomDays) ||
     stagedTimeMode !== originalTimeMode ||
     JSON.stringify(stagedTimePeriods) !== JSON.stringify(originalTimePeriods);
+
+  // ===== DATE-TIME 2 HANDLERS (Comparison Range) =====
+
+  // When date2 picker opens, capture the current comparison date range as original and staged
+  useEffect(() => {
+    if (openFilter === 'date2') {
+      // Capture original state for Reset
+      setOriginalSeason2(stagedSeason2);
+      setOriginalQuickPick2(stagedQuickPick2);
+      setOriginalStartDate2(comparisonDateRange.start);
+      setOriginalEndDate2(comparisonDateRange.end);
+
+      // Initialize staged state from comparison date range
+      setStagedStartDate2(comparisonDateRange.start);
+      setStagedEndDate2(comparisonDateRange.end);
+    }
+  }, [openFilter, comparisonDateRange.start, comparisonDateRange.end, stagedSeason2, stagedQuickPick2]);
+
+  // Handle Apply button for Date-time 2 - copy staged state to comparison range and close picker
+  const handleApplyDate2Filter = () => {
+    setComparisonDateRange({ start: stagedStartDate2, end: stagedEndDate2 });
+    setOpenFilter(null);
+  };
+
+  // Handle Reset button for Date-time 2 - restore original state to staged
+  const handleResetDate2Filter = () => {
+    setStagedSeason2(originalSeason2);
+    setStagedQuickPick2(originalQuickPick2);
+    setStagedStartDate2(originalStartDate2);
+    setStagedEndDate2(originalEndDate2);
+  };
+
+  // Check if there are changes for date2 picker
+  const hasDate2Changes =
+    JSON.stringify(stagedSeason2) !== JSON.stringify(originalSeason2) ||
+    stagedQuickPick2 !== originalQuickPick2 ||
+    stagedStartDate2?.getTime() !== originalStartDate2?.getTime() ||
+    stagedEndDate2?.getTime() !== originalEndDate2?.getTime();
+
+  // When days2 picker opens, capture the current applied state as both original and staged
+  useEffect(() => {
+    if (openFilter === 'days2') {
+      // Capture original state for Reset
+      setOriginalDaysMode2(appliedDaysMode2);
+      setOriginalCustomDays2(appliedCustomDays2);
+      setOriginalTimeMode2(appliedTimeMode2);
+      setOriginalTimePeriods2(appliedTimePeriods2);
+
+      // Initialize staged state from applied state
+      setStagedDaysMode2(appliedDaysMode2);
+      setStagedCustomDays2(appliedCustomDays2);
+      setStagedTimeMode2(appliedTimeMode2);
+      setStagedTimePeriods2(appliedTimePeriods2);
+    }
+  }, [openFilter, appliedDaysMode2, appliedCustomDays2, appliedTimeMode2, appliedTimePeriods2]);
+
+  // Handle Apply button for Date-time 2 days filter
+  const handleApplyDays2Filter = () => {
+    setAppliedDaysMode2(stagedDaysMode2);
+    setAppliedCustomDays2(stagedCustomDays2);
+    setAppliedTimeMode2(stagedTimeMode2);
+    setAppliedTimePeriods2(stagedTimePeriods2);
+    setOpenFilter(null);
+  };
+
+  // Handle Reset button for Date-time 2 days filter
+  const handleResetDays2Filter = () => {
+    setStagedDaysMode2(originalDaysMode2);
+    setStagedCustomDays2(originalCustomDays2);
+    setStagedTimeMode2(originalTimeMode2);
+    setStagedTimePeriods2(originalTimePeriods2);
+  };
+
+  // Check if there are changes for days2 picker
+  const hasDays2Changes =
+    stagedDaysMode2 !== originalDaysMode2 ||
+    JSON.stringify(stagedCustomDays2) !== JSON.stringify(originalCustomDays2) ||
+    stagedTimeMode2 !== originalTimeMode2 ||
+    JSON.stringify(stagedTimePeriods2) !== JSON.stringify(originalTimePeriods2);
+
+  // Helper function to get Date-time 2 date filter text
+  const getDate2FilterText = (): string => {
+    if (stagedQuickPick2) {
+      return getQuickPickDateRange(stagedQuickPick2);
+    }
+    if (stagedSeason2) {
+      const seasonLabels = {
+        winter: 'Winter',
+        spring: 'Spring',
+        summer: 'Summer',
+        fall: 'Fall'
+      };
+      return `${seasonLabels[stagedSeason2.season]} Service ${stagedSeason2.year}`;
+    }
+    if (comparisonDateRange.start && comparisonDateRange.end) {
+      return formatDateRange(comparisonDateRange.start, comparisonDateRange.end);
+    }
+    return 'Select date range';
+  };
+
+  // Helper function to get Date-time 2 days filter text
+  const getDays2FilterText = (): string => {
+    let daysText = '';
+    let timeText = '';
+
+    // Days text
+    if (appliedDaysMode2 === 'all') {
+      daysText = 'All Days';
+    } else if (appliedDaysMode2 === 'weekdays') {
+      daysText = 'Weekdays';
+    } else if (appliedDaysMode2 === 'weekends') {
+      daysText = 'Weekends';
+    } else if (appliedDaysMode2 === 'custom' && appliedCustomDays2.length > 0) {
+      if (appliedCustomDays2.length === 7) {
+        daysText = 'All Days';
+      } else {
+        daysText = appliedCustomDays2.join(', ');
+      }
+    }
+
+    // Time text
+    if (appliedTimeMode2 === 'all') {
+      timeText = 'All Periods';
+    } else if (appliedTimeMode2 === 'custom' && appliedTimePeriods2.length > 0) {
+      if (appliedTimePeriods2.length === 6) {
+        timeText = 'All Periods';
+      } else {
+        timeText = appliedTimePeriods2.join(', ');
+      }
+    }
+
+    return `${daysText} · ${timeText}`;
+  };
 
   // When trip filter menu opens, capture current applied state as both original and staged
   useEffect(() => {
@@ -1626,6 +1996,8 @@ export default function MapCanvas() {
     const trigger =
       openFilter === 'date' ? dateRef.current :
       openFilter === 'days' ? daysRef.current :
+      openFilter === 'date2' ? date2Ref.current :
+      openFilter === 'days2' ? days2Ref.current :
       null;
 
     if (!trigger) return setPanelPos(null);
@@ -1666,7 +2038,9 @@ export default function MapCanvas() {
         dateRef.current &&
         !dateRef.current.contains(event.target as Node) &&
         daysRef.current &&
-        !daysRef.current.contains(event.target as Node)
+        !daysRef.current.contains(event.target as Node) &&
+        (!date2Ref.current || !date2Ref.current.contains(event.target as Node)) &&
+        (!days2Ref.current || !days2Ref.current.contains(event.target as Node))
       ) {
         setOpenFilter(null);
       }
@@ -2028,12 +2402,19 @@ export default function MapCanvas() {
       return [255, 255, 255, 255] as [number, number, number, number];
     }
 
+    // In comparison mode, use comparison colors (percent change)
+    if (comparisonMode) {
+      const percentChange = stopComparisonMap.get(stopId) || 0;
+      const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+      return [color[0], color[1], color[2], 255] as [number, number, number, number];
+    }
+
     // Otherwise use data-driven color
     const value = stopValueMap.get(stopId) || 0;
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId, stopValueMap, stopValueRange, showSegmentColoring, isAmenitiesView]);
+  }, [selectedStopId, stopValueMap, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
@@ -2060,7 +2441,16 @@ export default function MapCanvas() {
       if (hoveredSegment !== null) {
         const hoveredSeg = segmentsWithIndex[hoveredSegment];
         if (hoveredSeg) {
-          const segColor = valueToColor(hoveredSeg.loadValue, segmentValueRange.min, segmentValueRange.max);
+          // Use comparison colors when in comparison mode
+          let segColor: [number, number, number];
+          if (comparisonMode) {
+            const segmentKey = `${hoveredSeg.fromStopId}-${hoveredSeg.toStopId}`;
+            const percentChange = segmentComparisonMap.get(segmentKey) || 0;
+            const compColor = getComparisonColorRGB(percentChange, segmentComparisonRange.min, segmentComparisonRange.max);
+            segColor = [compColor[0], compColor[1], compColor[2]];
+          } else {
+            segColor = valueToColor(hoveredSeg.loadValue, segmentValueRange.min, segmentValueRange.max);
+          }
 
           // Single glow layer
           layers.push(
@@ -2087,13 +2477,21 @@ export default function MapCanvas() {
           getPath: (d) => d.path,
           getWidth: 15,
           getColor: (d) => {
+            // Use comparison colors when in comparison mode
+            if (comparisonMode) {
+              const segmentKey = `${d.fromStopId}-${d.toStopId}`;
+              const percentChange = segmentComparisonMap.get(segmentKey) || 0;
+              const compColor = getComparisonColorRGB(percentChange, segmentComparisonRange.min, segmentComparisonRange.max);
+              const alpha = hoveredSegment !== null && d.index !== hoveredSegment ? 102 : 255;
+              return [compColor[0], compColor[1], compColor[2], alpha];
+            }
             const color = valueToColor(d.loadValue, segmentValueRange.min, segmentValueRange.max);
             // Reduce opacity of non-hovered segments when hovering
             const alpha = hoveredSegment !== null && d.index !== hoveredSegment ? 102 : 255; // 40% opacity = 102/255
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
@@ -2114,6 +2512,13 @@ export default function MapCanvas() {
             if (selectedRouteId) {
               return [186, 177, 169, 255]; // #BAB1A9 at full opacity
             }
+            // In comparison mode, use comparison colors (percent change)
+            if (comparisonMode) {
+              const percentChange = routeComparisonMap.get(d.properties.route_id) || 0;
+              const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+              const opacity = hoveredRoute ? (d.properties.route_id === hoveredRoute ? 255 : 120) : 255;
+              return [color[0], color[1], color[2], opacity];
+            }
             // Otherwise use data-driven color from value
             const value = routeValueMap.get(d.properties.route_id) || 0;
             const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
@@ -2121,7 +2526,7 @@ export default function MapCanvas() {
             return [...color, opacity];
           },
           updateTriggers: {
-            getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange]
+            getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange, comparisonMode, routeComparisonMap, comparisonValueRange]
           },
           widthMinPixels: 4.5,
           widthMaxPixels: 18,
@@ -2134,8 +2539,16 @@ export default function MapCanvas() {
     if (hoveredRoute && !showSegmentColoring) {
       const hoveredPaths = pathGeoms.filter(p => p.properties.route_id === hoveredRoute);
       if (hoveredPaths.length) {
-        const value = routeValueMap.get(hoveredRoute) || 0;
-        const routeColor = valueToColor(value, routeValueRange.min, routeValueRange.max);
+        // Use comparison colors when in comparison mode
+        let routeColor: [number, number, number];
+        if (comparisonMode) {
+          const percentChange = routeComparisonMap.get(hoveredRoute) || 0;
+          const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+          routeColor = [compColor[0], compColor[1], compColor[2]];
+        } else {
+          const value = routeValueMap.get(hoveredRoute) || 0;
+          routeColor = valueToColor(value, routeValueRange.min, routeValueRange.max);
+        }
 
         // Outer glow layer (very wide, very transparent)
         layers.push(
@@ -2164,7 +2577,7 @@ export default function MapCanvas() {
             pickable: false,
           })
         );
-        
+
         // Inner glow layer (closer to core, higher opacity)
         layers.push(
           new PathLayer({
@@ -2178,7 +2591,7 @@ export default function MapCanvas() {
             pickable: false,
           })
         );
-        
+
         // Core route layer (full opacity, slightly thicker than base)
         layers.push(
           new PathLayer({
@@ -2295,8 +2708,16 @@ export default function MapCanvas() {
     if (selectedStopId) {
       const selectedStopData = filteredStops.filter(stop => stop.properties.stop_id === selectedStopId);
       if (selectedStopData.length > 0) {
-        const value = stopValueMap.get(selectedStopId) || 0;
-        const selectedStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
+        // Use comparison colors when in comparison mode
+        let selectedStopColor: [number, number, number];
+        if (comparisonMode) {
+          const percentChange = stopComparisonMap.get(selectedStopId) || 0;
+          const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+          selectedStopColor = [compColor[0], compColor[1], compColor[2]];
+        } else {
+          const value = stopValueMap.get(selectedStopId) || 0;
+          selectedStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
+        }
 
         // Halo layer (12px larger than the stop, 50% opacity - or black 40% in amenities view)
         const haloColor = isAmenitiesView
@@ -2324,8 +2745,16 @@ export default function MapCanvas() {
     if (stopToHalo && stopToHalo !== selectedStopId && !showSegmentColoring) {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
       if (hoveredStopData.length > 0) {
-        const value = stopValueMap.get(stopToHalo) || 0;
-        const hoveredStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
+        // Use comparison colors when in comparison mode
+        let hoveredStopColor: [number, number, number];
+        if (comparisonMode) {
+          const percentChange = stopComparisonMap.get(stopToHalo) || 0;
+          const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+          hoveredStopColor = [compColor[0], compColor[1], compColor[2]];
+        } else {
+          const value = stopValueMap.get(stopToHalo) || 0;
+          hoveredStopColor = valueToColor(value, stopValueRange.min, stopValueRange.max);
+        }
 
         // Halo layer (12px larger than the stop, 50% opacity - or black 40% in amenities view)
         const hoveredHaloColor = isAmenitiesView
@@ -2408,7 +2837,7 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView], // Force recalculation when selection, coloring mode, or amenities view changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange], // Force recalculation when selection, coloring mode, amenities view, or comparison mode changes
             getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         }),
@@ -2583,83 +3012,266 @@ export default function MapCanvas() {
         }}>
           {/* Date-time Section */}
           <div>
-            <label className="label text-text-tertiary block mb-1">Date-time</label>
+            {!comparisonMode ? (
+              <>
+                {/* Normal Mode */}
+                <label className="label text-text-tertiary block mb-1">Date-time</label>
 
-            {/* Date Range Filter */}
-            <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
-              <div
-                onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
-                onMouseEnter={handleDateFilterMouseEnter}
-                onMouseLeave={handleDateFilterMouseLeave}
-                className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
-                style={{
-                  borderWidth: 'var(--border-width)',
-                  backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
-                  borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <span
-                  ref={dateTextRef}
-                  className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
-                >
-                  {getDateFilterText()}
-                </span>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-                  <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
-                </svg>
-              </div>
-              {showDateTooltip && (
-                <Tooltip text={getDateFilterText()}>
-                  {null}
-                </Tooltip>
-              )}
-            </div>
+                {/* Date Range Filter */}
+                <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
+                  <div
+                    onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                    onMouseEnter={handleDateFilterMouseEnter}
+                    onMouseLeave={handleDateFilterMouseLeave}
+                    className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                    style={{
+                      borderWidth: 'var(--border-width)',
+                      backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <span
+                      ref={dateTextRef}
+                      className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                    >
+                      {getDateFilterText()}
+                    </span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  {showDateTooltip && (
+                    <Tooltip text={getDateFilterText()}>
+                      {null}
+                    </Tooltip>
+                  )}
+                </div>
 
-            {/* Days of Week Filter */}
-            <div ref={daysRef} style={{ position: 'relative' }}>
-              <div
-                onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
-                onMouseEnter={handleDaysFilterMouseEnter}
-                onMouseLeave={handleDaysFilterMouseLeave}
-                className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
-                style={{
-                  borderWidth: 'var(--border-width)',
-                  backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
-                  borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <span
-                  ref={daysTextRef}
-                  className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
-                >
-                  {getDaysFilterText()}
-                </span>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-                  <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
-                </svg>
-              </div>
-              {showDaysTooltip && openFilter !== 'days' && (
-                <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
-                  {null}
-                </Tooltip>
-              )}
-            </div>
+                {/* Days of Week Filter */}
+                <div ref={daysRef} style={{ position: 'relative' }}>
+                  <div
+                    onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+                    onMouseEnter={handleDaysFilterMouseEnter}
+                    onMouseLeave={handleDaysFilterMouseLeave}
+                    className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                    style={{
+                      borderWidth: 'var(--border-width)',
+                      backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <span
+                      ref={daysTextRef}
+                      className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                    >
+                      {getDaysFilterText()}
+                    </span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  {showDaysTooltip && openFilter !== 'days' && (
+                    <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
+                      {null}
+                    </Tooltip>
+                  )}
+                </div>
 
-            {/* Compare Button */}
-            <div style={{ alignSelf: 'flex-start', marginTop: '8px' }}>
-              <Button
-                variant="tertiary"
-                size="small"
-                onClick={() => {
-                  // Add compare functionality here
-                  console.log('Compare clicked');
-                }}
-              >
-                Compare
-              </Button>
-            </div>
+                {/* Compare Button with Dropdown */}
+                <div style={{ alignSelf: 'flex-start', marginTop: '8px', position: 'relative' }}>
+                  <Button
+                    variant="tertiary"
+                    size="small"
+                    onClick={() => setOpenFilter(openFilter === 'compare' ? null : 'compare')}
+                    onMouseEnter={() => setIsCompareHovered(true)}
+                    onMouseLeave={() => setIsCompareHovered(false)}
+                    style={{
+                      backgroundColor: openFilter === 'compare' ? 'var(--bg-elevated)' : (isCompareHovered ? 'var(--bg-elevated)' : 'transparent')
+                    }}
+                  >
+                    Compare
+                  </Button>
+
+                  {/* Compare Dropdown Menu */}
+                  {openFilter === 'compare' && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '4px',
+                      backgroundColor: 'var(--bg-elevated)',
+                      border: '0.5px solid var(--border-default)',
+                      borderRadius: 'var(--radius-default)',
+                      boxShadow: 'var(--shadow-lg)',
+                      zIndex: 1000,
+                      minWidth: '160px',
+                      overflow: 'hidden'
+                    }}>
+                      {[
+                        { value: 'previous-period', label: 'Previous Period' },
+                        { value: 'previous-year', label: 'Previous Year' },
+                        { value: 'custom', label: 'Custom' }
+                      ].map((option) => (
+                        <div
+                          key={option.value}
+                          onClick={() => handleComparisonPresetSelect(option.value as 'previous-period' | 'previous-year' | 'custom')}
+                          style={{
+                            padding: '10px 16px',
+                            cursor: 'pointer',
+                            fontSize: 'var(--body-regular-size)',
+                            color: 'var(--text-secondary)',
+                            transition: 'background-color 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Comparison Mode - Dual Date-time Display */}
+
+                {/* Date-time 1 (Primary Range) */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_1_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <label className="label text-text-tertiary">Date-time 1</label>
+                  </div>
+
+                  {/* Date Range Filter for Date-time 1 */}
+                  <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
+                    <div
+                      onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                      className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                      style={{
+                        borderWidth: 'var(--border-width)',
+                        backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
+                        color: 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                        {getDateFilterText()}
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                        <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Days/Time Filter for Date-time 1 */}
+                  <div ref={daysRef} style={{ position: 'relative' }}>
+                    <div
+                      onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+                      className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                      style={{
+                        borderWidth: 'var(--border-width)',
+                        backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
+                        color: 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                        {getDaysFilterText()}
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                        <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Date-time 2 (Comparison Range) */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        backgroundColor: DATETIME_2_COLOR,
+                        flexShrink: 0
+                      }} />
+                      <label className="label text-text-tertiary">Date-time 2</label>
+                    </div>
+                    {/* Exit Comparison Mode Button */}
+                    <button
+                      onClick={exitComparisonMode}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-tertiary)',
+                        padding: '4px'
+                      }}
+                      title="Exit comparison mode"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Date Range Filter for Date-time 2 */}
+                  <div ref={date2Ref} style={{ marginBottom: '8px', position: 'relative' }}>
+                    <div
+                      onClick={() => setOpenFilter(openFilter === 'date2' ? null : 'date2')}
+                      className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                      style={{
+                        borderWidth: 'var(--border-width)',
+                        backgroundColor: openFilter === 'date2' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        borderColor: openFilter === 'date2' ? 'var(--border-focus)' : 'var(--border-default)',
+                        color: 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                        {getDate2FilterText()}
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                        <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Days/Time Filter for Date-time 2 */}
+                  <div ref={days2Ref} style={{ position: 'relative' }}>
+                    <div
+                      onClick={() => setOpenFilter(openFilter === 'days2' ? null : 'days2')}
+                      className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                      style={{
+                        borderWidth: 'var(--border-width)',
+                        backgroundColor: openFilter === 'days2' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        borderColor: openFilter === 'days2' ? 'var(--border-focus)' : 'var(--border-default)',
+                        color: 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                        {getDays2FilterText()}
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                        <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Metric Section */}
@@ -2945,7 +3557,7 @@ export default function MapCanvas() {
             color: 'var(--text-primary)',
             zIndex: 2000,
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            width: openFilter === 'date' ? '620px' : openFilter === 'days' ? '420px' : '300px',
+            width: (openFilter === 'date' || openFilter === 'date2') ? '620px' : (openFilter === 'days' || openFilter === 'days2') ? '420px' : '300px',
           }}
         >
           {openFilter === 'date' ? (
@@ -3883,6 +4495,686 @@ export default function MapCanvas() {
                 </Button>
               </div>
             </div>
+          ) : openFilter === 'date2' ? (
+            <div>
+              {/* Date-time 2 Date Picker - Same as date picker but for comparison range */}
+              {/* Segmented Control */}
+              <div style={{
+                display: 'flex',
+                backgroundColor: 'var(--bg-secondary)',
+                borderRadius: '24px',
+                padding: '4px',
+                marginBottom: '24px',
+                width: 'fit-content',
+                margin: '0 auto 24px auto'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setDate2PickerMode('shortcuts')}
+                  style={{
+                    padding: '8px 32px',
+                    backgroundColor: date2PickerMode === 'shortcuts' ? 'var(--bg-elevated)' : 'transparent',
+                    border: 'none',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--button-small-size)',
+                    fontWeight: 'var(--button-small-weight)',
+                    color: date2PickerMode === 'shortcuts' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                    lineHeight: 'var(--button-small-line-height)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Shortcuts
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDate2PickerMode('custom')}
+                  style={{
+                    padding: '8px 32px',
+                    backgroundColor: date2PickerMode === 'custom' ? 'var(--bg-elevated)' : 'transparent',
+                    border: 'none',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 'var(--button-small-size)',
+                    fontWeight: 'var(--button-small-weight)',
+                    color: date2PickerMode === 'custom' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                    lineHeight: 'var(--button-small-line-height)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Custom
+                </button>
+              </div>
+
+              {date2PickerMode === 'shortcuts' ? (
+                <div style={{ paddingBottom: '24px' }}>
+                  {/* Year Selector */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '24px',
+                    paddingLeft: '124px',
+                    paddingRight: '124px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedYear2(selectedYear2 - 1)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '0.5px solid var(--border-default)',
+                        backgroundColor: 'var(--bg-elevated)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0
+                      }}
+                    >
+                      <img
+                        src={ChevronLeftIcon.src}
+                        alt="Previous year"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          filter: 'brightness(0)'
+                        }}
+                      />
+                    </button>
+                    <div style={{
+                      fontSize: 'var(--heading-3-size)',
+                      fontWeight: 'var(--heading-3-weight)',
+                      color: 'var(--text-primary)',
+                      minWidth: '200px',
+                      textAlign: 'center',
+                      lineHeight: 'var(--heading-3-line-height)',
+                      letterSpacing: 'var(--heading-3-letter-spacing)'
+                    }}>
+                      Service {selectedYear2}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedYear2 < 2025) {
+                          setSelectedYear2(selectedYear2 + 1);
+                        }
+                      }}
+                      disabled={selectedYear2 >= 2025}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '0.5px solid var(--border-default)',
+                        backgroundColor: selectedYear2 >= 2025 ? '#F5F5F5' : 'var(--bg-elevated)',
+                        cursor: selectedYear2 >= 2025 ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                        opacity: selectedYear2 >= 2025 ? 0.5 : 1
+                      }}
+                    >
+                      <img
+                        src={ChevronRightIcon.src}
+                        alt="Next year"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          filter: selectedYear2 >= 2025 ? 'none' : 'brightness(0)'
+                        }}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Season Cards */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: '12px',
+                    marginBottom: '32px'
+                  }}>
+                    {[
+                      { key: 'winter', label: 'Winter', icon: WinterIcon },
+                      { key: 'spring', label: 'Spring', icon: SpringIcon },
+                      { key: 'summer', label: 'Summer', icon: SummerIcon },
+                      { key: 'fall', label: 'Fall', icon: FallIcon },
+                    ].map((season) => {
+                      const prevYear = selectedYear2 - 1;
+                      const nextYear = selectedYear2 + 1;
+                      const displayYear = season.key === 'winter' ? prevYear : selectedYear2;
+
+                      let dateRange = '';
+                      switch(season.key) {
+                        case 'winter':
+                          dateRange = `9/21/${prevYear.toString().slice(-2)} - 3/20/${selectedYear2.toString().slice(-2)}`;
+                          break;
+                        case 'spring':
+                          dateRange = `3/21/${selectedYear2.toString().slice(-2)} - 6/21/${selectedYear2.toString().slice(-2)}`;
+                          break;
+                        case 'summer':
+                          dateRange = `6/22/${selectedYear2.toString().slice(-2)} - 9/18/${selectedYear2.toString().slice(-2)}`;
+                          break;
+                        case 'fall':
+                          if (selectedYear2 === 2025) {
+                            dateRange = '9/19/25 - Today';
+                          } else {
+                            dateRange = `9/19/${selectedYear2.toString().slice(-2)} - 3/19/${nextYear.toString().slice(-2)}`;
+                          }
+                          break;
+                      }
+
+                      return (
+                        <button
+                          key={season.key}
+                          type="button"
+                          onClick={() => {
+                            setStagedSeason2({ season: season.key as 'winter' | 'spring' | 'summer' | 'fall', year: displayYear });
+                            setStagedQuickPick2(null);
+                            // Calculate actual dates for the season
+                            const seasonDates = getSeasonDates(season.key as 'winter' | 'spring' | 'summer' | 'fall', displayYear);
+                            setStagedStartDate2(seasonDates.start);
+                            setStagedEndDate2(seasonDates.end);
+                          }}
+                          onMouseEnter={() => setHoveredSeason(season.key)}
+                          onMouseLeave={() => setHoveredSeason(null)}
+                          style={{
+                            paddingTop: '20px',
+                            paddingBottom: '20px',
+                            paddingLeft: '12px',
+                            paddingRight: '12px',
+                            backgroundColor: stagedSeason2?.season === season.key && stagedSeason2?.year === displayYear ? 'var(--bg-primary)' : (hoveredSeason === season.key ? 'var(--bg-primary)' : 'var(--bg-elevated)'),
+                            border: '0.5px solid var(--border-default)',
+                            boxShadow: stagedSeason2?.season === season.key && stagedSeason2?.year === displayYear ? 'inset 0 0 0 0.5px var(--border-focus)' : 'none',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <img
+                            src={season.icon.src}
+                            alt={season.label}
+                            style={{
+                              width: '48px',
+                              height: '48px',
+                              marginBottom: '4px',
+                              filter: 'brightness(0) saturate(100%)',
+                              opacity: '0.87'
+                            }}
+                          />
+                          <div style={{
+                            fontSize: 'var(--button-small-size)',
+                            fontWeight: 'var(--button-small-weight)',
+                            color: 'var(--text-primary)',
+                            fontFamily: 'Inter, sans-serif',
+                            lineHeight: 'var(--button-small-line-height)'
+                          }}>
+                            {season.label} {displayYear}
+                          </div>
+                          <div style={{
+                            fontSize: 'var(--nav-label-size)',
+                            fontWeight: 'var(--nav-label-weight)',
+                            color: 'var(--text-secondary)',
+                            fontFamily: 'Inter, sans-serif',
+                            textAlign: 'center',
+                            lineHeight: 'var(--nav-label-line-height)',
+                            letterSpacing: 'var(--nav-label-letter-spacing)'
+                          }}>
+                            {dateRange}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Quick Picks */}
+                  <div>
+                    <div style={{
+                      fontSize: 'var(--heading-3-size)',
+                      fontWeight: 'var(--heading-3-weight)',
+                      color: 'var(--text-primary)',
+                      marginBottom: '16px',
+                      textAlign: 'center',
+                      lineHeight: 'var(--heading-3-line-height)',
+                      letterSpacing: 'var(--heading-3-letter-spacing)'
+                    }}>
+                      Quick picks
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {['Last 7 days', 'Last 4 weeks', 'Last 3 months', 'Last 12 months'].map((pick) => (
+                          <StatefulButton
+                            key={pick}
+                            size="medium"
+                            selected={stagedQuickPick2 === pick}
+                            onToggle={(selected) => {
+                              if (selected) {
+                                setStagedQuickPick2(pick);
+                                setStagedSeason2(null);
+                                // Calculate actual dates
+                                const quickDates = getQuickPickDates(pick);
+                                if (quickDates) {
+                                  setStagedStartDate2(quickDates.start);
+                                  setStagedEndDate2(quickDates.end);
+                                }
+                              } else {
+                                setStagedQuickPick2(null);
+                              }
+                            }}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {pick}
+                          </StatefulButton>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {['Month to date', 'Quarter to date', 'Year to date'].map((pick) => (
+                          <StatefulButton
+                            key={pick}
+                            size="medium"
+                            selected={stagedQuickPick2 === pick}
+                            onToggle={(selected) => {
+                              if (selected) {
+                                setStagedQuickPick2(pick);
+                                setStagedSeason2(null);
+                                const quickDates = getQuickPickDates(pick);
+                                if (quickDates) {
+                                  setStagedStartDate2(quickDates.start);
+                                  setStagedEndDate2(quickDates.end);
+                                }
+                              } else {
+                                setStagedQuickPick2(null);
+                              }
+                            }}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {pick}
+                          </StatefulButton>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Custom Date Picker for Date-time 2
+                <div style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '24px' }}>
+                  {/* Calendar Navigation */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '24px',
+                    paddingLeft: '100px',
+                    paddingRight: '100px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setCalendarStartMonth2(new Date(calendarStartMonth2.getFullYear(), calendarStartMonth2.getMonth() - 1))}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '0.5px solid var(--border-default)',
+                        backgroundColor: 'var(--bg-elevated)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0
+                      }}
+                    >
+                      <img
+                        src={ChevronLeftIcon.src}
+                        alt="Previous month"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          filter: 'brightness(0)'
+                        }}
+                      />
+                    </button>
+                    <div style={{
+                      fontSize: 'var(--heading-3-size)',
+                      fontWeight: 'var(--heading-3-weight)',
+                      color: 'var(--text-primary)',
+                      minWidth: '200px',
+                      textAlign: 'center',
+                      lineHeight: 'var(--heading-3-line-height)',
+                      letterSpacing: 'var(--heading-3-letter-spacing)'
+                    }}>
+                      {calendarStartMonth2.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const currentMonth = now.getMonth();
+                        const currentYear = now.getFullYear();
+                        const calendarMonth = calendarStartMonth2.getMonth();
+                        const calendarYear = calendarStartMonth2.getFullYear();
+
+                        if (calendarYear < currentYear || (calendarYear === currentYear && calendarMonth < currentMonth)) {
+                          setCalendarStartMonth2(new Date(calendarStartMonth2.getFullYear(), calendarStartMonth2.getMonth() + 1));
+                        }
+                      }}
+                      disabled={(() => {
+                        const now = new Date();
+                        return calendarStartMonth2.getFullYear() === now.getFullYear() && calendarStartMonth2.getMonth() === now.getMonth();
+                      })()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: '0.5px solid var(--border-default)',
+                        backgroundColor: 'var(--bg-elevated)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0
+                      }}
+                    >
+                      <img
+                        src={ChevronRightIcon.src}
+                        alt="Next month"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          filter: 'brightness(0)'
+                        }}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Single Month Calendar for Date-time 2 */}
+                  <div>
+                    {(() => {
+                      const year = calendarStartMonth2.getFullYear();
+                      const month = calendarStartMonth2.getMonth();
+                      const daysInMonth = new Date(year, month + 1, 0).getDate();
+                      const firstDayOfMonth = new Date(year, month, 1).getDay();
+                      const days: (Date | null)[] = [];
+                      for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+                      for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+
+                      return (
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 48px)', columnGap: '0', marginBottom: '8px', marginTop: '8px', justifyContent: 'center' }}>
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                              <div key={idx} style={{ fontSize: 'var(--label-size)', fontWeight: 'var(--label-weight)', color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0' }}>{day}</div>
+                            ))}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 48px)', rowGap: '4px', columnGap: '0', justifyContent: 'center' }}>
+                            {days.map((day, idx) => {
+                              if (!day) return <div key={`empty-${idx}`} />;
+                              const isStart = stagedStartDate2 && day.getTime() === stagedStartDate2.getTime();
+                              const isEnd = stagedEndDate2 && day.getTime() === stagedEndDate2.getTime();
+                              const isInRange = stagedStartDate2 && stagedEndDate2 && day.getTime() > stagedStartDate2.getTime() && day.getTime() < stagedEndDate2.getTime();
+                              const isSelected = isStart || isEnd;
+
+                              return (
+                                <div key={idx} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '48px' }}>
+                                  {(isSelected || isInRange) && (
+                                    <div style={{
+                                      position: 'absolute',
+                                      inset: 0,
+                                      backgroundColor: isSelected ? 'var(--border-focus)' : 'var(--bg-secondary)',
+                                      borderRadius: isSelected ? '50%' : '0',
+                                      margin: 'auto',
+                                      width: isSelected ? '40px' : '100%',
+                                      height: isSelected ? '40px' : '100%'
+                                    }} />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!stagedStartDate2 || (stagedStartDate2 && stagedEndDate2)) {
+                                        setStagedStartDate2(day);
+                                        setStagedEndDate2(null);
+                                        setStagedSeason2(null);
+                                        setStagedQuickPick2(null);
+                                      } else if (day.getTime() < stagedStartDate2.getTime()) {
+                                        setStagedStartDate2(day);
+                                      } else {
+                                        setStagedEndDate2(day);
+                                      }
+                                    }}
+                                    style={{
+                                      position: 'relative',
+                                      zIndex: 1,
+                                      width: '40px',
+                                      height: '40px',
+                                      border: 'none',
+                                      borderRadius: '50%',
+                                      backgroundColor: 'transparent',
+                                      cursor: 'pointer',
+                                      fontFamily: 'Inter, sans-serif',
+                                      fontSize: 'var(--button-small-size)',
+                                      color: isSelected ? 'var(--text-btn-primary)' : 'var(--text-primary)'
+                                    }}
+                                  >
+                                    {day.getDate()}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer with Reset/Apply */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '16px', borderTop: '0.5px solid var(--border-default)' }}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  onClick={handleResetDate2Filter}
+                  disabled={!hasDate2Changes}
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleApplyDate2Filter}
+                  disabled={!hasDate2Changes}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          ) : openFilter === 'days2' ? (
+            <div>
+              {/* Days of the week section for Date-time 2 */}
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{
+                  fontSize: 'var(--heading-3-size)',
+                  fontWeight: 'var(--heading-3-weight)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '16px',
+                  lineHeight: 'var(--heading-3-line-height)',
+                  letterSpacing: 'var(--heading-3-letter-spacing)',
+                  textAlign: 'center'
+                }}>
+                  Days of the week
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{
+                    display: 'flex',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderRadius: '24px',
+                    padding: '4px',
+                  }}>
+                    {(['all', 'weekdays', 'weekends', 'custom'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setStagedDaysMode2(mode);
+                          if (mode === 'weekdays') {
+                            setStagedCustomDays2(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+                          } else if (mode === 'weekends') {
+                            setStagedCustomDays2(['Sat', 'Sun']);
+                          }
+                        }}
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: stagedDaysMode2 === mode ? 'var(--bg-elevated)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '20px',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--button-small-size)',
+                          fontWeight: 'var(--button-small-weight)',
+                          color: stagedDaysMode2 === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          lineHeight: 'var(--button-small-line-height)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {mode === 'all' ? 'All' : mode === 'weekdays' ? 'Weekdays' : mode === 'weekends' ? 'Weekends' : 'Custom'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {stagedDaysMode2 === 'custom' && (
+                    <>
+                      <div style={{ borderTop: 'var(--border-width) solid var(--border-default)', marginTop: '12px', marginBottom: '12px', width: '100%' }} />
+                      <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                          const isSelected = stagedCustomDays2.includes(day);
+                          const shortDay = day === 'Mon' ? 'M' : day === 'Tue' ? 'T' : day === 'Wed' ? 'W' : day === 'Thu' ? 'T' : day === 'Fri' ? 'F' : day === 'Sat' ? 'Sa' : 'Su';
+                          return (
+                            <StatefulButton
+                              key={day}
+                              size="medium"
+                              selected={isSelected}
+                              onToggle={() => {
+                                if (isSelected) {
+                                  setStagedCustomDays2(stagedCustomDays2.filter(d => d !== day));
+                                } else {
+                                  setStagedCustomDays2([...stagedCustomDays2, day]);
+                                }
+                              }}
+                              style={{ flex: 1, height: '40px', borderRadius: '20px', padding: 0 }}
+                            >
+                              {shortDay}
+                            </StatefulButton>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Time periods section for Date-time 2 */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{
+                  fontSize: 'var(--heading-3-size)',
+                  fontWeight: 'var(--heading-3-weight)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '16px',
+                  lineHeight: 'var(--heading-3-line-height)',
+                  letterSpacing: 'var(--heading-3-letter-spacing)',
+                  textAlign: 'center'
+                }}>
+                  Time periods
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{
+                    display: 'flex',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderRadius: '24px',
+                    padding: '4px',
+                  }}>
+                    {(['all', 'custom'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setStagedTimeMode2(mode)}
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: stagedTimeMode2 === mode ? 'var(--bg-elevated)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '20px',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'var(--button-small-size)',
+                          fontWeight: 'var(--button-small-weight)',
+                          color: stagedTimeMode2 === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          lineHeight: 'var(--button-small-line-height)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {mode === 'all' ? 'All' : 'Custom'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {stagedTimeMode2 === 'custom' && (
+                    <>
+                      <div style={{ borderTop: 'var(--border-width) solid var(--border-default)', marginTop: '12px', marginBottom: '12px', width: '100%' }} />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
+                        {['Early AM', 'AM Peak', 'Midday', 'PM Peak', 'Evening', 'Night'].map((period) => {
+                          const isSelected = stagedTimePeriods2.includes(period);
+                          return (
+                            <StatefulButton
+                              key={period}
+                              size="medium"
+                              selected={isSelected}
+                              onToggle={() => {
+                                if (isSelected) {
+                                  setStagedTimePeriods2(stagedTimePeriods2.filter(p => p !== period));
+                                } else {
+                                  setStagedTimePeriods2([...stagedTimePeriods2, period]);
+                                }
+                              }}
+                              style={{ height: '40px', borderRadius: '20px' }}
+                            >
+                              {period}
+                            </StatefulButton>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer with Reset/Apply */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '16px', borderTop: '0.5px solid var(--border-default)' }}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  onClick={handleResetDays2Filter}
+                  disabled={!hasDays2Changes}
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleApplyDays2Filter}
+                  disabled={!hasDays2Changes}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
           ) : null}
         </div>
       )}
@@ -4061,9 +5353,14 @@ export default function MapCanvas() {
       {/* Map Scale - hide in amenities view since we're not showing map data */}
       {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && (
         <MapScale
-          title={scaleTitle}
-          min={(selectedRouteId || activeTab === 'stops') ? stopValueRange.min : routeValueRange.min}
-          max={(selectedRouteId || activeTab === 'stops') ? stopValueRange.max : routeValueRange.max}
+          title={comparisonMode ? `Change in ${scaleTitle.toLowerCase()}` : scaleTitle}
+          min={comparisonMode
+            ? (showSegmentColoring ? segmentComparisonRange.min : comparisonValueRange.min)
+            : ((selectedRouteId || activeTab === 'stops') ? stopValueRange.min : routeValueRange.min)}
+          max={comparisonMode
+            ? (showSegmentColoring ? segmentComparisonRange.max : comparisonValueRange.max)
+            : ((selectedRouteId || activeTab === 'stops') ? stopValueRange.max : routeValueRange.max)}
+          comparisonMode={comparisonMode}
         />
       )}
 
@@ -4147,10 +5444,18 @@ export default function MapCanvas() {
               }}
             >
               {/* Overall Trip Metric Card */}
-              <MetricCard
-                title={selectedMetric}
-                value={selectedTrip.ridership}
-              />
+              {comparisonMode ? (
+                <ComparisonMetricCard
+                  title={selectedMetric}
+                  value1={selectedTrip.ridership}
+                  value2={Math.round(selectedTrip.ridership * 0.85)}
+                />
+              ) : (
+                <MetricCard
+                  title={selectedMetric}
+                  value={selectedTrip.ridership}
+                />
+              )}
 
               {/* By Stop Card */}
               <div style={{
@@ -4163,10 +5468,16 @@ export default function MapCanvas() {
                 {(selectedMetric === 'Average load' || selectedMetric === 'Maxload') ? (
                   /* Load metric: Colored line segments + black stops */
                   (() => {
-                    // Build a map of fromStopId -> loadValue from segmentGeoms
+                    // Build a map of fromStopId -> loadValue and comparison data from segmentGeoms
                     const segmentLoadMap = new Map<string, number>();
+                    const segmentComparisonDataMap = new Map<string, number>(); // fromStopId -> percentChange
                     segmentGeoms.forEach(seg => {
                       segmentLoadMap.set(seg.fromStopId, seg.loadValue);
+                      // Calculate percent change using same formula as segmentComparisonMap
+                      const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
+                      const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                      const percentChange = ((hash % 91) - 40); // Range: -40 to +50
+                      segmentComparisonDataMap.set(seg.fromStopId, percentChange);
                     });
 
                     return (
@@ -4177,7 +5488,14 @@ export default function MapCanvas() {
                             const isLastStop = index === selectedTripStops.length - 1;
                             // Get the segment load value (load for segment starting at this stop)
                             const segmentLoad = segmentLoadMap.get(stop.id) || 0;
-                            const segmentColor = valueToColor(segmentLoad, segmentValueRange.min, segmentValueRange.max);
+
+                            // Get segment percent change for comparison mode (keyed by fromStopId)
+                            const segmentPercentChange = segmentComparisonDataMap.get(stop.id) || 0;
+
+                            // Use comparison colors in comparison mode, otherwise normal colors
+                            const segmentColor = comparisonMode
+                              ? getComparisonColorRGB(segmentPercentChange, segmentComparisonRange.min, segmentComparisonRange.max)
+                              : valueToColor(segmentLoad, segmentValueRange.min, segmentValueRange.max);
 
                             const isSelected = hoveredSegment === index;
 
@@ -4300,7 +5618,9 @@ export default function MapCanvas() {
                                     lineHeight: '1',
                                     transition: 'color 0.2s'
                                   }}>
-                                    {segmentLoad}
+                                    {comparisonMode
+                                      ? `${segmentPercentChange > 0 ? '+' : ''}${segmentPercentChange}%`
+                                      : segmentLoad}
                                   </div>
                                 </div>
                               </div>
@@ -4327,7 +5647,14 @@ export default function MapCanvas() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                       {selectedTripStops.map((stop, index) => {
                         const stopValue = stopValueMap.get(stop.id) || 0;
-                        const stopColor = valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
+
+                        // Get comparison percent change for this stop
+                        const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
+
+                        // Use comparison colors in comparison mode, otherwise normal colors
+                        const stopColor = comparisonMode
+                          ? getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max)
+                          : valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
 
                         const isStopSelected = selectedBoardingStop === stop.id;
 
@@ -4447,7 +5774,9 @@ export default function MapCanvas() {
                                 lineHeight: '1',
                                 transition: 'color 0.2s'
                               }}>
-                                {stopValue}
+                                {comparisonMode
+                                  ? `${stopPercentChange > 0 ? '+' : ''}${stopPercentChange}%`
+                                  : stopValue}
                               </div>
                             </div>
                           </div>
@@ -4620,14 +5949,35 @@ export default function MapCanvas() {
                       setIsRouteContentScrolled(target.scrollTop > 0);
                     }}
                   >
-                    <MetricCard
-                      title={selectedMetric}
-                      value={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
+                    {comparisonMode ? (
+                      <ComparisonMetricCard
+                        title={selectedMetric}
+                        value1={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
+                        value2={Math.round((stopsList.find((s) => s.id === selectedStopId)?.value || 0) * 0.85)}
+                      />
+                    ) : (
+                      <MetricCard
+                        title={selectedMetric}
+                        value={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
+                      />
+                    )}
+                    <ByDateChart
+                      data={chartDataByDate}
+                      comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+                      gradientId="colorValueStop"
+                      metric={selectedMetric}
+                      startDate={effectiveDateRange.start}
+                      endDate={effectiveDateRange.end}
                     />
-                    <ByDateChart data={chartDataByDate} gradientId="colorValueStop" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
-                    <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
+                    <ByDayChart
+                      data={mockDataByDay}
+                      comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+                      metric={selectedMetric}
+                      selectedDays={effectiveSelectedDays}
+                    />
                     <ByPeriodChart
                       data={mockDataByPeriod}
+                      comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                       colors={PERIOD_COLORS}
                       activePieIndex={activePieIndex}
                       setActivePieIndex={setActivePieIndex}
@@ -5166,14 +6516,35 @@ export default function MapCanvas() {
                   }
                 }}
               >
-                <MetricCard
-                  title={selectedMetric}
-                  value={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
+                {comparisonMode ? (
+                  <ComparisonMetricCard
+                    title={selectedMetric}
+                    value1={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
+                    value2={Math.round((routesList.find((r) => r.id === selectedRouteId)?.value || 0) * 0.85)}
+                  />
+                ) : (
+                  <MetricCard
+                    title={selectedMetric}
+                    value={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
+                  />
+                )}
+                <ByDateChart
+                  data={chartDataByDate}
+                  comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+                  gradientId="colorValue"
+                  metric={selectedMetric}
+                  startDate={effectiveDateRange.start}
+                  endDate={effectiveDateRange.end}
                 />
-                <ByDateChart data={chartDataByDate} gradientId="colorValue" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
-                <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
+                <ByDayChart
+                  data={mockDataByDay}
+                  comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+                  metric={selectedMetric}
+                  selectedDays={effectiveSelectedDays}
+                />
                 <ByPeriodChart
                   data={mockDataByPeriod}
+                  comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                   colors={PERIOD_COLORS}
                   activePieIndex={activePieIndex}
                   setActivePieIndex={setActivePieIndex}
@@ -5933,11 +7304,32 @@ export default function MapCanvas() {
           /* System View - Aggregated Charts */
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
-            <MetricCard title={selectedMetric} value="8,973" />
-            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
-            <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
+            {comparisonMode ? (
+              <ComparisonMetricCard
+                title={selectedMetric}
+                value1={8973}
+                value2={7627}
+              />
+            ) : (
+              <MetricCard title={selectedMetric} value="8,973" />
+            )}
+            <ByDateChart
+              data={chartDataByDate}
+              comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+              gradientId="colorValueSystem"
+              metric={selectedMetric}
+              startDate={effectiveDateRange.start}
+              endDate={effectiveDateRange.end}
+            />
+            <ByDayChart
+              data={mockDataByDay}
+              comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+              metric={selectedMetric}
+              selectedDays={effectiveSelectedDays}
+            />
             <ByPeriodChart
               data={mockDataByPeriod}
+              comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
               colors={PERIOD_COLORS}
               activePieIndex={activePieIndex}
               setActivePieIndex={setActivePieIndex}
@@ -6192,7 +7584,11 @@ export default function MapCanvas() {
                       style={{
                         cursor: 'pointer'
                       }}>
-                      <MetricCard value={item.value} title={item.name} />
+                      {comparisonMode ? (
+                        <ComparisonMetricCard value1={item.value} value2={Math.round(item.value * 0.85)} title={item.name} />
+                      ) : (
+                        <MetricCard value={item.value} title={item.name} />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -6218,7 +7614,11 @@ export default function MapCanvas() {
                   style={{
                     cursor: 'pointer'
                   }}>
-                  <MetricCard value={item.value} title={item.name} />
+                  {comparisonMode ? (
+                    <ComparisonMetricCard value1={item.value} value2={Math.round(item.value * 0.85)} title={item.name} />
+                  ) : (
+                    <MetricCard value={item.value} title={item.name} />
+                  )}
                 </div>
               ))}
             </div>
