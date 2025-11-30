@@ -14,6 +14,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -310,7 +311,7 @@ export default function MapCanvas() {
   const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const selectedStopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const [openFilter, setOpenFilter] = useState<'date' | 'days' | null>(null);
+  const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'compare' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
@@ -373,6 +374,11 @@ export default function MapCanvas() {
   const [isDaysHovered, setIsDaysHovered] = useState(false);
   const [isCompareHovered, setIsCompareHovered] = useState(false);
 
+  // Comparison mode state
+  const [comparisonMode, setComparisonMode] = useState<boolean>(false);
+  const [comparisonDateRange, setComparisonDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
+  const [comparisonPreset, setComparisonPreset] = useState<'previous-period' | 'previous-year' | 'custom' | null>(null);
+
   // Add hover state tracking for date picker elements
   const [hoveredSeason, setHoveredSeason] = useState<string | null>(null);
 
@@ -393,8 +399,6 @@ export default function MapCanvas() {
   const daysTextRef = useRef<HTMLSpanElement | null>(null);
 
   // Suppress unused variable warnings for future use
-  void isCompareHovered;
-  void setIsCompareHovered;
   void showDateTooltip;
   void showMetricTooltip;
   void setShowMetricTooltip;
@@ -570,6 +574,35 @@ export default function MapCanvas() {
 
   // Calculate average for By Day chart
   const averageDailyByDay = mockDataByDay.reduce((sum, item) => sum + item.value, 0) / mockDataByDay.length;
+
+  // Comparison mock data (simulating ~15% lower ridership in comparison period)
+  const comparisonDataByDay = [
+    { day: 'Mon', value: 16200 },  // -12%
+    { day: 'Tue', value: 16500 },  // -14%
+    { day: 'Wed', value: 16000 },  // -15%
+    { day: 'Thu', value: 17000 },  // -13%
+    { day: 'Fri', value: 20800 },  // -13%
+    { day: 'Sat', value: 10800 },  // -10%
+    { day: 'Sun', value: 9500 }    // -10%
+  ];
+
+  const comparisonDataByPeriod = [
+    { period: 'Early AM', value: 7200 },  // -10%
+    { period: 'AM Peak', value: 19000 },  // -14%
+    { period: 'Midday', value: 12600 },   // -10%
+    { period: 'PM Peak', value: 20400 },  // -15%
+    { period: 'Evening', value: 10800 },  // -10%
+    { period: 'Night', value: 2700 }      // -10%
+  ];
+
+  const comparisonDataByDate = [
+    12800, 11700, 13000, 15600, 17000, 17800, 18000, 18200, 17800, 17400
+  ];
+
+  const comparisonChartDataByDate = comparisonDataByDate.map((value, index) => ({
+    date: `Day ${index + 1}`,
+    value: value
+  }));
 
   // Color palette for pie chart - using brown/beige design tokens
   const PERIOD_COLORS = [
@@ -1439,6 +1472,52 @@ export default function MapCanvas() {
     }
 
     return `${daysText} • ${timeText}`;
+  };
+
+  // Calculate comparison date range based on preset
+  const calculateComparisonDateRange = (preset: 'previous-period' | 'previous-year' | 'custom') => {
+    if (!appliedStartDate || !appliedEndDate) {
+      return { start: null, end: null };
+    }
+
+    if (preset === 'previous-period') {
+      // Same duration, immediately before
+      const duration = appliedEndDate.getTime() - appliedStartDate.getTime();
+      const comparisonEnd = new Date(appliedStartDate.getTime() - 1); // day before current start
+      const comparisonStart = new Date(comparisonEnd.getTime() - duration);
+      return { start: comparisonStart, end: comparisonEnd };
+    } else if (preset === 'previous-year') {
+      // Same dates, 1 year prior
+      const comparisonStart = new Date(appliedStartDate);
+      comparisonStart.setFullYear(appliedStartDate.getFullYear() - 1);
+      const comparisonEnd = new Date(appliedEndDate);
+      comparisonEnd.setFullYear(appliedEndDate.getFullYear() - 1);
+      return { start: comparisonStart, end: comparisonEnd };
+    }
+    // For custom, return current comparison dates (will be set separately)
+    return comparisonDateRange;
+  };
+
+  // Handle comparison preset selection
+  const handleComparisonPresetSelect = (preset: 'previous-period' | 'previous-year' | 'custom') => {
+    setComparisonPreset(preset);
+    const range = calculateComparisonDateRange(preset);
+    setComparisonDateRange(range);
+    setComparisonMode(true);
+    setOpenFilter(null);
+  };
+
+  // Exit comparison mode
+  const exitComparisonMode = () => {
+    setComparisonMode(false);
+    setComparisonPreset(null);
+    setComparisonDateRange({ start: null, end: null });
+  };
+
+  // Format comparison date range (handles null values)
+  const formatComparisonDateRange = (start: Date | null, end: Date | null): string => {
+    if (!start || !end) return '';
+    return formatDateRange(start, end);
   };
 
   // When date picker opens, capture the current applied state as both original and staged
@@ -2583,83 +2662,297 @@ export default function MapCanvas() {
         }}>
           {/* Date-time Section */}
           <div>
-            <label className="label text-text-tertiary block mb-1">Date-time</label>
+            {!comparisonMode ? (
+              <>
+                {/* Normal Mode */}
+                <label className="label text-text-tertiary block mb-1">Date-time</label>
 
-            {/* Date Range Filter */}
-            <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
-              <div
-                onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
-                onMouseEnter={handleDateFilterMouseEnter}
-                onMouseLeave={handleDateFilterMouseLeave}
-                className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
-                style={{
-                  borderWidth: 'var(--border-width)',
-                  backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
-                  borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <span
-                  ref={dateTextRef}
-                  className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
-                >
-                  {getDateFilterText()}
-                </span>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-                  <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
-                </svg>
-              </div>
-              {showDateTooltip && (
-                <Tooltip text={getDateFilterText()}>
-                  {null}
-                </Tooltip>
-              )}
-            </div>
+                {/* Date Range Filter */}
+                <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
+                  <div
+                    onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                    onMouseEnter={handleDateFilterMouseEnter}
+                    onMouseLeave={handleDateFilterMouseLeave}
+                    className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                    style={{
+                      borderWidth: 'var(--border-width)',
+                      backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <span
+                      ref={dateTextRef}
+                      className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                    >
+                      {getDateFilterText()}
+                    </span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  {showDateTooltip && (
+                    <Tooltip text={getDateFilterText()}>
+                      {null}
+                    </Tooltip>
+                  )}
+                </div>
 
-            {/* Days of Week Filter */}
-            <div ref={daysRef} style={{ position: 'relative' }}>
-              <div
-                onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
-                onMouseEnter={handleDaysFilterMouseEnter}
-                onMouseLeave={handleDaysFilterMouseLeave}
-                className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
-                style={{
-                  borderWidth: 'var(--border-width)',
-                  backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
-                  borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <span
-                  ref={daysTextRef}
-                  className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
-                >
-                  {getDaysFilterText()}
-                </span>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-                  <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
-                </svg>
-              </div>
-              {showDaysTooltip && openFilter !== 'days' && (
-                <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
-                  {null}
-                </Tooltip>
-              )}
-            </div>
+                {/* Days of Week Filter */}
+                <div ref={daysRef} style={{ position: 'relative' }}>
+                  <div
+                    onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+                    onMouseEnter={handleDaysFilterMouseEnter}
+                    onMouseLeave={handleDaysFilterMouseLeave}
+                    className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                    style={{
+                      borderWidth: 'var(--border-width)',
+                      backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <span
+                      ref={daysTextRef}
+                      className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                    >
+                      {getDaysFilterText()}
+                    </span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  {showDaysTooltip && openFilter !== 'days' && (
+                    <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
+                      {null}
+                    </Tooltip>
+                  )}
+                </div>
 
-            {/* Compare Button */}
-            <div style={{ alignSelf: 'flex-start', marginTop: '8px' }}>
-              <Button
-                variant="tertiary"
-                size="small"
-                onClick={() => {
-                  // Add compare functionality here
-                  console.log('Compare clicked');
-                }}
-              >
-                Compare
-              </Button>
-            </div>
+                {/* Compare Button with Dropdown */}
+                <div style={{ alignSelf: 'flex-start', marginTop: '8px', position: 'relative' }}>
+                  <Button
+                    variant="tertiary"
+                    size="small"
+                    onClick={() => setOpenFilter(openFilter === 'compare' ? null : 'compare')}
+                    onMouseEnter={() => setIsCompareHovered(true)}
+                    onMouseLeave={() => setIsCompareHovered(false)}
+                    style={{
+                      backgroundColor: openFilter === 'compare' ? 'var(--bg-elevated)' : (isCompareHovered ? 'var(--bg-elevated)' : 'transparent')
+                    }}
+                  >
+                    Compare
+                  </Button>
+
+                  {/* Compare Dropdown Menu */}
+                  {openFilter === 'compare' && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '4px',
+                      backgroundColor: 'var(--bg-elevated)',
+                      border: '0.5px solid var(--border-default)',
+                      borderRadius: 'var(--radius-default)',
+                      boxShadow: 'var(--shadow-lg)',
+                      zIndex: 1000,
+                      minWidth: '160px',
+                      overflow: 'hidden'
+                    }}>
+                      {[
+                        { value: 'previous-period', label: 'Previous Period' },
+                        { value: 'previous-year', label: 'Previous Year' },
+                        { value: 'custom', label: 'Custom' }
+                      ].map((option) => (
+                        <div
+                          key={option.value}
+                          onClick={() => handleComparisonPresetSelect(option.value as 'previous-period' | 'previous-year' | 'custom')}
+                          style={{
+                            padding: '10px 16px',
+                            cursor: 'pointer',
+                            fontSize: 'var(--body-regular-size)',
+                            color: 'var(--text-secondary)',
+                            transition: 'background-color 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Comparison Mode - Dual Date-time Display */}
+
+                {/* Date-time 1 (Primary Range) */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_1_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <label className="label text-text-tertiary">Date-time 1</label>
+                  </div>
+
+                  {/* Primary Date Range - Read Only Display */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <div
+                      className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                      style={{
+                        borderWidth: 'var(--border-width)',
+                        backgroundColor: 'var(--bg-primary)',
+                        borderColor: 'var(--border-default)',
+                        color: 'var(--text-secondary)',
+                        flex: 1
+                      }}
+                      onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                    >
+                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                        {formatComparisonDateRange(appliedStartDate, appliedEndDate)}
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                        <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                    {/* Swap Icon */}
+                    <button
+                      onClick={() => {
+                        // Swap the date ranges
+                        const tempStart = appliedStartDate;
+                        const tempEnd = appliedEndDate;
+                        // Note: This would need actual swap logic connected to the date picker
+                        console.log('Swap date ranges');
+                      }}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-tertiary)',
+                        borderRadius: '50%'
+                      }}
+                      title="Swap date ranges"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 10L1 7L4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M12 6L15 9L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M1 7H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M15 9H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Date-time 2 (Comparison Range) */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_2_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <label className="label text-text-tertiary">Date-time 2</label>
+                  </div>
+
+                  {/* Comparison Date Range - Display with X button */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <div
+                      className="button-small h-10 px-4 flex items-center justify-between transition-colors rounded-full border"
+                      style={{
+                        borderWidth: 'var(--border-width)',
+                        backgroundColor: 'var(--bg-primary)',
+                        borderColor: 'var(--border-default)',
+                        color: 'var(--text-secondary)',
+                        flex: 1,
+                        cursor: comparisonPreset === 'custom' ? 'pointer' : 'default'
+                      }}
+                    >
+                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                        {formatComparisonDateRange(comparisonDateRange.start, comparisonDateRange.end)}
+                      </span>
+                      {comparisonPreset === 'custom' && (
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                          <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                        </svg>
+                      )}
+                    </div>
+                    {/* Close/Exit Comparison Button */}
+                    <button
+                      onClick={exitComparisonMode}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-tertiary)',
+                        borderRadius: '50%'
+                      }}
+                      title="Exit comparison mode"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Days of Week Filter - Shared for both ranges */}
+                <div ref={daysRef} style={{ position: 'relative' }}>
+                  <div
+                    onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+                    onMouseEnter={handleDaysFilterMouseEnter}
+                    onMouseLeave={handleDaysFilterMouseLeave}
+                    className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
+                    style={{
+                      borderWidth: 'var(--border-width)',
+                      backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <span
+                      ref={daysTextRef}
+                      className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                    >
+                      {getDaysFilterText()}
+                    </span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  {showDaysTooltip && openFilter !== 'days' && (
+                    <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
+                      {null}
+                    </Tooltip>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Metric Section */}
@@ -4624,10 +4917,23 @@ export default function MapCanvas() {
                       title={selectedMetric}
                       value={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
                     />
-                    <ByDateChart data={chartDataByDate} gradientId="colorValueStop" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
-                    <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
+                    <ByDateChart
+                      data={chartDataByDate}
+                      comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+                      gradientId="colorValueStop"
+                      metric={selectedMetric}
+                      startDate={effectiveDateRange.start}
+                      endDate={effectiveDateRange.end}
+                    />
+                    <ByDayChart
+                      data={mockDataByDay}
+                      comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+                      metric={selectedMetric}
+                      selectedDays={effectiveSelectedDays}
+                    />
                     <ByPeriodChart
                       data={mockDataByPeriod}
+                      comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                       colors={PERIOD_COLORS}
                       activePieIndex={activePieIndex}
                       setActivePieIndex={setActivePieIndex}
@@ -5170,10 +5476,23 @@ export default function MapCanvas() {
                   title={selectedMetric}
                   value={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
                 />
-                <ByDateChart data={chartDataByDate} gradientId="colorValue" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
-                <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
+                <ByDateChart
+                  data={chartDataByDate}
+                  comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+                  gradientId="colorValue"
+                  metric={selectedMetric}
+                  startDate={effectiveDateRange.start}
+                  endDate={effectiveDateRange.end}
+                />
+                <ByDayChart
+                  data={mockDataByDay}
+                  comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+                  metric={selectedMetric}
+                  selectedDays={effectiveSelectedDays}
+                />
                 <ByPeriodChart
                   data={mockDataByPeriod}
+                  comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                   colors={PERIOD_COLORS}
                   activePieIndex={activePieIndex}
                   setActivePieIndex={setActivePieIndex}
@@ -5934,10 +6253,23 @@ export default function MapCanvas() {
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
             <MetricCard title={selectedMetric} value="8,973" />
-            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
-            <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
+            <ByDateChart
+              data={chartDataByDate}
+              comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+              gradientId="colorValueSystem"
+              metric={selectedMetric}
+              startDate={effectiveDateRange.start}
+              endDate={effectiveDateRange.end}
+            />
+            <ByDayChart
+              data={mockDataByDay}
+              comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+              metric={selectedMetric}
+              selectedDays={effectiveSelectedDays}
+            />
             <ByPeriodChart
               data={mockDataByPeriod}
+              comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
               colors={PERIOD_COLORS}
               activePieIndex={activePieIndex}
               setActivePieIndex={setActivePieIndex}

@@ -1,5 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface ChartDataPoint {
   date: string;
@@ -9,6 +11,7 @@ interface ChartDataPoint {
 
 interface ByDateChartProps {
   data: ChartDataPoint[];
+  comparisonData?: ChartDataPoint[];
   gradientId: string;
   metric?: string;
   startDate?: Date | null;
@@ -80,15 +83,28 @@ const generateDateLabels = (
   }
 };
 
-export default function ByDateChart({ data, gradientId, metric: _metric, startDate, endDate }: ByDateChartProps) {
+export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate }: ByDateChartProps) {
   // Generate proper date labels based on the date range
   const dateLabels = generateDateLabels(data.length, startDate, endDate);
 
   // Update data with proper date labels
-  const chartData = data.map((point, index) => ({
-    ...point,
-    date: dateLabels[index] || point.date
-  }));
+  const chartData = useMemo(() => {
+    if (!comparisonData) {
+      return data.map((point, index) => ({
+        ...point,
+        date: dateLabels[index] || point.date
+      }));
+    }
+
+    // Merge primary and comparison data for dual-line chart
+    return data.map((point, index) => ({
+      date: dateLabels[index] || point.date,
+      value1: point.value,
+      value2: comparisonData[index]?.value ?? 0
+    }));
+  }, [data, comparisonData, dateLabels]);
+
+  const isComparisonMode = !!comparisonData;
 
   return (
     <div style={{
@@ -113,6 +129,14 @@ export default function ByDateChart({ data, gradientId, metric: _metric, startDa
               <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.8} />
               <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.1} />
             </linearGradient>
+            <linearGradient id={`${gradientId}-primary`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.6} />
+              <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.05} />
+            </linearGradient>
+            <linearGradient id={`${gradientId}-comparison`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.6} />
+              <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
+            </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
           <XAxis
@@ -131,18 +155,43 @@ export default function ByDateChart({ data, gradientId, metric: _metric, startDa
             domain={[0, 'auto']}
           />
           <Tooltip
-            content={<CustomTooltip />}
+            content={<CustomTooltip isComparisonMode={isComparisonMode} />}
             wrapperStyle={{ zIndex: 9999 }}
           />
-          <Area
-            type="monotone"
-            dataKey="value"
-            stroke="var(--border-hover)"
-            strokeOpacity={1}
-            strokeWidth={2}
-            fill={`url(#${gradientId})`}
-            isAnimationActive={false}
-          />
+          {isComparisonMode ? (
+            <>
+              <Area
+                type="monotone"
+                dataKey="value1"
+                name="Date-time 1"
+                stroke={DATETIME_1_COLOR}
+                strokeOpacity={1}
+                strokeWidth={2}
+                fill={`url(#${gradientId}-primary)`}
+                isAnimationActive={false}
+              />
+              <Area
+                type="monotone"
+                dataKey="value2"
+                name="Date-time 2"
+                stroke={DATETIME_2_COLOR}
+                strokeOpacity={1}
+                strokeWidth={2}
+                fill={`url(#${gradientId}-comparison)`}
+                isAnimationActive={false}
+              />
+            </>
+          ) : (
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="var(--border-hover)"
+              strokeOpacity={1}
+              strokeWidth={2}
+              fill={`url(#${gradientId})`}
+              isAnimationActive={false}
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>

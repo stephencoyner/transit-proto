@@ -1,6 +1,7 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useState, useEffect, useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface DayDataPoint {
   day: string;
@@ -10,6 +11,7 @@ interface DayDataPoint {
 
 interface ByDayChartProps {
   data: DayDataPoint[];
+  comparisonData?: DayDataPoint[];
   metric?: string;
   selectedDays?: string[] | null; // null or undefined means all days
 }
@@ -28,7 +30,7 @@ const dayNameMap: Record<string, string> = {
 // Fixed chart height
 const CHART_HEIGHT = 240;
 
-export default function ByDayChart({ data, metric: _metric, selectedDays }: ByDayChartProps) {
+export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays }: ByDayChartProps) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {
@@ -42,6 +44,26 @@ export default function ByDayChart({ data, metric: _metric, selectedDays }: ByDa
   const filteredData = selectedDays && selectedDays.length > 0 && selectedDays.length < 7
     ? data.filter(d => selectedDays.includes(dayNameMap[d.day] || d.day))
     : data;
+
+  const filteredComparisonData = comparisonData && selectedDays && selectedDays.length > 0 && selectedDays.length < 7
+    ? comparisonData.filter(d => selectedDays.includes(dayNameMap[d.day] || d.day))
+    : comparisonData;
+
+  // Merge data for grouped bar chart when in comparison mode
+  const chartData = useMemo(() => {
+    if (!comparisonData) {
+      return filteredData;
+    }
+
+    // Merge primary and comparison data by day
+    return filteredData.map((item, index) => ({
+      day: item.day,
+      value1: item.value,
+      value2: filteredComparisonData?.[index]?.value ?? 0
+    }));
+  }, [filteredData, filteredComparisonData, comparisonData]);
+
+  const isComparisonMode = !!comparisonData;
 
   return (
     <div style={{
@@ -60,7 +82,7 @@ export default function ByDayChart({ data, metric: _metric, selectedDays }: ByDa
         By Day
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <BarChart data={filteredData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
           <defs>
             <linearGradient id="barCursor" x1="0" y1="0" x2="0" y2="1">
@@ -82,16 +104,35 @@ export default function ByDayChart({ data, metric: _metric, selectedDays }: ByDa
             width={40}
           />
           <Tooltip
-            content={<CustomTooltip />}
+            content={<CustomTooltip isComparisonMode={isComparisonMode} />}
             wrapperStyle={{ zIndex: 9999 }}
             cursor={{ fill: `url(#barCursor)` }}
           />
-          <Bar
-            dataKey="value"
-            fill="var(--border-hover)"
-            radius={[4, 4, 0, 0]}
-            isAnimationActive={false}
-          />
+          {isComparisonMode ? (
+            <>
+              <Bar
+                dataKey="value1"
+                name="Date-time 1"
+                fill={DATETIME_1_COLOR}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey="value2"
+                name="Date-time 2"
+                fill={DATETIME_2_COLOR}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+              />
+            </>
+          ) : (
+            <Bar
+              dataKey="value"
+              fill="var(--border-hover)"
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
+            />
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>
