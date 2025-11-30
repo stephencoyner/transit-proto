@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect } from 'react';
 import CustomTooltip from './CustomTooltip';
 
@@ -8,7 +8,27 @@ interface DayDataPoint {
   [key: string]: string | number;
 }
 
-export default function ByDayChart({ data, average, metric: _metric }: { data: DayDataPoint[], average: number, metric?: string }) {
+interface ByDayChartProps {
+  data: DayDataPoint[];
+  metric?: string;
+  selectedDays?: string[] | null; // null or undefined means all days
+}
+
+// Map from full day names to abbreviated names used in data
+const dayNameMap: Record<string, string> = {
+  'Mon': 'Mon',
+  'Tue': 'Tue',
+  'Wed': 'Wed',
+  'Thu': 'Thu',
+  'Fri': 'Fri',
+  'Sat': 'Sat',
+  'Sun': 'Sun'
+};
+
+// Fixed chart height
+const CHART_HEIGHT = 240;
+
+export default function ByDayChart({ data, metric: _metric, selectedDays }: ByDayChartProps) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {
@@ -17,6 +37,11 @@ export default function ByDayChart({ data, average, metric: _metric }: { data: D
       setBorderDefault(getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim());
     }
   }, []);
+
+  // Filter data based on selected days
+  const filteredData = selectedDays && selectedDays.length > 0 && selectedDays.length < 7
+    ? data.filter(d => selectedDays.includes(dayNameMap[d.day] || d.day))
+    : data;
 
   return (
     <div style={{
@@ -34,8 +59,8 @@ export default function ByDayChart({ data, average, metric: _metric }: { data: D
       }}>
         By Day
       </div>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+        <BarChart data={filteredData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
           <defs>
             <linearGradient id="barCursor" x1="0" y1="0" x2="0" y2="1">
@@ -53,7 +78,7 @@ export default function ByDayChart({ data, average, metric: _metric }: { data: D
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+            tickFormatter={(value) => value === 0 ? '0' : `${(value / 1000).toFixed(0)}K`}
             width={40}
           />
           <Tooltip
@@ -66,12 +91,6 @@ export default function ByDayChart({ data, average, metric: _metric }: { data: D
             fill="var(--border-hover)"
             radius={[4, 4, 0, 0]}
             isAnimationActive={false}
-          />
-          <ReferenceLine
-            y={average}
-            stroke="var(--text-tertiary)"
-            strokeWidth={2}
-            strokeDasharray="0"
           />
         </BarChart>
       </ResponsiveContainer>
