@@ -1200,6 +1200,136 @@ export default function MapCanvas() {
     }
   };
 
+  // Helper function to get actual Date objects for a season
+  const getSeasonDates = (season: 'winter' | 'spring' | 'summer' | 'fall', year: number): { start: Date; end: Date } => {
+    const prevYear = year - 1;
+    const today = new Date();
+
+    switch (season) {
+      case 'winter':
+        return {
+          start: new Date(prevYear, 8, 21), // Sep 21 of previous year
+          end: new Date(year, 2, 20) // Mar 20
+        };
+      case 'spring':
+        return {
+          start: new Date(year, 2, 21), // Mar 21
+          end: new Date(year, 5, 21) // Jun 21
+        };
+      case 'summer':
+        return {
+          start: new Date(year, 5, 22), // Jun 22
+          end: new Date(year, 8, 18) // Sep 18
+        };
+      case 'fall':
+        // For current year fall, end at today
+        if (year === today.getFullYear()) {
+          return {
+            start: new Date(year, 8, 19), // Sep 19
+            end: today
+          };
+        }
+        return {
+          start: new Date(year, 8, 19), // Sep 19
+          end: new Date(year + 1, 2, 19) // Mar 19 of next year
+        };
+      default:
+        return { start: today, end: today };
+    }
+  };
+
+  // Helper function to get actual Date objects for quick picks
+  const getQuickPickDates = (quickPick: string): { start: Date; end: Date } | null => {
+    const today = new Date();
+    let startDate: Date;
+    const endDate = today;
+
+    switch (quickPick) {
+      case 'Last 7 days':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7);
+        break;
+      case 'Last 4 weeks':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 28);
+        break;
+      case 'Last 3 months':
+        startDate = new Date(today);
+        startDate.setMonth(today.getMonth() - 3);
+        break;
+      case 'Last 12 months':
+        startDate = new Date(today);
+        startDate.setMonth(today.getMonth() - 12);
+        break;
+      case 'Month to date':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      case 'Quarter to date':
+        const currentQuarter = Math.floor(today.getMonth() / 3);
+        startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+        break;
+      case 'Year to date':
+        startDate = new Date(today.getFullYear(), 0, 1);
+        break;
+      default:
+        return null;
+    }
+
+    return { start: startDate, end: endDate };
+  };
+
+  // Compute the effective date range for charts based on applied filters
+  const getEffectiveDateRange = (): { start: Date | null; end: Date | null } => {
+    if (appliedStartDate && appliedEndDate) {
+      return { start: appliedStartDate, end: appliedEndDate };
+    }
+    if (appliedQuickPick) {
+      const dates = getQuickPickDates(appliedQuickPick);
+      if (dates) {
+        return { start: dates.start, end: dates.end };
+      }
+    }
+    if (appliedSeason) {
+      const dates = getSeasonDates(appliedSeason.season, appliedSeason.year);
+      return { start: dates.start, end: dates.end };
+    }
+    return { start: null, end: null };
+  };
+
+  // Get the effective date range for charts
+  const effectiveDateRange = getEffectiveDateRange();
+
+  // Compute selected days for filtering charts
+  const getEffectiveSelectedDays = (): string[] | null => {
+    if (appliedDaysMode === 'all') {
+      return null; // Show all days
+    }
+    if (appliedDaysMode === 'weekdays') {
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    }
+    if (appliedDaysMode === 'weekends') {
+      return ['Sat', 'Sun'];
+    }
+    if (appliedDaysMode === 'custom' && appliedCustomDays.length > 0) {
+      return appliedCustomDays;
+    }
+    return null;
+  };
+
+  // Compute selected time periods for filtering charts
+  const getEffectiveSelectedPeriods = (): string[] | null => {
+    if (appliedTimeMode === 'all') {
+      return null; // Show all periods
+    }
+    if (appliedTimeMode === 'custom' && appliedTimePeriods.length > 0) {
+      return appliedTimePeriods;
+    }
+    return null;
+  };
+
+  const effectiveSelectedDays = getEffectiveSelectedDays();
+  const effectiveSelectedPeriods = getEffectiveSelectedPeriods();
+
   // Helper function to calculate date range for quick picks
   const getQuickPickDateRange = (quickPick: string) => {
     const today = new Date();
@@ -4398,14 +4528,15 @@ export default function MapCanvas() {
                       title={selectedMetric}
                       value={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
                     />
-                    <ByDateChart data={chartDataByDate} gradientId="colorValueStop" metric={selectedMetric} />
-                    <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />
+                    <ByDateChart data={chartDataByDate} gradientId="colorValueStop" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
+                    <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
                     <ByPeriodChart
                       data={mockDataByPeriod}
                       colors={PERIOD_COLORS}
                       activePieIndex={activePieIndex}
                       setActivePieIndex={setActivePieIndex}
                       metric={selectedMetric}
+                      selectedPeriods={effectiveSelectedPeriods}
                     />
                   </div>
                 ) : (
@@ -4943,14 +5074,15 @@ export default function MapCanvas() {
                   title={selectedMetric}
                   value={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
                 />
-                <ByDateChart data={chartDataByDate} gradientId="colorValue" metric={selectedMetric} />
-                <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />
+                <ByDateChart data={chartDataByDate} gradientId="colorValue" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
+                <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
                 <ByPeriodChart
                   data={mockDataByPeriod}
                   colors={PERIOD_COLORS}
                   activePieIndex={activePieIndex}
                   setActivePieIndex={setActivePieIndex}
                   metric={selectedMetric}
+                  selectedPeriods={effectiveSelectedPeriods}
                 />
               </div>
             ) : selectedRouteTab === 'Trips' ? (
@@ -5706,14 +5838,15 @@ export default function MapCanvas() {
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
             <MetricCard title={selectedMetric} value="8,973" />
-            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" metric={selectedMetric} />
-            <ByDayChart data={mockDataByDay} average={averageDailyByDay} metric={selectedMetric} />
+            <ByDateChart data={chartDataByDate} gradientId="colorValueSystem" metric={selectedMetric} startDate={effectiveDateRange.start} endDate={effectiveDateRange.end} />
+            <ByDayChart data={mockDataByDay} metric={selectedMetric} selectedDays={effectiveSelectedDays} />
             <ByPeriodChart
               data={mockDataByPeriod}
               colors={PERIOD_COLORS}
               activePieIndex={activePieIndex}
               setActivePieIndex={setActivePieIndex}
               metric={selectedMetric}
+              selectedPeriods={effectiveSelectedPeriods}
             />
           </div>
         ) : activeTab === 'components' ? (

@@ -7,7 +7,89 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
-export default function ByDateChart({ data, gradientId, metric: _metric }: { data: ChartDataPoint[], gradientId: string, metric?: string }) {
+interface ByDateChartProps {
+  data: ChartDataPoint[];
+  gradientId: string;
+  metric?: string;
+  startDate?: Date | null;
+  endDate?: Date | null;
+}
+
+// Helper to format a single date
+const formatSingleDate = (date: Date): string => {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+// Helper to format a week range
+const formatWeekRange = (startDate: Date, endDate: Date): string => {
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
+
+  if (sameMonth) {
+    // Same month: "Jun 1 - 8, 2025"
+    return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.getDate()}, ${endDate.getFullYear()}`;
+  } else if (sameYear) {
+    // Different month, same year: "Jun 1 - Jul 8, 2025"
+    return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${endDate.getFullYear()}`;
+  } else {
+    // Different year: "Dec 25, 2024 - Jan 1, 2025"
+    return `${formatSingleDate(startDate)} - ${formatSingleDate(endDate)}`;
+  }
+};
+
+// Generate date labels based on date range
+const generateDateLabels = (
+  dataLength: number,
+  startDate: Date | null | undefined,
+  endDate: Date | null | undefined
+): string[] => {
+  if (!startDate || !endDate) {
+    // Fallback to "Day 1", "Day 2", etc. if no dates provided
+    return Array.from({ length: dataLength }, (_, i) => `Day ${i + 1}`);
+  }
+
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+  if (diffDays <= 30) {
+    // Show individual dates (e.g., "Oct 13, 2025")
+    return Array.from({ length: dataLength }, (_, i) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      return formatSingleDate(date);
+    });
+  } else {
+    // Show weekly ranges (e.g., "Jun 1 - Jun 8, 2025")
+    const weeksCount = dataLength;
+    const daysPerWeek = Math.ceil(diffDays / weeksCount);
+
+    return Array.from({ length: weeksCount }, (_, i) => {
+      const weekStart = new Date(startDate);
+      weekStart.setDate(startDate.getDate() + (i * daysPerWeek));
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + daysPerWeek - 1);
+
+      // Don't go past the end date
+      if (weekEnd > endDate) {
+        weekEnd.setTime(endDate.getTime());
+      }
+
+      return formatWeekRange(weekStart, weekEnd);
+    });
+  }
+};
+
+export default function ByDateChart({ data, gradientId, metric: _metric, startDate, endDate }: ByDateChartProps) {
+  // Generate proper date labels based on the date range
+  const dateLabels = generateDateLabels(data.length, startDate, endDate);
+
+  // Update data with proper date labels
+  const chartData = data.map((point, index) => ({
+    ...point,
+    date: dateLabels[index] || point.date
+  }));
+
   return (
     <div style={{
       backgroundColor: 'var(--bg-elevated)',
@@ -25,11 +107,11 @@ export default function ByDateChart({ data, gradientId, metric: _metric }: { dat
         By Date
       </div>
       <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 16 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.6} />
-              <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.8} />
+              <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.1} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
@@ -44,8 +126,9 @@ export default function ByDateChart({ data, gradientId, metric: _metric }: { dat
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+            tickFormatter={(value) => value === 0 ? '0' : `${(value / 1000).toFixed(0)}K`}
             width={40}
+            domain={[0, 'auto']}
           />
           <Tooltip
             content={<CustomTooltip />}
@@ -54,7 +137,8 @@ export default function ByDateChart({ data, gradientId, metric: _metric }: { dat
           <Area
             type="monotone"
             dataKey="value"
-            stroke="var(--text-tertiary)"
+            stroke="var(--border-hover)"
+            strokeOpacity={1}
             strokeWidth={2}
             fill={`url(#${gradientId})`}
             isAnimationActive={false}
