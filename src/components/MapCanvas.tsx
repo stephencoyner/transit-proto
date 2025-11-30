@@ -4764,8 +4764,10 @@ export default function MapCanvas() {
                                 setStagedSeason2(null);
                                 // Calculate actual dates
                                 const quickDates = getQuickPickDates(pick);
-                                setStagedStartDate2(quickDates.start);
-                                setStagedEndDate2(quickDates.end);
+                                if (quickDates) {
+                                  setStagedStartDate2(quickDates.start);
+                                  setStagedEndDate2(quickDates.end);
+                                }
                               } else {
                                 setStagedQuickPick2(null);
                               }
@@ -4787,8 +4789,10 @@ export default function MapCanvas() {
                                 setStagedQuickPick2(pick);
                                 setStagedSeason2(null);
                                 const quickDates = getQuickPickDates(pick);
-                                setStagedStartDate2(quickDates.start);
-                                setStagedEndDate2(quickDates.end);
+                                if (quickDates) {
+                                  setStagedStartDate2(quickDates.start);
+                                  setStagedEndDate2(quickDates.end);
+                                }
                               } else {
                                 setStagedQuickPick2(null);
                               }
