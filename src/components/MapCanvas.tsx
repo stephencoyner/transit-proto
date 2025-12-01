@@ -5411,7 +5411,7 @@ export default function MapCanvas() {
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        {mode === 'all' ? 'All' : 'Custom'}
+                        {mode === 'all' ? 'All' : 'By Period'}
                       </button>
                     ))}
                   </div>
