@@ -14,14 +14,11 @@ interface MapScaleProps {
 const MapScale: React.FC<MapScaleProps> = ({ title, min, max, comparisonMode = false }) => {
   // For comparison mode, show a different scale
   if (comparisonMode) {
-    // Calculate labels for comparison scale (showing actual difference values)
+    // Format values as percentages for comparison scale
     const formatComparisonValue = (value: number): string => {
-      if (value === 0) return '0';
+      if (value === 0) return '0%';
       const prefix = value > 0 ? '+' : '';
-      if (Math.abs(value) >= 1000) {
-        return `${prefix}${(value / 1000).toFixed(0)}K`;
-      }
-      return `${prefix}${value}`;
+      return `${prefix}${Math.round(value)}%`;
     };
 
     return (
@@ -82,22 +79,27 @@ const MapScale: React.FC<MapScaleProps> = ({ title, min, max, comparisonMode = f
           })}
         </div>
 
-        {/* Numeric Labels */}
+        {/* Numeric Labels - positioned to align with color segments */}
         <div
           className="nav-label text-text-tertiary"
           style={{
             display: 'flex',
             width: '100%',
-            justifyContent: 'space-between',
-            paddingLeft: '4px',
-            paddingRight: '4px',
+            position: 'relative',
           }}
         >
-          <span>{formatComparisonValue(min)}</span>
-          <span>{formatComparisonValue(Math.round(min / 2))}</span>
-          <span>0</span>
-          <span>{formatComparisonValue(Math.round(max / 2))}</span>
-          <span>{formatComparisonValue(max)}</span>
+          {/* Min label - left aligned */}
+          <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(min)}</span>
+          {/* Mid-left label - at 25% + 8px right */}
+          <span style={{ position: 'absolute', left: 'calc(25% + 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(min / 2))}</span>
+          {/* Center "0" label - exactly at 50% (center of amber segment) */}
+          <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>0</span>
+          {/* Mid-right label - at 75% - 8px left */}
+          <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(max / 2))}</span>
+          {/* Max label - right aligned */}
+          <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(max)}</span>
+          {/* Spacer to maintain height */}
+          <span style={{ visibility: 'hidden' }}>0</span>
         </div>
       </div>
     );

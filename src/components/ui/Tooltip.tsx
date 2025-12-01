@@ -5,21 +5,29 @@ export interface TooltipProps {
   text: string;
   children: React.ReactNode;
   containerRef?: React.RefObject<HTMLElement>;
+  position?: 'above' | 'below';
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({ text, containerRef }) => {
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+export const Tooltip: React.FC<TooltipProps> = ({ text, containerRef, position: tooltipPosition = 'above' }) => {
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (containerRef?.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      setPosition({
-        top: rect.top - 8,
-        left: rect.left
-      });
+      if (tooltipPosition === 'below') {
+        setCoords({
+          top: rect.bottom + 8,
+          left: rect.left
+        });
+      } else {
+        setCoords({
+          top: rect.top - 8,
+          left: rect.left
+        });
+      }
     }
-  }, [containerRef]);
+  }, [containerRef, tooltipPosition]);
 
   // Fallback to absolute positioning if no containerRef (backwards compatible)
   if (!containerRef) {
@@ -45,7 +53,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ text, containerRef }) => {
     );
   }
 
-  if (!position) return null;
+  if (!coords) return null;
 
   return createPortal(
     <div
@@ -53,9 +61,9 @@ export const Tooltip: React.FC<TooltipProps> = ({ text, containerRef }) => {
       className="label"
       style={{
         position: 'fixed',
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-        transform: 'translateY(-100%)',
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        transform: tooltipPosition === 'below' ? 'none' : 'translateY(-100%)',
         backgroundColor: 'var(--btn-primary)',
         color: 'var(--text-btn-primary)',
         padding: '8px 12px',

@@ -14,6 +14,7 @@ interface ByDayChartProps {
   comparisonData?: DayDataPoint[];
   metric?: string;
   selectedDays?: string[] | null; // null or undefined means all days
+  swapped?: boolean;
 }
 
 // Map from full day names to abbreviated names used in data
@@ -30,7 +31,7 @@ const dayNameMap: Record<string, string> = {
 // Fixed chart height
 const CHART_HEIGHT = 240;
 
-export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays }: ByDayChartProps) {
+export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays, swapped = false }: ByDayChartProps) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {
@@ -56,12 +57,13 @@ export default function ByDayChart({ data, comparisonData, metric: _metric, sele
     }
 
     // Merge primary and comparison data by day
+    // If swapped, reverse which data goes to value1 vs value2
     return filteredData.map((item, index) => ({
       day: item.day,
-      value1: item.value,
-      value2: filteredComparisonData?.[index]?.value ?? 0
+      value1: swapped ? (filteredComparisonData?.[index]?.value ?? 0) : item.value,
+      value2: swapped ? item.value : (filteredComparisonData?.[index]?.value ?? 0)
     }));
-  }, [filteredData, filteredComparisonData, comparisonData]);
+  }, [filteredData, filteredComparisonData, comparisonData, swapped]);
 
   const isComparisonMode = !!comparisonData;
 

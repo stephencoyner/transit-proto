@@ -17,6 +17,7 @@ interface ByPeriodChartProps {
   setActivePieIndex: (index: number | null) => void;
   metric?: string;
   selectedPeriods?: string[] | null; // null or undefined means all periods
+  swapped?: boolean;
 }
 
 // Fixed chart height
@@ -29,7 +30,8 @@ export default function ByPeriodChart({
   activePieIndex: _activePieIndex,
   setActivePieIndex: _setActivePieIndex,
   metric: _metric,
-  selectedPeriods
+  selectedPeriods,
+  swapped = false
 }: ByPeriodChartProps) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
@@ -56,12 +58,13 @@ export default function ByPeriodChart({
     }
 
     // Merge primary and comparison data by period
+    // If swapped, reverse which data goes to value1 vs value2
     return filteredData.map((item, index) => ({
       period: item.period,
-      value1: item.value,
-      value2: filteredComparisonData?.[index]?.value ?? 0
+      value1: swapped ? (filteredComparisonData?.[index]?.value ?? 0) : item.value,
+      value2: swapped ? item.value : (filteredComparisonData?.[index]?.value ?? 0)
     }));
-  }, [filteredData, filteredComparisonData, comparisonData]);
+  }, [filteredData, filteredComparisonData, comparisonData, swapped]);
 
   const isComparisonMode = !!comparisonData;
 
