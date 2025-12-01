@@ -1739,6 +1739,12 @@ export default function MapCanvas() {
 
     setComparisonMode(true);
     setOpenFilter(null);
+    // Reset exit tooltip state when entering comparison mode
+    setShowExitTooltip(false);
+    if (exitTooltipTimerRef.current) {
+      clearTimeout(exitTooltipTimerRef.current);
+      exitTooltipTimerRef.current = null;
+    }
   };
 
   // Exit comparison mode
