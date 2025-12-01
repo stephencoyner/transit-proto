@@ -1912,7 +1912,8 @@ export default function MapCanvas() {
       setStagedStartDate2(comparisonDateRange.start);
       setStagedEndDate2(comparisonDateRange.end);
     }
-  }, [openFilter, comparisonDateRange.start, comparisonDateRange.end, stagedSeason2, stagedQuickPick2]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openFilter]);
 
   // Handle Apply button for Date-time 2 - copy staged state to comparison range and close picker
   const handleApplyDate2Filter = () => {
