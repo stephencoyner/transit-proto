@@ -5249,13 +5249,32 @@ export default function MapCanvas() {
                 </div>
               )}
 
+              {/* Divider */}
+              <div style={{
+                borderTop: 'var(--border-width) solid var(--border-default)',
+                marginTop: '24px',
+                marginLeft: '-24px',
+                marginRight: '-24px'
+              }} />
+
               {/* Footer with Reset/Apply */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '16px', borderTop: '0.5px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', padding: '20px 0 0 0' }}>
                 <Button
                   variant="tertiary"
                   size="medium"
                   onClick={handleResetDate2Filter}
                   disabled={!hasDate2Changes}
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasDate2Changes) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
                 >
                   Reset
                 </Button>
@@ -5399,41 +5418,81 @@ export default function MapCanvas() {
 
                   {stagedTimeMode2 === 'custom' && (
                     <>
-                      <div style={{ borderTop: 'var(--border-width) solid var(--border-default)', marginTop: '12px', marginBottom: '12px', width: '100%' }} />
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
-                        {['Early AM', 'AM Peak', 'Midday', 'PM Peak', 'Evening', 'Night'].map((period) => {
-                          const isSelected = stagedTimePeriods2.includes(period);
-                          return (
-                            <StatefulButton
-                              key={period}
-                              size="medium"
-                              selected={isSelected}
-                              onToggle={() => {
-                                if (isSelected) {
-                                  setStagedTimePeriods2(stagedTimePeriods2.filter(p => p !== period));
-                                } else {
-                                  setStagedTimePeriods2([...stagedTimePeriods2, period]);
-                                }
-                              }}
-                              style={{ height: '40px', borderRadius: '20px' }}
-                            >
-                              {period}
-                            </StatefulButton>
-                          );
-                        })}
+                      {/* Divider */}
+                      <div style={{
+                        borderTop: 'var(--border-width) solid var(--border-default)',
+                        marginTop: '12px',
+                        marginBottom: '12px'
+                      }} />
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {[
+                        { label: 'Early AM', time: '12am - 6am' },
+                        { label: 'AM Peak', time: '6am - 9am' },
+                        { label: 'Midday', time: '9am - 3pm' },
+                        { label: 'PM Peak', time: '3pm - 7pm' },
+                        { label: 'Evening', time: '7pm - 10pm' },
+                        { label: 'Night', time: '10pm - 12am' }
+                      ].map(({ label, time }) => {
+                        const isSelected = stagedTimePeriods2.includes(label);
+                        return (
+                          <StatefulButton
+                            key={label}
+                            size="medium"
+                            selected={isSelected}
+                            onToggle={() => {
+                              if (isSelected) {
+                                setStagedTimePeriods2(stagedTimePeriods2.filter(p => p !== label));
+                              } else {
+                                setStagedTimePeriods2([...stagedTimePeriods2, label]);
+                              }
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              borderRadius: '100px',
+                              width: 'calc(50% - 4px)',
+                              paddingLeft: '16px',
+                              paddingRight: '16px'
+                            }}
+                          >
+                            <span>{label}</span>
+                            <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>{time}</span>
+                          </StatefulButton>
+                        );
+                      })}
                       </div>
                     </>
                   )}
                 </div>
               </div>
 
+              {/* Divider */}
+              <div style={{
+                borderTop: 'var(--border-width) solid var(--border-default)',
+                marginTop: '24px',
+                marginLeft: '-24px',
+                marginRight: '-24px'
+              }} />
+
               {/* Footer with Reset/Apply */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '16px', borderTop: '0.5px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', padding: '20px 0 0 0' }}>
                 <Button
                   variant="tertiary"
                   size="medium"
                   onClick={handleResetDays2Filter}
                   disabled={!hasDays2Changes}
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasDays2Changes) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
                 >
                   Reset
                 </Button>
