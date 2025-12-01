@@ -5372,8 +5372,8 @@ export default function MapCanvas() {
                 </div>
               </div>
 
-              {/* Time periods section for Date-time 2 */}
-              <div style={{ marginBottom: '24px' }}>
+              {/* Time of day section for Date-time 2 */}
+              <div>
                 <div style={{
                   fontSize: 'var(--heading-3-size)',
                   fontWeight: 'var(--heading-3-weight)',
@@ -5383,40 +5383,48 @@ export default function MapCanvas() {
                   letterSpacing: 'var(--heading-3-letter-spacing)',
                   textAlign: 'center'
                 }}>
-                  Time periods
+                  Time of day
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{
-                    display: 'flex',
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderRadius: '24px',
-                    padding: '4px',
-                  }}>
-                    {(['all', 'custom'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setStagedTimeMode2(mode)}
-                        style={{
-                          padding: '8px 20px',
-                          backgroundColor: stagedTimeMode2 === mode ? 'var(--bg-elevated)' : 'transparent',
-                          border: 'none',
-                          borderRadius: '20px',
-                          cursor: 'pointer',
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: 'var(--button-small-size)',
-                          fontWeight: 'var(--button-small-weight)',
-                          color: stagedTimeMode2 === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          lineHeight: 'var(--button-small-line-height)',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {mode === 'all' ? 'All' : 'By Period'}
-                      </button>
-                    ))}
-                  </div>
+                {/* Segmented Control */}
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: 'var(--bg-secondary)',
+                  borderRadius: '24px',
+                  padding: '4px',
+                  width: 'fit-content',
+                  margin: '0 auto 12px auto'
+                }}>
+                  {(['all', 'custom'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        setStagedTimeMode2(mode);
+                        if (mode === 'all') {
+                          setStagedTimePeriods2([]);
+                        }
+                      }}
+                      style={{
+                        padding: '8px 32px',
+                        backgroundColor: stagedTimeMode2 === mode ? 'var(--bg-elevated)' : 'transparent',
+                        border: 'none',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--button-small-size)',
+                        fontWeight: 'var(--button-small-weight)',
+                        color: stagedTimeMode2 === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                        lineHeight: 'var(--button-small-line-height)',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {mode === 'all' ? 'All' : 'By Period'}
+                    </button>
+                  ))}
+                </div>
 
-                  {stagedTimeMode2 === 'custom' && (
+                {/* Custom time periods */}
+                {stagedTimeMode2 === 'custom' && (
                     <>
                       {/* Divider */}
                       <div style={{
@@ -5461,10 +5469,9 @@ export default function MapCanvas() {
                           </StatefulButton>
                         );
                       })}
-                      </div>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Divider */}
