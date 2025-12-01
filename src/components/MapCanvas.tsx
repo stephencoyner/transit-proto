@@ -3359,8 +3359,8 @@ export default function MapCanvas() {
                   <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
-                      onMouseEnter={() => setIsDateHovered(true)}
-                      onMouseLeave={() => setIsDateHovered(false)}
+                      onMouseEnter={handleDateFilterMouseEnter}
+                      onMouseLeave={handleDateFilterMouseLeave}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
@@ -3369,21 +3369,29 @@ export default function MapCanvas() {
                         color: 'var(--text-secondary)'
                       }}
                     >
-                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                      <span
+                        ref={dateTextRef}
+                        className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                      >
                         {getDateFilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
+                    {showDateTooltip && (
+                      <Tooltip text={getDateFilterText()} containerRef={dateRef as React.RefObject<HTMLElement>}>
+                        {null}
+                      </Tooltip>
+                    )}
                   </div>
 
                   {/* Days/Time Filter for Date-time 1 */}
                   <div ref={daysRef} style={{ position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
-                      onMouseEnter={() => setIsDaysHovered(true)}
-                      onMouseLeave={() => setIsDaysHovered(false)}
+                      onMouseEnter={handleDaysFilterMouseEnter}
+                      onMouseLeave={handleDaysFilterMouseLeave}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
@@ -3392,13 +3400,21 @@ export default function MapCanvas() {
                         color: 'var(--text-secondary)'
                       }}
                     >
-                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                      <span
+                        ref={daysTextRef}
+                        className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                      >
                         {getDaysFilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
+                    {showDaysTooltip && openFilter !== 'days' && (
+                      <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
+                        {null}
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
 
