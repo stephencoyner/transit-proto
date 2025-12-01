@@ -444,6 +444,15 @@ export default function MapCanvas() {
   const exitTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const exitButtonRef = useRef<HTMLButtonElement | null>(null);
 
+  // Tooltip state for Date-time 2 filters
+  const [showDate2Tooltip, setShowDate2Tooltip] = useState(false);
+  const date2TooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const date2TextRef = useRef<HTMLSpanElement | null>(null);
+
+  const [showDays2Tooltip, setShowDays2Tooltip] = useState(false);
+  const days2TooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const days2TextRef = useRef<HTMLSpanElement | null>(null);
+
   // Suppress unused variable warnings for future use
   void showDateTooltip;
   void showMetricTooltip;
@@ -1293,6 +1302,56 @@ export default function MapCanvas() {
       daysTooltipTimerRef.current = null;
     }
     setShowDaysTooltip(false);
+  };
+
+  // Handlers for Date-time 2 date filter tooltip
+  const handleDate2FilterMouseEnter = () => {
+    setIsDate2Hovered(true);
+    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off
+    date2TooltipTimerRef.current = setTimeout(() => {
+      // Check if text is overflowing
+      if (date2TextRef.current) {
+        const isOverflowing = date2TextRef.current.scrollWidth > date2TextRef.current.clientWidth;
+        if (isOverflowing) {
+          setShowDate2Tooltip(true);
+        }
+      }
+    }, 500);
+  };
+
+  const handleDate2FilterMouseLeave = () => {
+    setIsDate2Hovered(false);
+    // Clear timer and hide tooltip instantly
+    if (date2TooltipTimerRef.current) {
+      clearTimeout(date2TooltipTimerRef.current);
+      date2TooltipTimerRef.current = null;
+    }
+    setShowDate2Tooltip(false);
+  };
+
+  // Handlers for Date-time 2 days filter tooltip
+  const handleDays2FilterMouseEnter = () => {
+    setIsDays2Hovered(true);
+    // Set timer to show tooltip after 0.5 seconds, but only if text is cut off and menu is not open
+    days2TooltipTimerRef.current = setTimeout(() => {
+      // Check if text is overflowing and menu is not open
+      if (days2TextRef.current && openFilter !== 'days2') {
+        const isOverflowing = days2TextRef.current.scrollWidth > days2TextRef.current.clientWidth;
+        if (isOverflowing) {
+          setShowDays2Tooltip(true);
+        }
+      }
+    }, 500);
+  };
+
+  const handleDays2FilterMouseLeave = () => {
+    setIsDays2Hovered(false);
+    // Clear timer and hide tooltip instantly
+    if (days2TooltipTimerRef.current) {
+      clearTimeout(days2TooltipTimerRef.current);
+      days2TooltipTimerRef.current = null;
+    }
+    setShowDays2Tooltip(false);
   };
 
   // Handlers for metric filter tooltip
@@ -3400,8 +3459,8 @@ export default function MapCanvas() {
                   <div ref={date2Ref} style={{ marginBottom: '8px', position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'date2' ? null : 'date2')}
-                      onMouseEnter={() => setIsDate2Hovered(true)}
-                      onMouseLeave={() => setIsDate2Hovered(false)}
+                      onMouseEnter={handleDate2FilterMouseEnter}
+                      onMouseLeave={handleDate2FilterMouseLeave}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
@@ -3410,21 +3469,29 @@ export default function MapCanvas() {
                         color: 'var(--text-secondary)'
                       }}
                     >
-                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                      <span
+                        ref={date2TextRef}
+                        className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                      >
                         {getDate2FilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
+                    {showDate2Tooltip && (
+                      <Tooltip text={getDate2FilterText()} containerRef={date2Ref as React.RefObject<HTMLElement>}>
+                        {null}
+                      </Tooltip>
+                    )}
                   </div>
 
                   {/* Days/Time Filter for Date-time 2 */}
                   <div ref={days2Ref} style={{ position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'days2' ? null : 'days2')}
-                      onMouseEnter={() => setIsDays2Hovered(true)}
-                      onMouseLeave={() => setIsDays2Hovered(false)}
+                      onMouseEnter={handleDays2FilterMouseEnter}
+                      onMouseLeave={handleDays2FilterMouseLeave}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
@@ -3433,13 +3500,21 @@ export default function MapCanvas() {
                         color: 'var(--text-secondary)'
                       }}
                     >
-                      <span className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2">
+                      <span
+                        ref={days2TextRef}
+                        className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
+                      >
                         {getDays2FilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
+                    {showDays2Tooltip && openFilter !== 'days2' && (
+                      <Tooltip text={getDays2FilterText()} containerRef={days2Ref as React.RefObject<HTMLElement>}>
+                        {null}
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
               </>
