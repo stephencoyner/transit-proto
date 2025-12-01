@@ -1737,6 +1737,12 @@ export default function MapCanvas() {
       setStagedQuickPick2(null);
     }
 
+    // Reset Date-time 2 days/periods settings to defaults when entering comparison mode
+    setAppliedDaysMode2('all');
+    setAppliedCustomDays2([]);
+    setAppliedTimeMode2('all');
+    setAppliedTimePeriods2([]);
+
     setComparisonMode(true);
     setOpenFilter(null);
     // Reset exit tooltip state when entering comparison mode
