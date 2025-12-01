@@ -356,6 +356,7 @@ export default function MapCanvas() {
   const date2Ref = useRef<HTMLDivElement | null>(null);
   const days2Ref = useRef<HTMLDivElement | null>(null);
   // const metricRef = useRef<HTMLDivElement | null>(null);
+  const compareRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFittedViewRef = useRef<typeof INITIAL_VIEW_STATE | null>(null);
@@ -375,11 +376,14 @@ export default function MapCanvas() {
   const [isDateHovered, setIsDateHovered] = useState(false);
   const [isDaysHovered, setIsDaysHovered] = useState(false);
   const [isCompareHovered, setIsCompareHovered] = useState(false);
+  const [isDate2Hovered, setIsDate2Hovered] = useState(false);
+  const [isDays2Hovered, setIsDays2Hovered] = useState(false);
 
   // Comparison mode state
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
   const [comparisonDateRange, setComparisonDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
   const [comparisonPreset, setComparisonPreset] = useState<'previous-period' | 'previous-year' | 'custom' | null>(null);
+  const [comparisonSwapped, setComparisonSwapped] = useState<boolean>(false);
 
   // Date-time 2 picker state (comparison range)
   const [date2PickerMode, setDate2PickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
@@ -429,6 +433,16 @@ export default function MapCanvas() {
   const [showDaysTooltip, setShowDaysTooltip] = useState(false);
   const daysTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const daysTextRef = useRef<HTMLSpanElement | null>(null);
+
+  // Tooltip state for swap button
+  const [showSwapTooltip, setShowSwapTooltip] = useState(false);
+  const swapTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const swapButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Tooltip state for exit comparison button
+  const [showExitTooltip, setShowExitTooltip] = useState(false);
+  const exitTooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const exitButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Suppress unused variable warnings for future use
   void showDateTooltip;
@@ -1039,10 +1053,11 @@ export default function MapCanvas() {
       const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       // Generate percent changes ranging from -40% to +50%
       const percentChange = ((hash % 91) - 40);
-      map.set(segmentKey, percentChange);
+      // If swapped, negate the percent change to reverse the color
+      map.set(segmentKey, comparisonSwapped ? -percentChange : percentChange);
     });
     return map;
-  }, [segmentGeoms, comparisonMode]);
+  }, [segmentGeoms, comparisonMode, comparisonSwapped]);
 
   // Get the range of segment comparison values
   const segmentComparisonRange = React.useMemo(() => {
@@ -1117,10 +1132,11 @@ export default function MapCanvas() {
       const hash = route.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       // Generate percent changes ranging from -35% to +45%
       const percentChange = ((hash % 81) - 35);
-      map.set(route.id, percentChange);
+      // If swapped, negate the percent change to reverse the color
+      map.set(route.id, comparisonSwapped ? -percentChange : percentChange);
     });
     return map;
-  }, [routesList, comparisonMode]);
+  }, [routesList, comparisonMode, comparisonSwapped]);
 
   const stopComparisonMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
@@ -1130,10 +1146,11 @@ export default function MapCanvas() {
       const hash = stop.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       // Generate percent changes ranging from -30% to +40%
       const percentChange = ((hash % 71) - 30);
-      map.set(stop.id, percentChange);
+      // If swapped, negate the percent change to reverse the color
+      map.set(stop.id, comparisonSwapped ? -percentChange : percentChange);
     });
     return map;
-  }, [stopsList, comparisonMode]);
+  }, [stopsList, comparisonMode, comparisonSwapped]);
 
   // Get the range of comparison values for color scaling
   const comparisonValueRange = React.useMemo(() => {
@@ -1670,6 +1687,61 @@ export default function MapCanvas() {
     setComparisonMode(false);
     setComparisonPreset(null);
     setComparisonDateRange({ start: null, end: null });
+    setComparisonSwapped(false);
+  };
+
+  // Swap Date-time 1 and Date-time 2 values
+  const swapDateRanges = () => {
+    // Save current Date-time 1 values
+    const temp1Season = appliedSeason;
+    const temp1QuickPick = appliedQuickPick;
+    const temp1DaysMode = appliedDaysMode;
+    const temp1CustomDays = appliedCustomDays;
+    const temp1TimeMode = appliedTimeMode;
+    const temp1TimePeriods = appliedTimePeriods;
+
+    // Save current Date-time 2 values
+    const temp2Season = stagedSeason2;
+    const temp2QuickPick = stagedQuickPick2;
+    const temp2DaysMode = appliedDaysMode2;
+    const temp2CustomDays = appliedCustomDays2;
+    const temp2TimeMode = appliedTimeMode2;
+    const temp2TimePeriods = appliedTimePeriods2;
+    const temp2DateRange = comparisonDateRange;
+
+    // Set Date-time 1 to former Date-time 2 values
+    setAppliedSeason(temp2Season);
+    setAppliedQuickPick(temp2QuickPick);
+    setAppliedDaysMode(temp2DaysMode);
+    setAppliedCustomDays(temp2CustomDays);
+    setAppliedTimeMode(temp2TimeMode);
+    setAppliedTimePeriods(temp2TimePeriods);
+
+    // Set Date-time 2 to former Date-time 1 values
+    setStagedSeason2(temp1Season);
+    setStagedQuickPick2(temp1QuickPick);
+    setAppliedDaysMode2(temp1DaysMode);
+    setAppliedCustomDays2(temp1CustomDays);
+    setAppliedTimeMode2(temp1TimeMode);
+    setAppliedTimePeriods2(temp1TimePeriods);
+
+    // Swap the comparison date range with the primary date range
+    // Calculate primary date range from season/quickpick
+    if (temp1Season) {
+      const dates = getSeasonDates(temp1Season.season, temp1Season.year);
+      setComparisonDateRange({ start: dates.start, end: dates.end });
+    } else if (temp1QuickPick) {
+      const dates = getQuickPickDates(temp1QuickPick);
+      if (dates) {
+        setComparisonDateRange({ start: dates.start, end: dates.end });
+      }
+    }
+
+    // Clear preset since we're doing a custom swap
+    setComparisonPreset('custom');
+
+    // Toggle the swapped state to reverse data order in visualizations
+    setComparisonSwapped(prev => !prev);
   };
 
   // Format comparison date range (handles null values)
@@ -2030,23 +2102,26 @@ export default function MapCanvas() {
   // Outside click handler to close the panel
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
       // Check if click is outside both the panel and the filter triggers
       if (
         openFilter &&
+        openFilter !== 'compare' &&
         panelRef.current &&
-        !panelRef.current.contains(event.target as Node) &&
+        !panelRef.current.contains(target) &&
         dateRef.current &&
-        !dateRef.current.contains(event.target as Node) &&
+        !dateRef.current.contains(target) &&
         daysRef.current &&
-        !daysRef.current.contains(event.target as Node) &&
-        (!date2Ref.current || !date2Ref.current.contains(event.target as Node)) &&
-        (!days2Ref.current || !days2Ref.current.contains(event.target as Node))
+        !daysRef.current.contains(target) &&
+        (!date2Ref.current || !date2Ref.current.contains(target)) &&
+        (!days2Ref.current || !days2Ref.current.contains(target))
       ) {
         setOpenFilter(null);
       }
     };
 
-    if (openFilter) {
+    if (openFilter && openFilter !== 'compare') {
       // Add listener with a slight delay to avoid immediate closing
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
@@ -2055,6 +2130,24 @@ export default function MapCanvas() {
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openFilter]);
+
+  // Separate click-outside handler for compare dropdown
+  useEffect(() => {
+    const handleCompareClickOutside = (event: MouseEvent) => {
+      if (compareRef.current && !compareRef.current.contains(event.target as Node)) {
+        setOpenFilter(null);
+      }
+    };
+
+    if (openFilter === 'compare') {
+      // Use click event (fires after mousedown) to avoid race with button toggle
+      document.addEventListener('click', handleCompareClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleCompareClickOutside);
     };
   }, [openFilter]);
 
@@ -2619,8 +2712,16 @@ export default function MapCanvas() {
       const [lng, lat] = coords[midIndex];
 
       // Use data-driven color to match route coloring
-      const value = routeValueMap.get(shape.properties.route_id) || 0;
-      const color = valueToColor(value, routeValueRange.min, routeValueRange.max);
+      // In comparison mode, use comparison colors; otherwise use normal colors
+      let color: [number, number, number];
+      if (comparisonMode) {
+        const percentChange = routeComparisonMap.get(shape.properties.route_id) || 0;
+        const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+        color = [compColor[0], compColor[1], compColor[2]];
+      } else {
+        const value = routeValueMap.get(shape.properties.route_id) || 0;
+        color = valueToColor(value, routeValueRange.min, routeValueRange.max);
+      }
 
       return {
         position: [lng, lat],
@@ -3006,7 +3107,7 @@ export default function MapCanvas() {
           padding: '22px 16px 24px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px', // Space between the two separate filters
+          gap: '20px', // Space between filter sections
           width: '256px',
           minWidth: '256px'
         }}>
@@ -3080,7 +3181,7 @@ export default function MapCanvas() {
                 </div>
 
                 {/* Compare Button with Dropdown */}
-                <div style={{ alignSelf: 'flex-start', marginTop: '8px', position: 'relative' }}>
+                <div ref={compareRef} style={{ alignSelf: 'flex-start', marginTop: '8px', position: 'relative' }}>
                   <Button
                     variant="tertiary"
                     size="small"
@@ -3100,31 +3201,34 @@ export default function MapCanvas() {
                       position: 'absolute',
                       top: '100%',
                       left: 0,
-                      marginTop: '4px',
+                      marginTop: '8px',
                       backgroundColor: 'var(--bg-elevated)',
                       border: '0.5px solid var(--border-default)',
-                      borderRadius: 'var(--radius-default)',
+                      borderRadius: 'var(--radius-large)',
                       boxShadow: 'var(--shadow-lg)',
-                      zIndex: 1000,
-                      minWidth: '160px',
-                      overflow: 'hidden'
+                      zIndex: 9999,
+                      overflowY: 'auto'
                     }}>
                       {[
                         { value: 'previous-period', label: 'Previous Period' },
                         { value: 'previous-year', label: 'Previous Year' },
                         { value: 'custom', label: 'Custom' }
-                      ].map((option) => (
+                      ].map((option, index, arr) => (
                         <div
                           key={option.value}
                           onClick={() => handleComparisonPresetSelect(option.value as 'previous-period' | 'previous-year' | 'custom')}
+                          className="button-small"
                           style={{
-                            padding: '10px 16px',
+                            padding: '12px 16px',
                             cursor: 'pointer',
-                            fontSize: 'var(--body-regular-size)',
-                            color: 'var(--text-secondary)',
-                            transition: 'background-color 0.15s ease'
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            transition: 'background-color 0.2s ease',
+                            margin: index === 0 ? '12px 0 4px 0' : (index === arr.length - 1 ? '4px 0 12px 0' : '4px 0')
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-primary)'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                           {option.label}
@@ -3139,26 +3243,69 @@ export default function MapCanvas() {
                 {/* Comparison Mode - Dual Date-time Display */}
 
                 {/* Date-time 1 (Primary Range) */}
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <div style={{
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      backgroundColor: DATETIME_1_COLOR,
-                      flexShrink: 0
-                    }} />
-                    <label className="label text-text-tertiary">Date-time 1</label>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        backgroundColor: DATETIME_1_COLOR,
+                        flexShrink: 0
+                      }} />
+                      <label className="label text-text-tertiary">Date-time 1</label>
+                    </div>
+                    {/* Swap Date Ranges Button */}
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        ref={swapButtonRef}
+                        onClick={swapDateRanges}
+                        onMouseEnter={() => {
+                          swapTooltipTimerRef.current = setTimeout(() => {
+                            setShowSwapTooltip(true);
+                          }, 500);
+                        }}
+                        onMouseLeave={() => {
+                          if (swapTooltipTimerRef.current) {
+                            clearTimeout(swapTooltipTimerRef.current);
+                            swapTooltipTimerRef.current = null;
+                          }
+                          setShowSwapTooltip(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-tertiary)',
+                          padding: '4px'
+                        }}
+                      >
+                        {/* Same sort icon as stops tab list, rotated 90deg for horizontal swap */}
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'rotate(90deg)' }}>
+                          <path d="M5.81667 8.76675C5.57222 8.76675 5.36389 8.68064 5.19167 8.50842C5.01944 8.33619 4.93333 8.12786 4.93333 7.88342V4.20008L4.01667 5.11675C3.85 5.28341 3.64444 5.36675 3.4 5.36675C3.15556 5.36675 2.94444 5.28341 2.76667 5.11675C2.58889 4.93897 2.5 4.73064 2.5 4.49175C2.5 4.25286 2.58889 4.04453 2.76667 3.86675L5.18333 1.43341C5.27222 1.34453 5.36944 1.27786 5.475 1.23341C5.58056 1.18897 5.69444 1.16675 5.81667 1.16675C5.93889 1.16675 6.05278 1.18897 6.15833 1.23341C6.26389 1.27786 6.36111 1.34453 6.45 1.43341L8.86667 3.86675C9.04444 4.04453 9.13056 4.25286 9.125 4.49175C9.11944 4.73064 9.02778 4.93897 8.85 5.11675C8.67222 5.28341 8.46667 5.36953 8.23333 5.37508C8 5.38064 7.79444 5.29453 7.61667 5.11675L6.7 4.20008V7.88342C6.7 8.12786 6.61389 8.33619 6.44167 8.50842C6.26944 8.68064 6.06111 8.76675 5.81667 8.76675ZM10.1833 14.8334C10.0611 14.8334 9.94722 14.8112 9.84167 14.7667C9.73611 14.7223 9.63889 14.6556 9.55 14.5667L7.13333 12.1334C6.95556 11.9556 6.86944 11.7473 6.875 11.5084C6.88056 11.2695 6.97222 11.0612 7.15 10.8834C7.32778 10.7167 7.53333 10.6306 7.76667 10.6251C8 10.6195 8.20556 10.7056 8.38333 10.8834L9.3 11.8001V8.11675C9.3 7.8723 9.38611 7.66397 9.55833 7.49175C9.73056 7.31953 9.93889 7.23342 10.1833 7.23342C10.4278 7.23342 10.6361 7.31953 10.8083 7.49175C10.9806 7.66397 11.0667 7.8723 11.0667 8.11675V11.8001L11.9833 10.8834C12.15 10.7167 12.3556 10.6334 12.6 10.6334C12.8444 10.6334 13.0556 10.7167 13.2333 10.8834C13.4111 11.0612 13.5 11.2695 13.5 11.5084C13.5 11.7473 13.4111 11.9556 13.2333 12.1334L10.8167 14.5667C10.7278 14.6556 10.6306 14.7223 10.525 14.7667C10.4194 14.8112 10.3056 14.8334 10.1833 14.8334Z" fill="currentColor"/>
+                        </svg>
+                      </button>
+                      {showSwapTooltip && (
+                        <Tooltip text="Swap date-time ranges" position="below" containerRef={swapButtonRef as React.RefObject<HTMLElement>}>
+                          {null}
+                        </Tooltip>
+                      )}
+                    </div>
                   </div>
 
                   {/* Date Range Filter for Date-time 1 */}
                   <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                      onMouseEnter={() => setIsDateHovered(true)}
+                      onMouseLeave={() => setIsDateHovered(false)}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
                         borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -3176,10 +3323,12 @@ export default function MapCanvas() {
                   <div ref={daysRef} style={{ position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'days' ? null : 'days')}
+                      onMouseEnter={() => setIsDaysHovered(true)}
+                      onMouseLeave={() => setIsDaysHovered(false)}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
                         borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -3195,7 +3344,7 @@ export default function MapCanvas() {
                 </div>
 
                 {/* Date-time 2 (Comparison Range) */}
-                <div style={{ marginBottom: '12px' }}>
+                <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <div style={{
@@ -3208,34 +3357,55 @@ export default function MapCanvas() {
                       <label className="label text-text-tertiary">Date-time 2</label>
                     </div>
                     {/* Exit Comparison Mode Button */}
-                    <button
-                      onClick={exitComparisonMode}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--text-tertiary)',
-                        padding: '4px'
-                      }}
-                      title="Exit comparison mode"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        ref={exitButtonRef}
+                        onClick={exitComparisonMode}
+                        onMouseEnter={() => {
+                          exitTooltipTimerRef.current = setTimeout(() => {
+                            setShowExitTooltip(true);
+                          }, 500);
+                        }}
+                        onMouseLeave={() => {
+                          if (exitTooltipTimerRef.current) {
+                            clearTimeout(exitTooltipTimerRef.current);
+                            exitTooltipTimerRef.current = null;
+                          }
+                          setShowExitTooltip(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-tertiary)',
+                          padding: '4px'
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {showExitTooltip && (
+                        <Tooltip text="Exit comparison mode" containerRef={exitButtonRef as React.RefObject<HTMLElement>}>
+                          {null}
+                        </Tooltip>
+                      )}
+                    </div>
                   </div>
 
                   {/* Date Range Filter for Date-time 2 */}
                   <div ref={date2Ref} style={{ marginBottom: '8px', position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'date2' ? null : 'date2')}
+                      onMouseEnter={() => setIsDate2Hovered(true)}
+                      onMouseLeave={() => setIsDate2Hovered(false)}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'date2' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        backgroundColor: openFilter === 'date2' ? 'var(--bg-elevated)' : (isDate2Hovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
                         borderColor: openFilter === 'date2' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -3253,10 +3423,12 @@ export default function MapCanvas() {
                   <div ref={days2Ref} style={{ position: 'relative' }}>
                     <div
                       onClick={() => setOpenFilter(openFilter === 'days2' ? null : 'days2')}
+                      onMouseEnter={() => setIsDays2Hovered(true)}
+                      onMouseLeave={() => setIsDays2Hovered(false)}
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'days2' ? 'var(--bg-elevated)' : 'var(--bg-primary)',
+                        backgroundColor: openFilter === 'days2' ? 'var(--bg-elevated)' : (isDays2Hovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
                         borderColor: openFilter === 'days2' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -3275,7 +3447,7 @@ export default function MapCanvas() {
           </div>
 
           {/* Metric Section */}
-          <div style={{ marginTop: '16px' }}>
+          <div>
             <label className="label text-text-tertiary block mb-1">Metric</label>
             <Select
               value={selectedMetric}
@@ -3317,14 +3489,12 @@ export default function MapCanvas() {
                 <div style={{
                   width: '100%',
                   height: '0.5px',
-                  backgroundColor: 'var(--border-default)',
-                  marginTop: '16px',
-                  marginBottom: '12px'
+                  backgroundColor: 'var(--border-default)'
                 }} />
 
                 {/* Route Controls Section - Only show when experimental mode is on */}
                 {experimentalDetailViewNav && (
-                  <div style={{ marginBottom: '16px' }}>
+                  <div>
                     <div style={{
                       fontFamily: 'Inter, sans-serif',
                       fontSize: '14px',
@@ -3405,7 +3575,7 @@ export default function MapCanvas() {
 
                 {/* Pattern Filter - Hidden when trip is selected */}
                 {!selectedTrip && (
-                  <div style={{ marginTop: '16px' }}>
+                  <div>
                     <label className="label text-text-tertiary block mb-1">Pattern</label>
                     <Select
                       value={selectedPattern || 'all'}
@@ -3427,7 +3597,7 @@ export default function MapCanvas() {
 
                 {/* Trip Filter - Only shown when a trip is selected */}
                 {selectedTrip && (
-                  <div style={{ marginTop: '16px' }}>
+                  <div>
                     <label className="label text-text-tertiary block mb-1">Trip</label>
                     <Select
                       value={selectedTrip.trip_id}
@@ -3469,13 +3639,11 @@ export default function MapCanvas() {
               <div style={{
                 width: '100%',
                 height: '0.5px',
-                backgroundColor: 'var(--border-default)',
-                marginTop: '16px',
-                marginBottom: '12px'
+                backgroundColor: 'var(--border-default)'
               }} />
 
               {/* Stop Controls Section */}
-              <div style={{ marginBottom: '16px' }}>
+              <div>
                 <div style={{
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '14px',
@@ -5445,11 +5613,19 @@ export default function MapCanvas() {
             >
               {/* Overall Trip Metric Card */}
               {comparisonMode ? (
-                <ComparisonMetricCard
-                  title={selectedMetric}
-                  value1={selectedTrip.ridership}
-                  value2={Math.round(selectedTrip.ridership * 0.85)}
-                />
+                (() => {
+                  const value1 = selectedTrip.ridership;
+                  // Use the route's comparison percentage for the trip
+                  const percentChange = routeComparisonMap.get(selectedTrip.route_id) || 0;
+                  const value2 = Math.round(value1 / (1 + percentChange / 100));
+                  return (
+                    <ComparisonMetricCard
+                      title={selectedMetric}
+                      value1={value1}
+                      value2={value2}
+                    />
+                  );
+                })()
               ) : (
                 <MetricCard
                   title={selectedMetric}
@@ -5950,11 +6126,18 @@ export default function MapCanvas() {
                     }}
                   >
                     {comparisonMode ? (
-                      <ComparisonMetricCard
-                        title={selectedMetric}
-                        value1={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
-                        value2={Math.round((stopsList.find((s) => s.id === selectedStopId)?.value || 0) * 0.85)}
-                      />
+                      (() => {
+                        const value1 = stopsList.find((s) => s.id === selectedStopId)?.value || 0;
+                        const percentChange = stopComparisonMap.get(selectedStopId || '') || 0;
+                        const value2 = Math.round(value1 / (1 + percentChange / 100));
+                        return (
+                          <ComparisonMetricCard
+                            title={selectedMetric}
+                            value1={value1}
+                            value2={value2}
+                          />
+                        );
+                      })()
                     ) : (
                       <MetricCard
                         title={selectedMetric}
@@ -5968,12 +6151,14 @@ export default function MapCanvas() {
                       metric={selectedMetric}
                       startDate={effectiveDateRange.start}
                       endDate={effectiveDateRange.end}
+                      swapped={comparisonSwapped}
                     />
                     <ByDayChart
                       data={mockDataByDay}
                       comparisonData={comparisonMode ? comparisonDataByDay : undefined}
                       metric={selectedMetric}
                       selectedDays={effectiveSelectedDays}
+                      swapped={comparisonSwapped}
                     />
                     <ByPeriodChart
                       data={mockDataByPeriod}
@@ -5982,6 +6167,7 @@ export default function MapCanvas() {
                       activePieIndex={activePieIndex}
                       setActivePieIndex={setActivePieIndex}
                       metric={selectedMetric}
+                      swapped={comparisonSwapped}
                       selectedPeriods={effectiveSelectedPeriods}
                     />
                   </div>
@@ -6517,11 +6703,18 @@ export default function MapCanvas() {
                 }}
               >
                 {comparisonMode ? (
-                  <ComparisonMetricCard
-                    title={selectedMetric}
-                    value1={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
-                    value2={Math.round((routesList.find((r) => r.id === selectedRouteId)?.value || 0) * 0.85)}
-                  />
+                  (() => {
+                    const value1 = routesList.find((r) => r.id === selectedRouteId)?.value || 0;
+                    const percentChange = routeComparisonMap.get(selectedRouteId || '') || 0;
+                    const value2 = Math.round(value1 / (1 + percentChange / 100));
+                    return (
+                      <ComparisonMetricCard
+                        title={selectedMetric}
+                        value1={value1}
+                        value2={value2}
+                      />
+                    );
+                  })()
                 ) : (
                   <MetricCard
                     title={selectedMetric}
@@ -6535,17 +6728,20 @@ export default function MapCanvas() {
                   metric={selectedMetric}
                   startDate={effectiveDateRange.start}
                   endDate={effectiveDateRange.end}
+                  swapped={comparisonSwapped}
                 />
                 <ByDayChart
                   data={mockDataByDay}
                   comparisonData={comparisonMode ? comparisonDataByDay : undefined}
                   metric={selectedMetric}
                   selectedDays={effectiveSelectedDays}
+                  swapped={comparisonSwapped}
                 />
                 <ByPeriodChart
                   data={mockDataByPeriod}
                   comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                   colors={PERIOD_COLORS}
+                  swapped={comparisonSwapped}
                   activePieIndex={activePieIndex}
                   setActivePieIndex={setActivePieIndex}
                   metric={selectedMetric}
@@ -6741,7 +6937,17 @@ export default function MapCanvas() {
                         </div>
                       ) : (
                         filteredAndSortedRouteTrips.map((patternGroup, groupIndex) => {
-                      const maxRidership = Math.max(...patternGroup.trips.map(t => t.ridership));
+                      // In comparison mode, calculate max ridership including comparison values
+                      const getComparisonRidership = (ridership: number) => {
+                        const percentChange = routeComparisonMap.get(selectedRouteId || '') || 0;
+                        return Math.round(ridership / (1 + percentChange / 100));
+                      };
+                      const maxRidership = comparisonMode
+                        ? Math.max(
+                            ...patternGroup.trips.map(t => t.ridership),
+                            ...patternGroup.trips.map(t => getComparisonRidership(t.ridership))
+                          )
+                        : Math.max(...patternGroup.trips.map(t => t.ridership));
 
                       return (
                         <div
@@ -6851,11 +7057,13 @@ export default function MapCanvas() {
                             </div>
 
                             {/* Trips */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', zIndex: 1, paddingTop: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: comparisonMode ? '8px' : '4px', position: 'relative', zIndex: 1, paddingTop: '8px' }}>
                               {patternGroup.trips.map((trip, tripIndex) => {
-                                const barWidth = (trip.ridership / maxRidership) * 100; // Full width bars
+                                const value1 = trip.ridership;
+                                const value2 = getComparisonRidership(trip.ridership);
+                                const barWidth1 = (value1 / maxRidership) * 100;
+                                const barWidth2 = (value2 / maxRidership) * 100;
                                 const tripKey = `${groupIndex}-${tripIndex}`;
-                                const showTooltip = hoveredTrip === tripKey;
 
                                 return (
                                   <div
@@ -6878,49 +7086,105 @@ export default function MapCanvas() {
 
                                     {/* Bar Container - flex: 1 to match axis labels container */}
                                     <div style={{ flex: 1, position: 'relative' }}>
-                                      <div
-                                        style={{
-                                          position: 'relative',
-                                          height: '24px',
-                                          width: `${barWidth}%`,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          setHoveredTrip(tripKey);
-                                          const rect = e.currentTarget.getBoundingClientRect();
-                                          setTripTooltip({
-                                            show: true,
-                                            time: formatTime12Hour(trip.start_time),
-                                            ridership: trip.ridership,
-                                            x: rect.left,
-                                            y: rect.top
-                                          });
-                                        }}
-                                        onMouseLeave={() => {
-                                          setHoveredTrip(null);
-                                          setTripTooltip(null);
-                                        }}
-                                        onClick={async () => {
-                                          // Clear tooltip before navigating
-                                          setHoveredTrip(null);
-                                          setTripTooltip(null);
-                                          setSelectedTrip(trip);
-                                          // Load stop times for this trip
-                                          const stops = await getTripStopTimes(trip.trip_id);
-                                          if (stops) {
-                                            setSelectedTripStops(stops);
-                                          }
-                                        }}
-                                      >
+                                      {comparisonMode ? (
+                                        /* Comparison mode: Two bars stacked */
                                         <div
                                           style={{
-                                            height: '100%',
-                                            backgroundColor: 'var(--border-hover)',
-                                            borderRadius: '4px',
-                                            transition: 'width 0.3s ease',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '2px',
                                             cursor: 'pointer'
                                           }}
-                                        />
-                                      </div>
+                                          onMouseEnter={(e) => {
+                                            setHoveredTrip(tripKey);
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setTripTooltip({
+                                              show: true,
+                                              time: formatTime12Hour(trip.start_time),
+                                              ridership: value1,
+                                              x: rect.left,
+                                              y: rect.top
+                                            });
+                                          }}
+                                          onMouseLeave={() => {
+                                            setHoveredTrip(null);
+                                            setTripTooltip(null);
+                                          }}
+                                          onClick={async () => {
+                                            setHoveredTrip(null);
+                                            setTripTooltip(null);
+                                            setSelectedTrip(trip);
+                                            const stops = await getTripStopTimes(trip.trip_id);
+                                            if (stops) {
+                                              setSelectedTripStops(stops);
+                                            }
+                                          }}
+                                        >
+                                          {/* Date-time 1 bar */}
+                                          <div
+                                            style={{
+                                              height: '12px',
+                                              width: `${barWidth1}%`,
+                                              backgroundColor: DATETIME_1_COLOR,
+                                              borderRadius: '4px',
+                                              transition: 'width 0.3s ease'
+                                            }}
+                                          />
+                                          {/* Date-time 2 bar */}
+                                          <div
+                                            style={{
+                                              height: '12px',
+                                              width: `${barWidth2}%`,
+                                              backgroundColor: DATETIME_2_COLOR,
+                                              borderRadius: '4px',
+                                              transition: 'width 0.3s ease'
+                                            }}
+                                          />
+                                        </div>
+                                      ) : (
+                                        /* Normal mode: Single bar */
+                                        <div
+                                          style={{
+                                            position: 'relative',
+                                            height: '24px',
+                                            width: `${barWidth1}%`,
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            setHoveredTrip(tripKey);
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setTripTooltip({
+                                              show: true,
+                                              time: formatTime12Hour(trip.start_time),
+                                              ridership: trip.ridership,
+                                              x: rect.left,
+                                              y: rect.top
+                                            });
+                                          }}
+                                          onMouseLeave={() => {
+                                            setHoveredTrip(null);
+                                            setTripTooltip(null);
+                                          }}
+                                          onClick={async () => {
+                                            setHoveredTrip(null);
+                                            setTripTooltip(null);
+                                            setSelectedTrip(trip);
+                                            const stops = await getTripStopTimes(trip.trip_id);
+                                            if (stops) {
+                                              setSelectedTripStops(stops);
+                                            }
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              height: '100%',
+                                              backgroundColor: 'var(--border-hover)',
+                                              borderRadius: '4px',
+                                              transition: 'width 0.3s ease',
+                                              cursor: 'pointer'
+                                            }}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 );
@@ -7181,7 +7445,10 @@ export default function MapCanvas() {
                                         const stopTimeMap = new Map(tripStopTimes.map(st => [st.id, st]));
                                         const stopTime = stopTimeMap.get(stop.id);
                                         const stopValue = stopTime ? (stopValueMap.get(stop.id) || 0) : 0;
-                                        const cellColor = valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
+                                        const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
+                                        const cellColor = comparisonMode
+                                          ? getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max)
+                                          : valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
 
                                         const darkerColor = [
                                           Math.max(0, cellColor[0] - 40),
@@ -7305,13 +7572,25 @@ export default function MapCanvas() {
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
             {/* Charts */}
             {comparisonMode ? (
-              <ComparisonMetricCard
-                title={selectedMetric}
-                value1={8973}
-                value2={7627}
-              />
+              (() => {
+                // Aggregate all route values for system-wide metric
+                const value1 = routesList.reduce((sum, r) => sum + r.value, 0);
+                // Calculate value2 from average percent change across all routes
+                const allPercentChanges = routesList.map(r => routeComparisonMap.get(r.id) || 0);
+                const avgPercentChange = allPercentChanges.length > 0
+                  ? allPercentChanges.reduce((sum, p) => sum + p, 0) / allPercentChanges.length
+                  : 0;
+                const value2 = Math.round(value1 / (1 + avgPercentChange / 100));
+                return (
+                  <ComparisonMetricCard
+                    title={selectedMetric}
+                    value1={value1}
+                    value2={value2}
+                  />
+                );
+              })()
             ) : (
-              <MetricCard title={selectedMetric} value="8,973" />
+              <MetricCard title={selectedMetric} value={routesList.reduce((sum, r) => sum + r.value, 0).toLocaleString()} />
             )}
             <ByDateChart
               data={chartDataByDate}
@@ -7320,12 +7599,14 @@ export default function MapCanvas() {
               metric={selectedMetric}
               startDate={effectiveDateRange.start}
               endDate={effectiveDateRange.end}
+              swapped={comparisonSwapped}
             />
             <ByDayChart
               data={mockDataByDay}
               comparisonData={comparisonMode ? comparisonDataByDay : undefined}
               metric={selectedMetric}
               selectedDays={effectiveSelectedDays}
+              swapped={comparisonSwapped}
             />
             <ByPeriodChart
               data={mockDataByPeriod}
@@ -7335,6 +7616,7 @@ export default function MapCanvas() {
               setActivePieIndex={setActivePieIndex}
               metric={selectedMetric}
               selectedPeriods={effectiveSelectedPeriods}
+              swapped={comparisonSwapped}
             />
           </div>
         ) : activeTab === 'components' ? (
@@ -7574,23 +7856,30 @@ export default function MapCanvas() {
                     setIsStopsListScrolled(target.scrollTop > 0);
                   }}
                 >
-                  {filteredAndSortedStopsList.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedStopId(item.id);
-                        setSelectedStopTab('Summary');
-                      }}
-                      style={{
-                        cursor: 'pointer'
-                      }}>
-                      {comparisonMode ? (
-                        <ComparisonMetricCard value1={item.value} value2={Math.round(item.value * 0.85)} title={item.name} />
-                      ) : (
-                        <MetricCard value={item.value} title={item.name} />
-                      )}
-                    </div>
-                  ))}
+                  {filteredAndSortedStopsList.map((item) => {
+                    // Get percent change from the map (same data used for map coloring)
+                    const percentChange = stopComparisonMap.get(item.id) || 0;
+                    // Calculate value2 from value1 and percent change
+                    const value2 = Math.round(item.value / (1 + percentChange / 100));
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedStopId(item.id);
+                          setSelectedStopTab('Summary');
+                        }}
+                        style={{
+                          cursor: 'pointer'
+                        }}>
+                        {comparisonMode ? (
+                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} />
+                        ) : (
+                          <MetricCard value={item.value} title={item.name} />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -7604,23 +7893,32 @@ export default function MapCanvas() {
               flexDirection: 'column',
               gap: '0'
             }}>
-              {routesList.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setSelectedRouteId(item.id);
-                    setSelectedRouteTab('Summary');
-                  }}
-                  style={{
-                    cursor: 'pointer'
-                  }}>
-                  {comparisonMode ? (
-                    <ComparisonMetricCard value1={item.value} value2={Math.round(item.value * 0.85)} title={item.name} />
-                  ) : (
-                    <MetricCard value={item.value} title={item.name} />
-                  )}
-                </div>
-              ))}
+              {routesList.map((item) => {
+                // Get percent change from the map (same data used for map coloring)
+                const percentChange = routeComparisonMap.get(item.id) || 0;
+                // Calculate value2 from value1 and percent change
+                // percentChange = ((value1 - value2) / value2) * 100
+                // So: value2 = value1 / (1 + percentChange/100)
+                const value2 = Math.round(item.value / (1 + percentChange / 100));
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedRouteId(item.id);
+                      setSelectedRouteTab('Summary');
+                    }}
+                    style={{
+                      cursor: 'pointer'
+                    }}>
+                    {comparisonMode ? (
+                      <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} />
+                    ) : (
+                      <MetricCard value={item.value} title={item.name} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

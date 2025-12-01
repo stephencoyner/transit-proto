@@ -16,6 +16,7 @@ interface ByDateChartProps {
   metric?: string;
   startDate?: Date | null;
   endDate?: Date | null;
+  swapped?: boolean;
 }
 
 // Helper to format a single date
@@ -83,7 +84,7 @@ const generateDateLabels = (
   }
 };
 
-export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate }: ByDateChartProps) {
+export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate, swapped = false }: ByDateChartProps) {
   // Generate proper date labels based on the date range
   const dateLabels = generateDateLabels(data.length, startDate, endDate);
 
@@ -97,14 +98,29 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
     }
 
     // Merge primary and comparison data for dual-line chart
+    // If swapped, reverse which data goes to value1 vs value2
     return data.map((point, index) => ({
       date: dateLabels[index] || point.date,
-      value1: point.value,
-      value2: comparisonData[index]?.value ?? 0
+      value1: swapped ? (comparisonData[index]?.value ?? 0) : point.value,
+      value2: swapped ? point.value : (comparisonData[index]?.value ?? 0)
     }));
-  }, [data, comparisonData, dateLabels]);
+  }, [data, comparisonData, dateLabels, swapped]);
 
   const isComparisonMode = !!comparisonData;
+
+  // Determine which dataset is larger (should be rendered first/behind)
+  const value1Total = useMemo(() => {
+    if (!isComparisonMode) return 0;
+    return chartData.reduce((sum, point) => sum + ((point as { value1?: number }).value1 || 0), 0);
+  }, [chartData, isComparisonMode]);
+
+  const value2Total = useMemo(() => {
+    if (!isComparisonMode) return 0;
+    return chartData.reduce((sum, point) => sum + ((point as { value2?: number }).value2 || 0), 0);
+  }, [chartData, isComparisonMode]);
+
+  // Render larger dataset first (behind), smaller dataset last (on top)
+  const value1IsLarger = value1Total >= value2Total;
 
   return (
     <div style={{
@@ -130,11 +146,11 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
               <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.1} />
             </linearGradient>
             <linearGradient id={`${gradientId}-primary`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.6} />
+              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
               <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.05} />
             </linearGradient>
             <linearGradient id={`${gradientId}-comparison`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.6} />
+              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
               <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
             </linearGradient>
           </defs>
@@ -160,14 +176,15 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
           />
           {isComparisonMode ? (
             <>
+              {/* Render larger dataset first (behind), smaller dataset last (on top) */}
               <Area
                 type="monotone"
                 dataKey="value1"
                 name="Date-time 1"
                 stroke={DATETIME_1_COLOR}
                 strokeOpacity={1}
-                strokeWidth={2}
-                fill={`url(#${gradientId}-primary)`}
+                strokeWidth={4}
+                fill="none"
                 isAnimationActive={false}
               />
               <Area
@@ -176,8 +193,8 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
                 name="Date-time 2"
                 stroke={DATETIME_2_COLOR}
                 strokeOpacity={1}
-                strokeWidth={2}
-                fill={`url(#${gradientId}-comparison)`}
+                strokeWidth={4}
+                fill="none"
                 isAnimationActive={false}
               />
             </>

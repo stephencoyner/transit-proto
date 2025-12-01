@@ -16,7 +16,7 @@ export const COMPARISON_SCALE_COLORS = [
   '#952E07',  // max decrease (dark red)
   '#C3481D',  // medium decrease
   '#E47145',  // low decrease
-  '#F7E05A',  // no change (yellow/neutral)
+  '#D4A017',  // no change (golden amber/neutral)
   '#87C5AC',  // low increase
   '#37846A',  // medium increase
   '#23634F',  // max increase (dark green)

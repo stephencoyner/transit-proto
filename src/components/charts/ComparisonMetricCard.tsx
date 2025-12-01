@@ -4,14 +4,19 @@ interface ComparisonMetricCardProps {
   value1: number;
   value2: number;
   title?: string;
+  swapped?: boolean;
 }
 
 export default function ComparisonMetricCard({
   value1,
   value2,
-  title = 'Average daily boardings'
+  title = 'Average daily boardings',
+  swapped = false
 }: ComparisonMetricCardProps) {
-  const percentChange = calculatePercentChange(value1, value2);
+  // If swapped, display values in reverse order
+  const displayValue1 = swapped ? value2 : value1;
+  const displayValue2 = swapped ? value1 : value2;
+  const percentChange = calculatePercentChange(displayValue1, displayValue2);
   const isPositive = percentChange > 0;
   const isNegative = percentChange < 0;
 
@@ -35,18 +40,17 @@ export default function ComparisonMetricCard({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
         flexWrap: 'wrap'
       }}>
         {/* Value 1 with circle */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px'
+          gap: '4px'
         }}>
           <div style={{
-            width: '10px',
-            height: '10px',
+            width: '12px',
+            height: '12px',
             borderRadius: '50%',
             backgroundColor: DATETIME_1_COLOR,
             flexShrink: 0
@@ -57,7 +61,7 @@ export default function ComparisonMetricCard({
             color: 'var(--text-primary)',
             lineHeight: '1'
           }}>
-            {value1.toLocaleString()}
+            {displayValue1.toLocaleString()}
           </span>
         </div>
 
@@ -65,12 +69,14 @@ export default function ComparisonMetricCard({
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
-          padding: '4px 10px',
-          borderRadius: '12px',
+          padding: '2px 8px',
+          borderRadius: '24px',
           backgroundColor: isPositive ? POSITIVE_PILL_BG : isNegative ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
           color: isPositive ? POSITIVE_PILL_TEXT : isNegative ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
           fontSize: 'var(--caption-size)',
-          fontWeight: 600
+          fontWeight: 600,
+          marginLeft: '8px',
+          marginRight: '20px'
         }}>
           {formatPercentChange(percentChange)}
         </div>
@@ -79,11 +85,11 @@ export default function ComparisonMetricCard({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px'
+          gap: '4px'
         }}>
           <div style={{
-            width: '10px',
-            height: '10px',
+            width: '12px',
+            height: '12px',
             borderRadius: '50%',
             backgroundColor: DATETIME_2_COLOR,
             flexShrink: 0
@@ -94,7 +100,7 @@ export default function ComparisonMetricCard({
             color: 'var(--text-primary)',
             lineHeight: '1'
           }}>
-            {value2.toLocaleString()}
+            {displayValue2.toLocaleString()}
           </span>
         </div>
       </div>

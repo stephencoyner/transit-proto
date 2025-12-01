@@ -73,6 +73,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       ${error ? 'border-error' : 'border-border-default'}
       rounded-full
       px-4
+      py-0
       ${isNumberInput ? 'pr-10' : ''}
       placeholder:text-text-disabled
       focus:outline-none
@@ -88,6 +89,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       color: (isFocused || hasValue) ? 'var(--text-primary)' : 'var(--text-disabled)',
       outline: isFocused && !error ? '1px solid var(--border-focus)' : 'none',
       outlineOffset: '-1px',
+      lineHeight: '40px', // Match height for vertical centering
       // Hide default number input spinners
       ...(isNumberInput ? {
         MozAppearance: 'textfield' as const,
