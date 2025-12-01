@@ -1962,7 +1962,7 @@ export default function MapCanvas() {
       }
     }
 
-    return `${daysText} · ${timeText}`;
+    return `${daysText} • ${timeText}`;
   };
 
   // When trip filter menu opens, capture current applied state as both original and staged
