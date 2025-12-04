@@ -15,6 +15,8 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData } from '@/hooks/useRidershipData';
+import type { FilterState } from '@/lib/utils/filterBuilder';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -85,6 +87,23 @@ const INITIAL_VIEW_STATE = {
   bearing: 0,
   transitionDuration: 200
 };
+
+// Data range constraints - ridership data is only available for this period
+const DATA_START_DATE = new Date(2024, 11, 1); // December 1, 2024
+const DATA_END_DATE = new Date(2025, 10, 30);   // November 30, 2025
+
+// Helper to check if a date is within the valid data range
+function isDateInDataRange(date: Date): boolean {
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return dateOnly >= DATA_START_DATE && dateOnly <= DATA_END_DATE;
+}
+
+// Helper to check if a month has any valid dates
+function isMonthInDataRange(year: number, month: number): boolean {
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0); // Last day of month
+  return monthEnd >= DATA_START_DATE && monthStart <= DATA_END_DATE;
+}
 
 // Calculate UI padding dynamically based on visible panels
 const getUIPadding = (isFiltersPanelOpen: boolean) => {
@@ -596,68 +615,7 @@ export default function MapCanvas() {
   const [originalTimeMode, setOriginalTimeMode] = useState<'all' | 'custom'>('all');
   const [originalTimePeriods, setOriginalTimePeriods] = useState<string[]>([]);
 
-  // Mock data for the data panel
-  const mockDataByDay = [
-    { day: 'Mon', value: 18500 },
-    { day: 'Tue', value: 19200 },
-    { day: 'Wed', value: 18800 },
-    { day: 'Thu', value: 19500 },
-    { day: 'Fri', value: 24000 },
-    { day: 'Sat', value: 12000 },
-    { day: 'Sun', value: 10500 }
-  ];
-
-  const mockDataByPeriod = [
-    { period: 'Early AM', value: 8000 },
-    { period: 'AM Peak', value: 22000 },
-    { period: 'Midday', value: 14000 },
-    { period: 'PM Peak', value: 24000 },
-    { period: 'Evening', value: 12000 },
-    { period: 'Night', value: 3000 }
-  ];
-
-  // Mock data for by date (line chart) - simplified
-  const mockDataByDate = [
-    14800, 13500, 15000, 18000, 19500, 20500, 20800, 21000, 20500, 20000
-  ];
-
-  // Transform mock data for Recharts
-  const chartDataByDate = mockDataByDate.map((value, index) => ({
-    date: `Day ${index + 1}`,
-    value: value
-  }));
-
-  // Calculate average for By Day chart
-  const averageDailyByDay = mockDataByDay.reduce((sum, item) => sum + item.value, 0) / mockDataByDay.length;
-
-  // Comparison mock data (simulating ~15% lower ridership in comparison period)
-  const comparisonDataByDay = [
-    { day: 'Mon', value: 16200 },  // -12%
-    { day: 'Tue', value: 16500 },  // -14%
-    { day: 'Wed', value: 16000 },  // -15%
-    { day: 'Thu', value: 17000 },  // -13%
-    { day: 'Fri', value: 20800 },  // -13%
-    { day: 'Sat', value: 10800 },  // -10%
-    { day: 'Sun', value: 9500 }    // -10%
-  ];
-
-  const comparisonDataByPeriod = [
-    { period: 'Early AM', value: 7200 },  // -10%
-    { period: 'AM Peak', value: 19000 },  // -14%
-    { period: 'Midday', value: 12600 },   // -10%
-    { period: 'PM Peak', value: 20400 },  // -15%
-    { period: 'Evening', value: 10800 },  // -10%
-    { period: 'Night', value: 2700 }      // -10%
-  ];
-
-  const comparisonDataByDate = [
-    12800, 11700, 13000, 15600, 17000, 17800, 18000, 18200, 17800, 17400
-  ];
-
-  const comparisonChartDataByDate = comparisonDataByDate.map((value, index) => ({
-    date: `Day ${index + 1}`,
-    value: value
-  }));
+  // Placeholder for comparison chart data - will be populated from API data via useMemo hooks
 
   // Color palette for pie chart - using brown/beige design tokens
   const PERIOD_COLORS = [
@@ -672,9 +630,7 @@ export default function MapCanvas() {
   // State for pie chart active segment
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
 
-  // State to persist mock ridership values
-  const [routeMockValues, setRouteMockValues] = React.useState<{ [key: string]: number }>({});
-  const [stopMockValues, setStopMockValues] = React.useState<{ [key: string]: number }>({});
+  // State for stop amenities (mock data - not in ridership database)
   const [stopAmenities, setStopAmenities] = React.useState<{ [key: string]: { [amenity: string]: string | false } }>({});
 
   // Define available amenities
@@ -691,32 +647,488 @@ export default function MapCanvas() {
     'Wheelchair Access'
   ];
 
-  // Extract unique routes from shapes data with mock values
+  // Compute the effective date range for API calls based on applied filters
+  const effectiveDateRange = useMemo(() => {
+    // If explicit date range is set, use it
+    if (appliedStartDate && appliedEndDate) {
+      return { start: appliedStartDate, end: appliedEndDate };
+    }
+
+    // If quick pick is selected, compute dates
+    if (appliedQuickPick) {
+      const today = new Date();
+      let startDate: Date;
+      const endDate = today;
+
+      switch (appliedQuickPick) {
+        case 'Last 7 days':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - 7);
+          break;
+        case 'Last 4 weeks':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - 28);
+          break;
+        case 'Last 3 months':
+          startDate = new Date(today);
+          startDate.setMonth(today.getMonth() - 3);
+          break;
+        case 'Last 12 months':
+          startDate = new Date(today);
+          startDate.setMonth(today.getMonth() - 12);
+          break;
+        case 'Month to date':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case 'Quarter to date':
+          const currentQuarter = Math.floor(today.getMonth() / 3);
+          startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+          break;
+        case 'Year to date':
+          startDate = new Date(today.getFullYear(), 0, 1);
+          break;
+        default:
+          return { start: null, end: null };
+      }
+      return { start: startDate, end: endDate };
+    }
+
+    // If season is selected, compute dates
+    if (appliedSeason) {
+      const { season, year } = appliedSeason;
+      let dates: { start: Date; end: Date };
+      switch (season) {
+        case 'winter':
+          dates = { start: new Date(year, 11, 21), end: new Date(year + 1, 2, 19) };
+          break;
+        case 'spring':
+          dates = { start: new Date(year, 2, 20), end: new Date(year, 5, 19) };
+          break;
+        case 'summer':
+          dates = { start: new Date(year, 5, 20), end: new Date(year, 8, 21) };
+          break;
+        case 'fall':
+          dates = { start: new Date(year, 8, 22), end: new Date(year, 11, 20) };
+          break;
+        default:
+          dates = { start: new Date(), end: new Date() };
+      }
+      return { start: dates.start, end: dates.end };
+    }
+
+    return { start: null, end: null };
+  }, [appliedStartDate, appliedEndDate, appliedQuickPick, appliedSeason]);
+
+  // Build filter state for API calls
+  const filterState: FilterState = useMemo(() => ({
+    startDate: effectiveDateRange.start,
+    endDate: effectiveDateRange.end,
+    daysMode: appliedDaysMode,
+    customDays: appliedCustomDays,
+    timeMode: appliedTimeMode,
+    timePeriods: appliedTimePeriods,
+  }), [effectiveDateRange.start, effectiveDateRange.end, appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods]);
+
+  // Build filter state for comparison period (Date-time 2)
+  const filterState2: FilterState = useMemo(() => ({
+    startDate: comparisonDateRange.start,
+    endDate: comparisonDateRange.end,
+    daysMode: appliedDaysMode2,
+    customDays: appliedCustomDays2,
+    timeMode: appliedTimeMode2,
+    timePeriods: appliedTimePeriods2,
+  }), [comparisonDateRange.start, comparisonDateRange.end, appliedDaysMode2, appliedCustomDays2, appliedTimeMode2, appliedTimePeriods2]);
+
+  // Fetch ridership data from API
+  const { data: systemData, isLoading: isSystemLoading } = useSystemData(filterState, !!effectiveDateRange.start);
+  const { data: systemByDateData, isLoading: isByDateLoading } = useSystemByDateData(filterState, !!effectiveDateRange.start);
+  const { data: systemByDayData, isLoading: isByDayLoading } = useSystemByDayData(filterState, !!effectiveDateRange.start);
+
+  // Fetch comparison period data (Date-time 2)
+  const { data: systemData2 } = useSystemData(filterState2, comparisonMode && !!comparisonDateRange.start);
+  const { data: systemByDateData2 } = useSystemByDateData(filterState2, comparisonMode && !!comparisonDateRange.start);
+  const { data: systemByDayData2 } = useSystemByDayData(filterState2, comparisonMode && !!comparisonDateRange.start);
+
+  // Fetch all stops data for comparison period
+  const { data: allStopsData2 } = useAllStopsData(filterState2, comparisonMode && !!comparisonDateRange.start);
+
+  // Loading state for dimming
+  const isRidershipLoading = isSystemLoading || isByDateLoading || isByDayLoading;
+
+  // Helper function to get the correct metric value based on selected metric
+  const getMetricValue = useCallback((metrics: {
+    avgDailyBoardings?: number;
+    totalBoardings?: number;
+    avgDailyAlightings?: number;
+    totalAlightings?: number;
+    avgDailyActivity?: number;
+    totalActivity?: number;
+    avgLoad?: number;
+    maxLoad?: number;
+  }, metric: string): number => {
+    switch (metric) {
+      case 'Average daily boardings':
+        return metrics.avgDailyBoardings || 0;
+      case 'Total boardings':
+        return metrics.totalBoardings || 0;
+      case 'Average daily alightings':
+        return metrics.avgDailyAlightings || 0;
+      case 'Total daily boardings':
+        return metrics.totalBoardings || 0; // Same as Total boardings
+      case 'Average daily activity':
+        return metrics.avgDailyActivity || 0;
+      case 'Total activity':
+        return metrics.totalActivity || 0;
+      case 'Average load':
+        return metrics.avgLoad || 0;
+      case 'Maxload':
+        return metrics.maxLoad || 0;
+      default:
+        return metrics.avgDailyBoardings || 0;
+    }
+  }, []);
+
+  // Transform API data to chart formats (respecting selected metric)
+  const dataByDay = useMemo(() => {
+    if (!systemByDayData?.data) return [];
+    // For by-day data, we use the per-day values from the API
+    // The API returns avgDailyBoardings which is total/dayCount
+    return systemByDayData.data.map(d => {
+      // Map the metric to the available fields in by-day response
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = d.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
+        default:
+          value = d.avgDailyBoardings;
+      }
+      return { day: d.dayName, value };
+    });
+  }, [systemByDayData, selectedMetric]);
+
+  const dataByPeriod = useMemo(() => {
+    if (!systemData?.byTimePeriod) return [];
+    const periodLabels: Record<string, string> = {
+      'early_am': 'Early AM',
+      'am_peak': 'AM Peak',
+      'midday': 'Midday',
+      'pm_peak': 'PM Peak',
+      'evening': 'Evening',
+      'night': 'Night',
+    };
+    return systemData.byTimePeriod.map(p => ({
+      period: periodLabels[p.timePeriod] || p.timePeriod,
+      value: getMetricValue(p.metrics, selectedMetric),
+    }));
+  }, [systemData, selectedMetric, getMetricValue]);
+
+  const dataByDate = useMemo(() => {
+    if (!systemByDateData?.data) return [];
+    return systemByDateData.data.map(d => {
+      // Map the metric to the available fields in by-date response
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+        case 'Total boardings':
+        case 'Total daily boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = d.totalAlightings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
+        default:
+          value = d.totalBoardings;
+      }
+      return { date: d.date, value };
+    });
+  }, [systemByDateData, selectedMetric]);
+
+  // Calculate average for By Day chart
+  const averageDailyByDay = useMemo(() => {
+    if (dataByDay.length === 0) return 0;
+    return dataByDay.reduce((sum, item) => sum + item.value, 0) / dataByDay.length;
+  }, [dataByDay]);
+
+  // Comparison chart data from API (Date-time 2)
+  const comparisonDataByDay = useMemo(() => {
+    if (!systemByDayData2?.data) return [];
+    return systemByDayData2.data.map(d => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = d.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
+        default:
+          value = d.avgDailyBoardings;
+      }
+      return { day: d.dayName, value };
+    });
+  }, [systemByDayData2, selectedMetric]);
+
+  const comparisonDataByPeriod = useMemo(() => {
+    if (!systemData2?.byTimePeriod) return [];
+    const periodLabels: Record<string, string> = {
+      'early_am': 'Early AM',
+      'am_peak': 'AM Peak',
+      'midday': 'Midday',
+      'pm_peak': 'PM Peak',
+      'evening': 'Evening',
+      'night': 'Night',
+    };
+    return systemData2.byTimePeriod.map(p => ({
+      period: periodLabels[p.timePeriod] || p.timePeriod,
+      value: getMetricValue(p.metrics, selectedMetric),
+    }));
+  }, [systemData2, selectedMetric, getMetricValue]);
+
+  const comparisonChartDataByDate = useMemo(() => {
+    if (!systemByDateData2?.data) return [];
+    return systemByDateData2.data.map(d => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+        case 'Total boardings':
+        case 'Total daily boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = d.totalAlightings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
+        default:
+          value = d.totalBoardings;
+      }
+      return { date: d.date, value };
+    });
+  }, [systemByDateData2, selectedMetric]);
+
+  // Route ridership values from API (for map coloring) - respects selected metric
+  const routeRidershipValues = useMemo(() => {
+    if (!systemData?.byRoute) return {};
+    const values: { [key: string]: number } = {};
+    systemData.byRoute.forEach(r => {
+      values[r.routeId] = getMetricValue(r.metrics, selectedMetric);
+    });
+    return values;
+  }, [systemData, selectedMetric, getMetricValue]);
+
+  // Fetch route-specific data when a route is selected
+  const { data: routeData, isLoading: isRouteLoading } = useRouteData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+  const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+
+  // Fetch all stops data for stops view
+  const { data: allStopsData, isLoading: isAllStopsLoading } = useAllStopsData(filterState, !!effectiveDateRange.start);
+
+  // Fetch stop-specific data when a stop is selected (for SDV charts)
+  const { data: stopByDateData } = useStopByDateData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
+  const { data: stopByDayData } = useStopByDayData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
+  const { data: stopByPeriodData } = useStopByPeriodData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
+
+  // Fetch trip-specific data when a trip is selected (for TDV)
+  const { data: tripData } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
+
+  // Get the trip ridership value from API (falls back to mock value from selectedTrip)
+  const tripRidershipValue = useMemo(() => {
+    if (!tripData?.metrics) {
+      // Fall back to the mock value from the Trip object if API data not yet loaded
+      return selectedTrip?.ridership || 0;
+    }
+    return getMetricValue(tripData.metrics, selectedMetric);
+  }, [tripData, selectedTrip, selectedMetric, getMetricValue]);
+
+  // Stop ridership values from API (for map coloring and stops list)
+  const stopRidershipValues = useMemo(() => {
+    if (!allStopsData?.stops) return {};
+    const values: { [key: string]: number } = {};
+    allStopsData.stops.forEach(s => {
+      // Map the metric to the available fields in stops response
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          values[s.stopId] = Math.round(s.totalBoardings / (systemData?.metrics?.daysInRange || 1));
+          break;
+        case 'Total boardings':
+          values[s.stopId] = s.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          values[s.stopId] = Math.round(s.totalAlightings / (systemData?.metrics?.daysInRange || 1));
+          break;
+        case 'Average daily activity':
+          values[s.stopId] = s.avgDailyActivity;
+          break;
+        case 'Total activity':
+          values[s.stopId] = s.totalBoardings + s.totalAlightings;
+          break;
+        default:
+          values[s.stopId] = s.avgDailyActivity;
+      }
+    });
+    return values;
+  }, [allStopsData, selectedMetric, systemData?.metrics?.daysInRange]);
+
+  // Transform route-specific data for charts (used in RDV) - respects selected metric
+  const routeDataByPeriod = useMemo(() => {
+    if (!routeData?.byTimePeriod) return [];
+    const periodLabels: Record<string, string> = {
+      'early_am': 'Early AM',
+      'am_peak': 'AM Peak',
+      'midday': 'Midday',
+      'pm_peak': 'PM Peak',
+      'evening': 'Evening',
+      'night': 'Night',
+    };
+    return routeData.byTimePeriod.map(p => ({
+      period: periodLabels[p.timePeriod] || p.timePeriod,
+      value: getMetricValue(p.metrics, selectedMetric),
+    }));
+  }, [routeData, selectedMetric, getMetricValue]);
+
+  // Transform stop-specific data for SDV charts
+  const stopDataByDate = useMemo(() => {
+    if (!stopByDateData?.data) return [];
+    return stopByDateData.data.map(d => {
+      // Stops don't have load metrics, so we use boardings-related metrics
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+        case 'Total boardings':
+        case 'Total daily boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = d.totalAlightings;
+          break;
+        case 'Average daily activity':
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
+        default:
+          value = d.totalBoardings;
+      }
+      return { date: d.date, value };
+    });
+  }, [stopByDateData, selectedMetric]);
+
+  const stopDataByDay = useMemo(() => {
+    if (!stopByDayData?.data) return [];
+    return stopByDayData.data.map(d => {
+      // Map the metric to the available fields
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = d.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = Math.round(d.totalAlightings / (d.dayCount || 1));
+          break;
+        case 'Average daily activity':
+          value = Math.round((d.totalBoardings + d.totalAlightings) / (d.dayCount || 1));
+          break;
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
+        default:
+          value = d.avgDailyBoardings;
+      }
+      return { day: d.dayName, value };
+    });
+  }, [stopByDayData, selectedMetric]);
+
+  const stopDataByPeriod = useMemo(() => {
+    if (!stopByPeriodData?.data) return [];
+    const periodLabels: Record<string, string> = {
+      'early_am': 'Early AM',
+      'am_peak': 'AM Peak',
+      'midday': 'Midday',
+      'pm_peak': 'PM Peak',
+      'evening': 'Evening',
+      'night': 'Night',
+    };
+    const daysInRange = systemData?.metrics?.daysInRange || 1;
+    return stopByPeriodData.data.map(p => {
+      // Map the metric to the available fields
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = Math.round(p.totalBoardings / daysInRange);
+          break;
+        case 'Total boardings':
+          value = p.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = Math.round(p.totalAlightings / daysInRange);
+          break;
+        case 'Average daily activity':
+          value = Math.round((p.totalBoardings + p.totalAlightings) / daysInRange);
+          break;
+        case 'Total activity':
+          value = p.totalBoardings + p.totalAlightings;
+          break;
+        default:
+          value = Math.round(p.totalBoardings / daysInRange);
+      }
+      return {
+        period: periodLabels[p.timePeriod] || p.timePeriod,
+        value,
+      };
+    });
+  }, [stopByPeriodData, selectedMetric, systemData?.metrics?.daysInRange]);
+
+  // Use route-specific, stop-specific, or system data based on selection
+  const activeDataByPeriod = selectedStopId ? stopDataByPeriod : (selectedRouteId ? routeDataByPeriod : dataByPeriod);
+  const activeDataByDay = selectedStopId ? stopDataByDay : dataByDay;
+  const activeDataByDate = selectedStopId ? stopDataByDate : dataByDate;
+
+  // Extract unique routes from shapes data with ridership values from API
   const routesList = React.useMemo(() => {
     const uniqueRoutes: { [key: string]: { id: string; name: string; value: number; shortName: string } } = {};
-    const newMockValues: { [key: string]: number } = { ...routeMockValues };
 
     shapes.forEach(shape => {
-      const routeId = shape.properties.route_id; // Use actual route_id, not short_name
+      const routeId = shape.properties.route_id;
       const routeShortName = shape.properties.route_short_name || routeId;
       if (!uniqueRoutes[routeId]) {
-        // Use existing mock value or generate new one only if it doesn't exist
-        if (!newMockValues[routeId]) {
-          newMockValues[routeId] = Math.floor(Math.random() * 5000) + 100;
-        }
+        // Use real ridership value from API, or 0 if not yet loaded
+        const ridershipValue = routeRidershipValues[routeId] || 0;
         uniqueRoutes[routeId] = {
           id: routeId,
           name: `Route ${routeShortName}`,
-          value: newMockValues[routeId],
+          value: ridershipValue,
           shortName: routeShortName
         };
       }
     });
-
-    // Update state if new values were generated
-    if (Object.keys(newMockValues).length !== Object.keys(routeMockValues).length) {
-      setRouteMockValues(newMockValues);
-    }
 
     const routes = Object.values(uniqueRoutes);
 
@@ -726,14 +1138,13 @@ export default function MapCanvas() {
       const bNum = parseInt(b.shortName, 10);
       return aNum - bNum;
     });
-  }, [shapes, routeMockValues]);
+  }, [shapes, routeRidershipValues]);
 
-  // Extract stops data with mock values and amenities
+  // Extract stops data with real ridership values from API (amenities are still mock)
   const stopsList = React.useMemo(() => {
-    const newMockValues: { [key: string]: number } = { ...stopMockValues };
     const newAmenities: { [key: string]: { [amenity: string]: string | false } } = { ...stopAmenities };
 
-    // Helper to generate a random date in the past 3 years
+    // Helper to generate a random date in the past 3 years (for mock amenities)
     const generateRandomDate = () => {
       const now = new Date();
       const threeYearsAgo = new Date(now.getFullYear() - 3, now.getMonth(), now.getDate());
@@ -744,11 +1155,9 @@ export default function MapCanvas() {
 
     const stopsWithValues = stops.map(stop => {
       const stopId = stop.properties.stop_id;
-      // Use existing mock value or generate new one only if it doesn't exist
-      if (!newMockValues[stopId]) {
-        newMockValues[stopId] = Math.floor(Math.random() * 500) + 50;
-      }
-      // Generate amenities if they don't exist
+      // Use real ridership value from API, or 0 if not yet loaded
+      const ridershipValue = stopRidershipValues[stopId] || 0;
+      // Generate amenities if they don't exist (mock data)
       if (!newAmenities[stopId]) {
         newAmenities[stopId] = {};
         STOP_AMENITIES.forEach(amenity => {
@@ -759,21 +1168,18 @@ export default function MapCanvas() {
       return {
         id: stopId,
         name: stop.properties.name,
-        value: newMockValues[stopId],
+        value: ridershipValue,
         amenities: newAmenities[stopId]
       };
     });
 
-    // Update state if new values were generated
-    if (Object.keys(newMockValues).length !== Object.keys(stopMockValues).length) {
-      setStopMockValues(newMockValues);
-    }
+    // Update amenities state if new values were generated
     if (Object.keys(newAmenities).length !== Object.keys(stopAmenities).length) {
       setStopAmenities(newAmenities);
     }
 
     return stopsWithValues.sort((a, b) => b.value - a.value);
-  }, [stops, stopMockValues, stopAmenities, STOP_AMENITIES]);
+  }, [stops, stopRidershipValues, stopAmenities, STOP_AMENITIES]);
 
   // Create filtered and sorted stopsList for display
   const filteredAndSortedStopsList = React.useMemo(() => {
@@ -936,7 +1342,7 @@ export default function MapCanvas() {
   // Check if we're in Grid view (full screen data panel)
   const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip);
 
-  // Generate segments between consecutive stops with mock load values (needed before value range calculation)
+  // Generate segments between consecutive stops with real API load values
   const segmentGeoms = React.useMemo(() => {
     if (!showSegmentColoring || !routePatterns[selectedRouteId]) {
       return [];
@@ -949,6 +1355,15 @@ export default function MapCanvas() {
 
     if (patternsToProcess.length === 0) {
       return [];
+    }
+
+    // Build a lookup map from API segment data: "fromStopId-toStopId" -> avgLoad
+    const segmentLoadMap = new Map<string, number>();
+    if (routeSegmentsData?.segments) {
+      routeSegmentsData.segments.forEach(seg => {
+        const key = `${seg.fromStopId}-${seg.toStopId}`;
+        segmentLoadMap.set(key, seg.avgLoad);
+      });
     }
 
     // Create a map of stop_id -> coordinates
@@ -1026,9 +1441,9 @@ export default function MapCanvas() {
             segmentPath = [fromCoords, toCoords];
           }
 
-          // Generate deterministic mock load value based on segment (20-100 for passenger load)
-          const hash = (fromStopId + toStopId).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const loadValue = 20 + (hash % 81); // Range 20-100
+          // Use real load value from API, or 0 if not available yet
+          const segmentKey = `${fromStopId}-${toStopId}`;
+          const loadValue = segmentLoadMap.get(segmentKey) || 0;
 
           segments.push({
             path: segmentPath,
@@ -1043,7 +1458,7 @@ export default function MapCanvas() {
     });
 
     return segments;
-  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes]);
+  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, routeSegmentsData]);
 
   // Calculate value range for segments
   const segmentValueRange = React.useMemo(() => {
@@ -1131,35 +1546,87 @@ export default function MapCanvas() {
     return map;
   }, [stopsList]);
 
-  // Create comparison value maps (percent change from period 1 to period 2)
-  // In comparison mode, these show the change from Date-time 2 to Date-time 1
+  // Create comparison value maps (percent change from Date-time 2 to Date-time 1)
+  // Uses real API data when available
   const routeComparisonMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
     const map = new Map<string, number>();
-    // Generate varied mock comparison data based on route id hash
+
+    // Build a lookup for Date-time 2 route values
+    const routeValues2 = new Map<string, number>();
+    if (systemData2?.byRoute) {
+      systemData2.byRoute.forEach(r => {
+        const value = getMetricValue(r.metrics, selectedMetric);
+        routeValues2.set(r.routeId, value);
+      });
+    }
+
+    // Calculate percent change: ((value1 - value2) / value2) * 100
     routesList.forEach(route => {
-      const hash = route.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      // Generate percent changes ranging from -35% to +45%
-      const percentChange = ((hash % 81) - 35);
-      // If swapped, negate the percent change to reverse the color
-      map.set(route.id, comparisonSwapped ? -percentChange : percentChange);
+      const value1 = route.value;
+      const value2 = routeValues2.get(route.id);
+
+      if (value2 !== undefined && value2 !== 0) {
+        const percentChange = Math.round(((value1 - value2) / value2) * 100);
+        // If swapped, negate the percent change to reverse the color
+        map.set(route.id, comparisonSwapped ? -percentChange : percentChange);
+      } else {
+        // No comparison data available, show 0% change
+        map.set(route.id, 0);
+      }
     });
     return map;
-  }, [routesList, comparisonMode, comparisonSwapped]);
+  }, [routesList, comparisonMode, comparisonSwapped, systemData2, selectedMetric, getMetricValue]);
 
   const stopComparisonMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
     const map = new Map<string, number>();
-    // Generate varied mock comparison data based on stop id hash
+
+    // Build a lookup for Date-time 2 stop values
+    const stopValues2 = new Map<string, number>();
+    if (allStopsData2?.stops) {
+      const daysInRange2 = systemData2?.metrics?.daysInRange || 1;
+      allStopsData2.stops.forEach(s => {
+        let value: number;
+        switch (selectedMetric) {
+          case 'Average daily boardings':
+            value = Math.round(s.totalBoardings / daysInRange2);
+            break;
+          case 'Total boardings':
+            value = s.totalBoardings;
+            break;
+          case 'Average daily alightings':
+            value = Math.round(s.totalAlightings / daysInRange2);
+            break;
+          case 'Average daily activity':
+            value = s.avgDailyActivity;
+            break;
+          case 'Total activity':
+            value = s.totalBoardings + s.totalAlightings;
+            break;
+          default:
+            value = s.avgDailyActivity;
+        }
+        stopValues2.set(s.stopId, value);
+      });
+    }
+
+    // Calculate percent change: ((value1 - value2) / value2) * 100
     stopsList.forEach(stop => {
-      const hash = stop.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      // Generate percent changes ranging from -30% to +40%
-      const percentChange = ((hash % 71) - 30);
-      // If swapped, negate the percent change to reverse the color
-      map.set(stop.id, comparisonSwapped ? -percentChange : percentChange);
+      const value1 = stop.value;
+      const value2 = stopValues2.get(stop.id);
+
+      if (value2 !== undefined && value2 !== 0) {
+        const percentChange = Math.round(((value1 - value2) / value2) * 100);
+        // If swapped, negate the percent change to reverse the color
+        map.set(stop.id, comparisonSwapped ? -percentChange : percentChange);
+      } else {
+        // No comparison data available, show 0% change
+        map.set(stop.id, 0);
+      }
     });
     return map;
-  }, [stopsList, comparisonMode, comparisonSwapped]);
+  }, [stopsList, comparisonMode, comparisonSwapped, allStopsData2, systemData2, selectedMetric]);
 
   // Get the range of comparison values for color scaling
   const comparisonValueRange = React.useMemo(() => {
@@ -1487,27 +1954,6 @@ export default function MapCanvas() {
 
     return { start: startDate, end: endDate };
   };
-
-  // Compute the effective date range for charts based on applied filters
-  const getEffectiveDateRange = (): { start: Date | null; end: Date | null } => {
-    if (appliedStartDate && appliedEndDate) {
-      return { start: appliedStartDate, end: appliedEndDate };
-    }
-    if (appliedQuickPick) {
-      const dates = getQuickPickDates(appliedQuickPick);
-      if (dates) {
-        return { start: dates.start, end: dates.end };
-      }
-    }
-    if (appliedSeason) {
-      const dates = getSeasonDates(appliedSeason.season, appliedSeason.year);
-      return { start: dates.start, end: dates.end };
-    }
-    return { start: null, end: null };
-  };
-
-  // Get the effective date range for charts
-  const effectiveDateRange = getEffectiveDateRange();
 
   // Compute selected days for filtering charts
   const getEffectiveSelectedDays = (): string[] | null => {
@@ -4152,18 +4598,39 @@ export default function MapCanvas() {
                   }}>
                     <button
                       type="button"
-                      onClick={() => setCalendarStartMonth(new Date(calendarStartMonth.getFullYear(), calendarStartMonth.getMonth() - 1))}
+                      onClick={() => {
+                        const prevMonth = calendarStartMonth.getMonth() - 1;
+                        const prevYear = prevMonth < 0 ? calendarStartMonth.getFullYear() - 1 : calendarStartMonth.getFullYear();
+                        const normalizedMonth = prevMonth < 0 ? 11 : prevMonth;
+                        if (isMonthInDataRange(prevYear, normalizedMonth)) {
+                          setCalendarStartMonth(new Date(prevYear, normalizedMonth));
+                        }
+                      }}
+                      disabled={!isMonthInDataRange(
+                        calendarStartMonth.getMonth() === 0 ? calendarStartMonth.getFullYear() - 1 : calendarStartMonth.getFullYear(),
+                        calendarStartMonth.getMonth() === 0 ? 11 : calendarStartMonth.getMonth() - 1
+                      )}
                       style={{
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
                         border: '0.5px solid var(--border-default)',
-                        backgroundColor: 'var(--bg-elevated)',
-                        cursor: 'pointer',
+                        backgroundColor: !isMonthInDataRange(
+                          calendarStartMonth.getMonth() === 0 ? calendarStartMonth.getFullYear() - 1 : calendarStartMonth.getFullYear(),
+                          calendarStartMonth.getMonth() === 0 ? 11 : calendarStartMonth.getMonth() - 1
+                        ) ? '#F5F5F5' : 'var(--bg-elevated)',
+                        cursor: !isMonthInDataRange(
+                          calendarStartMonth.getMonth() === 0 ? calendarStartMonth.getFullYear() - 1 : calendarStartMonth.getFullYear(),
+                          calendarStartMonth.getMonth() === 0 ? 11 : calendarStartMonth.getMonth() - 1
+                        ) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: 0
+                        padding: 0,
+                        opacity: !isMonthInDataRange(
+                          calendarStartMonth.getMonth() === 0 ? calendarStartMonth.getFullYear() - 1 : calendarStartMonth.getFullYear(),
+                          calendarStartMonth.getMonth() === 0 ? 11 : calendarStartMonth.getMonth() - 1
+                        ) ? 0.5 : 1
                       }}
                     >
                       <img
@@ -4172,7 +4639,10 @@ export default function MapCanvas() {
                         style={{
                           width: '24px',
                           height: '24px',
-                          filter: 'brightness(0)'
+                          filter: !isMonthInDataRange(
+                            calendarStartMonth.getMonth() === 0 ? calendarStartMonth.getFullYear() - 1 : calendarStartMonth.getFullYear(),
+                            calendarStartMonth.getMonth() === 0 ? 11 : calendarStartMonth.getMonth() - 1
+                          ) ? 'none' : 'brightness(0)'
                         }}
                       />
                     </button>
@@ -4190,60 +4660,38 @@ export default function MapCanvas() {
                     <button
                       type="button"
                       onClick={() => {
-                        const now = new Date();
-                        const currentMonth = now.getMonth();
-                        const currentYear = now.getFullYear();
-                        const calendarMonth = calendarStartMonth.getMonth();
-                        const calendarYear = calendarStartMonth.getFullYear();
-
-                        if (calendarYear < currentYear || (calendarYear === currentYear && calendarMonth < currentMonth)) {
-                          setCalendarStartMonth(new Date(calendarStartMonth.getFullYear(), calendarStartMonth.getMonth() + 1));
+                        const nextMonth = calendarStartMonth.getMonth() + 1;
+                        const nextYear = nextMonth > 11 ? calendarStartMonth.getFullYear() + 1 : calendarStartMonth.getFullYear();
+                        const normalizedMonth = nextMonth > 11 ? 0 : nextMonth;
+                        if (isMonthInDataRange(nextYear, normalizedMonth)) {
+                          setCalendarStartMonth(new Date(nextYear, normalizedMonth));
                         }
                       }}
-                      disabled={(() => {
-                        const now = new Date();
-                        const currentMonth = now.getMonth();
-                        const currentYear = now.getFullYear();
-                        const calendarMonth = calendarStartMonth.getMonth();
-                        const calendarYear = calendarStartMonth.getFullYear();
-                        return calendarYear === currentYear && calendarMonth === currentMonth;
-                      })()}
+                      disabled={!isMonthInDataRange(
+                        calendarStartMonth.getMonth() === 11 ? calendarStartMonth.getFullYear() + 1 : calendarStartMonth.getFullYear(),
+                        calendarStartMonth.getMonth() === 11 ? 0 : calendarStartMonth.getMonth() + 1
+                      )}
                       style={{
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
                         border: '0.5px solid var(--border-default)',
-                        backgroundColor: (() => {
-                          const now = new Date();
-                          const currentMonth = now.getMonth();
-                          const currentYear = now.getFullYear();
-                          const calendarMonth = calendarStartMonth.getMonth();
-                          const calendarYear = calendarStartMonth.getFullYear();
-                          const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
-                          return isDisabled ? '#F5F5F5' : 'var(--bg-elevated)';
-                        })(),
-                        cursor: (() => {
-                          const now = new Date();
-                          const currentMonth = now.getMonth();
-                          const currentYear = now.getFullYear();
-                          const calendarMonth = calendarStartMonth.getMonth();
-                          const calendarYear = calendarStartMonth.getFullYear();
-                          const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
-                          return isDisabled ? 'not-allowed' : 'pointer';
-                        })(),
+                        backgroundColor: !isMonthInDataRange(
+                          calendarStartMonth.getMonth() === 11 ? calendarStartMonth.getFullYear() + 1 : calendarStartMonth.getFullYear(),
+                          calendarStartMonth.getMonth() === 11 ? 0 : calendarStartMonth.getMonth() + 1
+                        ) ? '#F5F5F5' : 'var(--bg-elevated)',
+                        cursor: !isMonthInDataRange(
+                          calendarStartMonth.getMonth() === 11 ? calendarStartMonth.getFullYear() + 1 : calendarStartMonth.getFullYear(),
+                          calendarStartMonth.getMonth() === 11 ? 0 : calendarStartMonth.getMonth() + 1
+                        ) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: 0,
-                        opacity: (() => {
-                          const now = new Date();
-                          const currentMonth = now.getMonth();
-                          const currentYear = now.getFullYear();
-                          const calendarMonth = calendarStartMonth.getMonth();
-                          const calendarYear = calendarStartMonth.getFullYear();
-                          const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
-                          return isDisabled ? 0.5 : 1;
-                        })()
+                        opacity: !isMonthInDataRange(
+                          calendarStartMonth.getMonth() === 11 ? calendarStartMonth.getFullYear() + 1 : calendarStartMonth.getFullYear(),
+                          calendarStartMonth.getMonth() === 11 ? 0 : calendarStartMonth.getMonth() + 1
+                        ) ? 0.5 : 1
                       }}
                     >
                       <img
@@ -4252,15 +4700,10 @@ export default function MapCanvas() {
                         style={{
                           width: '24px',
                           height: '24px',
-                          filter: (() => {
-                            const now = new Date();
-                            const currentMonth = now.getMonth();
-                            const currentYear = now.getFullYear();
-                            const calendarMonth = calendarStartMonth.getMonth();
-                            const calendarYear = calendarStartMonth.getFullYear();
-                            const isDisabled = calendarYear === currentYear && calendarMonth === currentMonth;
-                            return isDisabled ? 'none' : 'brightness(0)';
-                          })()
+                          filter: !isMonthInDataRange(
+                            calendarStartMonth.getMonth() === 11 ? calendarStartMonth.getFullYear() + 1 : calendarStartMonth.getFullYear(),
+                            calendarStartMonth.getMonth() === 11 ? 0 : calendarStartMonth.getMonth() + 1
+                          ) ? 'none' : 'brightness(0)'
                         }}
                       />
                     </button>
@@ -4324,6 +4767,9 @@ export default function MapCanvas() {
                               if (!day) {
                                 return <div key={`empty-${idx}`} />;
                               }
+
+                              // Check if date is within valid data range
+                              const isDisabled = !isDateInDataRange(day);
 
                               const isStart = stagedStartDate && day.getTime() === stagedStartDate.getTime();
                               const isEnd = stagedEndDate && day.getTime() === stagedEndDate.getTime();
@@ -4421,7 +4867,9 @@ export default function MapCanvas() {
                                     zIndex: backgroundZIndex
                                   }} />
                                   <button
+                                    disabled={isDisabled}
                                     onClick={() => {
+                                      if (isDisabled) return;
                                       // Clear quick pick when custom dates are selected
                                       setStagedQuickPick(null);
                                       setStagedSeason(null);
@@ -4439,11 +4887,11 @@ export default function MapCanvas() {
                                     style={{
                                       position: 'relative',
                                       zIndex: 3,
-                                      background: isSelected ? 'var(--bg-secondary)' : 'transparent',
-                                      border: isSelected ? '1px solid var(--border-focus)' : 'none',
+                                      background: isDisabled ? 'transparent' : (isSelected ? 'var(--bg-secondary)' : 'transparent'),
+                                      border: isSelected && !isDisabled ? '1px solid var(--border-focus)' : 'none',
                                       borderRadius: buttonBorderRadius,
-                                      color: 'var(--text-primary)',
-                                      cursor: 'pointer',
+                                      color: isDisabled ? 'var(--text-disabled)' : 'var(--text-primary)',
+                                      cursor: isDisabled ? 'not-allowed' : 'pointer',
                                       width: '48px',
                                       height: '48px',
                                       fontSize: 'var(--body-regular-size)',
@@ -4451,16 +4899,17 @@ export default function MapCanvas() {
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      transition: 'all 0.2s ease'
+                                      transition: 'all 0.2s ease',
+                                      opacity: isDisabled ? 0.4 : 1
                                     }}
                                     onMouseEnter={(e) => {
-                                      if (!isSelected && !isInRange) {
+                                      if (!isSelected && !isInRange && !isDisabled) {
                                         e.currentTarget.style.background = 'var(--bg-secondary)';
                                         e.currentTarget.style.borderRadius = '50%';
                                       }
                                     }}
                                     onMouseLeave={(e) => {
-                                      if (!isSelected && !isInRange) {
+                                      if (!isSelected && !isInRange && !isDisabled) {
                                         e.currentTarget.style.background = 'transparent';
                                         e.currentTarget.style.borderRadius = buttonBorderRadius;
                                       }
@@ -5092,18 +5541,39 @@ export default function MapCanvas() {
                   }}>
                     <button
                       type="button"
-                      onClick={() => setCalendarStartMonth2(new Date(calendarStartMonth2.getFullYear(), calendarStartMonth2.getMonth() - 1))}
+                      onClick={() => {
+                        const prevMonth = calendarStartMonth2.getMonth() - 1;
+                        const prevYear = prevMonth < 0 ? calendarStartMonth2.getFullYear() - 1 : calendarStartMonth2.getFullYear();
+                        const normalizedMonth = prevMonth < 0 ? 11 : prevMonth;
+                        if (isMonthInDataRange(prevYear, normalizedMonth)) {
+                          setCalendarStartMonth2(new Date(prevYear, normalizedMonth));
+                        }
+                      }}
+                      disabled={!isMonthInDataRange(
+                        calendarStartMonth2.getMonth() === 0 ? calendarStartMonth2.getFullYear() - 1 : calendarStartMonth2.getFullYear(),
+                        calendarStartMonth2.getMonth() === 0 ? 11 : calendarStartMonth2.getMonth() - 1
+                      )}
                       style={{
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
                         border: '0.5px solid var(--border-default)',
-                        backgroundColor: 'var(--bg-elevated)',
-                        cursor: 'pointer',
+                        backgroundColor: !isMonthInDataRange(
+                          calendarStartMonth2.getMonth() === 0 ? calendarStartMonth2.getFullYear() - 1 : calendarStartMonth2.getFullYear(),
+                          calendarStartMonth2.getMonth() === 0 ? 11 : calendarStartMonth2.getMonth() - 1
+                        ) ? '#F5F5F5' : 'var(--bg-elevated)',
+                        cursor: !isMonthInDataRange(
+                          calendarStartMonth2.getMonth() === 0 ? calendarStartMonth2.getFullYear() - 1 : calendarStartMonth2.getFullYear(),
+                          calendarStartMonth2.getMonth() === 0 ? 11 : calendarStartMonth2.getMonth() - 1
+                        ) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: 0
+                        padding: 0,
+                        opacity: !isMonthInDataRange(
+                          calendarStartMonth2.getMonth() === 0 ? calendarStartMonth2.getFullYear() - 1 : calendarStartMonth2.getFullYear(),
+                          calendarStartMonth2.getMonth() === 0 ? 11 : calendarStartMonth2.getMonth() - 1
+                        ) ? 0.5 : 1
                       }}
                     >
                       <img
@@ -5112,7 +5582,10 @@ export default function MapCanvas() {
                         style={{
                           width: '24px',
                           height: '24px',
-                          filter: 'brightness(0)'
+                          filter: !isMonthInDataRange(
+                            calendarStartMonth2.getMonth() === 0 ? calendarStartMonth2.getFullYear() - 1 : calendarStartMonth2.getFullYear(),
+                            calendarStartMonth2.getMonth() === 0 ? 11 : calendarStartMonth2.getMonth() - 1
+                          ) ? 'none' : 'brightness(0)'
                         }}
                       />
                     </button>
@@ -5130,31 +5603,38 @@ export default function MapCanvas() {
                     <button
                       type="button"
                       onClick={() => {
-                        const now = new Date();
-                        const currentMonth = now.getMonth();
-                        const currentYear = now.getFullYear();
-                        const calendarMonth = calendarStartMonth2.getMonth();
-                        const calendarYear = calendarStartMonth2.getFullYear();
-
-                        if (calendarYear < currentYear || (calendarYear === currentYear && calendarMonth < currentMonth)) {
-                          setCalendarStartMonth2(new Date(calendarStartMonth2.getFullYear(), calendarStartMonth2.getMonth() + 1));
+                        const nextMonth = calendarStartMonth2.getMonth() + 1;
+                        const nextYear = nextMonth > 11 ? calendarStartMonth2.getFullYear() + 1 : calendarStartMonth2.getFullYear();
+                        const normalizedMonth = nextMonth > 11 ? 0 : nextMonth;
+                        if (isMonthInDataRange(nextYear, normalizedMonth)) {
+                          setCalendarStartMonth2(new Date(nextYear, normalizedMonth));
                         }
                       }}
-                      disabled={(() => {
-                        const now = new Date();
-                        return calendarStartMonth2.getFullYear() === now.getFullYear() && calendarStartMonth2.getMonth() === now.getMonth();
-                      })()}
+                      disabled={!isMonthInDataRange(
+                        calendarStartMonth2.getMonth() === 11 ? calendarStartMonth2.getFullYear() + 1 : calendarStartMonth2.getFullYear(),
+                        calendarStartMonth2.getMonth() === 11 ? 0 : calendarStartMonth2.getMonth() + 1
+                      )}
                       style={{
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
                         border: '0.5px solid var(--border-default)',
-                        backgroundColor: 'var(--bg-elevated)',
-                        cursor: 'pointer',
+                        backgroundColor: !isMonthInDataRange(
+                          calendarStartMonth2.getMonth() === 11 ? calendarStartMonth2.getFullYear() + 1 : calendarStartMonth2.getFullYear(),
+                          calendarStartMonth2.getMonth() === 11 ? 0 : calendarStartMonth2.getMonth() + 1
+                        ) ? '#F5F5F5' : 'var(--bg-elevated)',
+                        cursor: !isMonthInDataRange(
+                          calendarStartMonth2.getMonth() === 11 ? calendarStartMonth2.getFullYear() + 1 : calendarStartMonth2.getFullYear(),
+                          calendarStartMonth2.getMonth() === 11 ? 0 : calendarStartMonth2.getMonth() + 1
+                        ) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: 0
+                        padding: 0,
+                        opacity: !isMonthInDataRange(
+                          calendarStartMonth2.getMonth() === 11 ? calendarStartMonth2.getFullYear() + 1 : calendarStartMonth2.getFullYear(),
+                          calendarStartMonth2.getMonth() === 11 ? 0 : calendarStartMonth2.getMonth() + 1
+                        ) ? 0.5 : 1
                       }}
                     >
                       <img
@@ -5163,7 +5643,10 @@ export default function MapCanvas() {
                         style={{
                           width: '24px',
                           height: '24px',
-                          filter: 'brightness(0)'
+                          filter: !isMonthInDataRange(
+                            calendarStartMonth2.getMonth() === 11 ? calendarStartMonth2.getFullYear() + 1 : calendarStartMonth2.getFullYear(),
+                            calendarStartMonth2.getMonth() === 11 ? 0 : calendarStartMonth2.getMonth() + 1
+                          ) ? 'none' : 'brightness(0)'
                         }}
                       />
                     </button>
@@ -5190,6 +5673,10 @@ export default function MapCanvas() {
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 48px)', rowGap: '4px', columnGap: '0', justifyContent: 'center' }}>
                             {days.map((day, idx) => {
                               if (!day) return <div key={`empty-${idx}`} />;
+
+                              // Check if date is within valid data range
+                              const isDisabled = !isDateInDataRange(day);
+
                               const isStart = stagedStartDate2 && day.getTime() === stagedStartDate2.getTime();
                               const isEnd = stagedEndDate2 && day.getTime() === stagedEndDate2.getTime();
                               const isInRange = stagedStartDate2 && stagedEndDate2 && day.getTime() > stagedStartDate2.getTime() && day.getTime() < stagedEndDate2.getTime();
@@ -5197,7 +5684,7 @@ export default function MapCanvas() {
 
                               return (
                                 <div key={idx} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '48px' }}>
-                                  {(isSelected || isInRange) && (
+                                  {(isSelected || isInRange) && !isDisabled && (
                                     <div style={{
                                       position: 'absolute',
                                       inset: 0,
@@ -5210,7 +5697,9 @@ export default function MapCanvas() {
                                   )}
                                   <button
                                     type="button"
+                                    disabled={isDisabled}
                                     onClick={() => {
+                                      if (isDisabled) return;
                                       if (!stagedStartDate2 || (stagedStartDate2 && stagedEndDate2)) {
                                         setStagedStartDate2(day);
                                         setStagedEndDate2(null);
@@ -5230,10 +5719,11 @@ export default function MapCanvas() {
                                       border: 'none',
                                       borderRadius: '50%',
                                       backgroundColor: 'transparent',
-                                      cursor: 'pointer',
+                                      cursor: isDisabled ? 'not-allowed' : 'pointer',
                                       fontFamily: 'Inter, sans-serif',
                                       fontSize: 'var(--button-small-size)',
-                                      color: isSelected ? 'var(--text-btn-primary)' : 'var(--text-primary)'
+                                      color: isDisabled ? 'var(--text-disabled)' : (isSelected ? 'var(--text-btn-primary)' : 'var(--text-primary)'),
+                                      opacity: isDisabled ? 0.4 : 1
                                     }}
                                   >
                                     {day.getDate()}
@@ -5784,7 +6274,7 @@ export default function MapCanvas() {
               {/* Overall Trip Metric Card */}
               {comparisonMode ? (
                 (() => {
-                  const value1 = selectedTrip.ridership;
+                  const value1 = tripRidershipValue;
                   // Use the route's comparison percentage for the trip
                   const percentChange = routeComparisonMap.get(selectedTrip.route_id) || 0;
                   const value2 = Math.round(value1 / (1 + percentChange / 100));
@@ -5799,7 +6289,7 @@ export default function MapCanvas() {
               ) : (
                 <MetricCard
                   title={selectedMetric}
-                  value={selectedTrip.ridership}
+                  value={tripRidershipValue}
                 />
               )}
 
@@ -5814,17 +6304,31 @@ export default function MapCanvas() {
                 {(selectedMetric === 'Average load' || selectedMetric === 'Maxload') ? (
                   /* Load metric: Colored line segments + black stops */
                   (() => {
-                    // Build a map of fromStopId -> loadValue and comparison data from segmentGeoms
+                    // Build a map of fromStopId -> loadValue using trip-specific API data when available
                     const segmentLoadMap = new Map<string, number>();
                     const segmentComparisonDataMap = new Map<string, number>(); // fromStopId -> percentChange
-                    segmentGeoms.forEach(seg => {
-                      segmentLoadMap.set(seg.fromStopId, seg.loadValue);
-                      // Calculate percent change using same formula as segmentComparisonMap
-                      const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
-                      const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                      const percentChange = ((hash % 91) - 40); // Range: -40 to +50
-                      segmentComparisonDataMap.set(seg.fromStopId, percentChange);
-                    });
+
+                    // Use trip-specific segment data from API if available
+                    if (tripData?.segments && tripData.segments.length > 0) {
+                      tripData.segments.forEach(seg => {
+                        const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
+                        segmentLoadMap.set(seg.fromStopId, loadValue);
+                        // For now, use mock percent change for comparison mode (will be updated in Phase 7)
+                        const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
+                        const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                        const percentChange = ((hash % 91) - 40); // Range: -40 to +50
+                        segmentComparisonDataMap.set(seg.fromStopId, percentChange);
+                      });
+                    } else {
+                      // Fall back to route-level segment data
+                      segmentGeoms.forEach(seg => {
+                        segmentLoadMap.set(seg.fromStopId, seg.loadValue);
+                        const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
+                        const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                        const percentChange = ((hash % 91) - 40); // Range: -40 to +50
+                        segmentComparisonDataMap.set(seg.fromStopId, percentChange);
+                      });
+                    }
 
                     return (
                       <div style={{ position: 'relative' }}>
@@ -5978,21 +6482,48 @@ export default function MapCanvas() {
                   })()
                 ) : (
                   /* Boardings/Alightings/Activity metrics: Colored stops + beige line */
-                  <div style={{ position: 'relative' }}>
-                    {/* Vertical beige line */}
-                    <div style={{
-                      position: 'absolute',
-                      left: '8px',
-                      top: '8px',
-                      height: selectedTripStops.length > 1 ? `calc(100% - 8px - 42px)` : '0px',
-                      width: '4px',
-                      backgroundColor: 'var(--border-default)'
-                    }} />
+                  (() => {
+                    // Build trip-specific stop values from API data when available
+                    const tripStopValueMap = new Map<string, number>();
+                    if (tripData?.stops && tripData.stops.length > 0) {
+                      tripData.stops.forEach(s => {
+                        let value: number;
+                        switch (selectedMetric) {
+                          case 'Average daily boardings':
+                          case 'Total boardings':
+                            value = s.totalBoardings;
+                            break;
+                          case 'Average daily alightings':
+                            value = s.totalAlightings;
+                            break;
+                          case 'Average daily activity':
+                          case 'Total activity':
+                            value = s.totalActivity;
+                            break;
+                          default:
+                            value = s.totalBoardings;
+                        }
+                        tripStopValueMap.set(s.stopId, value);
+                      });
+                    }
 
-                    {/* Stops */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      {selectedTripStops.map((stop, index) => {
-                        const stopValue = stopValueMap.get(stop.id) || 0;
+                    return (
+                      <div style={{ position: 'relative' }}>
+                        {/* Vertical beige line */}
+                        <div style={{
+                          position: 'absolute',
+                          left: '8px',
+                          top: '8px',
+                          height: selectedTripStops.length > 1 ? `calc(100% - 8px - 42px)` : '0px',
+                          width: '4px',
+                          backgroundColor: 'var(--border-default)'
+                        }} />
+
+                        {/* Stops */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          {selectedTripStops.map((stop, index) => {
+                            // Use trip-specific stop value from API, fall back to stopValueMap
+                            const stopValue = tripStopValueMap.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0;
 
                         // Get comparison percent change for this stop
                         const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
@@ -6130,8 +6661,10 @@ export default function MapCanvas() {
                       })}
                     </div>
                   </div>
-                )}
-              </div>
+                );
+              })()
+            )}
+          </div>
             </div>
           </div>
         ) : selectedStopId ? (
@@ -6315,7 +6848,7 @@ export default function MapCanvas() {
                       />
                     )}
                     <ByDateChart
-                      data={chartDataByDate}
+                      data={activeDataByDate}
                       comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
                       gradientId="colorValueStop"
                       metric={selectedMetric}
@@ -6324,14 +6857,14 @@ export default function MapCanvas() {
                       swapped={comparisonSwapped}
                     />
                     <ByDayChart
-                      data={mockDataByDay}
+                      data={activeDataByDay}
                       comparisonData={comparisonMode ? comparisonDataByDay : undefined}
                       metric={selectedMetric}
                       selectedDays={effectiveSelectedDays}
                       swapped={comparisonSwapped}
                     />
                     <ByPeriodChart
-                      data={mockDataByPeriod}
+                      data={activeDataByPeriod}
                       comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                       colors={PERIOD_COLORS}
                       activePieIndex={activePieIndex}
@@ -6874,7 +7407,7 @@ export default function MapCanvas() {
               >
                 {comparisonMode ? (
                   (() => {
-                    const value1 = routesList.find((r) => r.id === selectedRouteId)?.value || 0;
+                    const value1 = routeData?.metrics ? getMetricValue(routeData.metrics, selectedMetric) : routesList.find((r) => r.id === selectedRouteId)?.value || 0;
                     const percentChange = routeComparisonMap.get(selectedRouteId || '') || 0;
                     const value2 = Math.round(value1 / (1 + percentChange / 100));
                     return (
@@ -6888,11 +7421,11 @@ export default function MapCanvas() {
                 ) : (
                   <MetricCard
                     title={selectedMetric}
-                    value={routesList.find((r) => r.id === selectedRouteId)?.value || 0}
+                    value={routeData?.metrics ? getMetricValue(routeData.metrics, selectedMetric) : routesList.find((r) => r.id === selectedRouteId)?.value || 0}
                   />
                 )}
                 <ByDateChart
-                  data={chartDataByDate}
+                  data={activeDataByDate}
                   comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
                   gradientId="colorValue"
                   metric={selectedMetric}
@@ -6901,14 +7434,14 @@ export default function MapCanvas() {
                   swapped={comparisonSwapped}
                 />
                 <ByDayChart
-                  data={mockDataByDay}
+                  data={activeDataByDay}
                   comparisonData={comparisonMode ? comparisonDataByDay : undefined}
                   metric={selectedMetric}
                   selectedDays={effectiveSelectedDays}
                   swapped={comparisonSwapped}
                 />
                 <ByPeriodChart
-                  data={mockDataByPeriod}
+                  data={activeDataByPeriod}
                   comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
                   colors={PERIOD_COLORS}
                   swapped={comparisonSwapped}
@@ -7763,7 +8296,7 @@ export default function MapCanvas() {
               <MetricCard title={selectedMetric} value={routesList.reduce((sum, r) => sum + r.value, 0).toLocaleString()} />
             )}
             <ByDateChart
-              data={chartDataByDate}
+              data={dataByDate}
               comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
               gradientId="colorValueSystem"
               metric={selectedMetric}
@@ -7772,14 +8305,14 @@ export default function MapCanvas() {
               swapped={comparisonSwapped}
             />
             <ByDayChart
-              data={mockDataByDay}
+              data={dataByDay}
               comparisonData={comparisonMode ? comparisonDataByDay : undefined}
               metric={selectedMetric}
               selectedDays={effectiveSelectedDays}
               swapped={comparisonSwapped}
             />
             <ByPeriodChart
-              data={mockDataByPeriod}
+              data={dataByPeriod}
               comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
               colors={PERIOD_COLORS}
               activePieIndex={activePieIndex}
