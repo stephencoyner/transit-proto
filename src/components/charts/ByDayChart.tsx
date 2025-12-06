@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
@@ -140,11 +140,9 @@ const ByDayChartSkeleton = () => (
   </div>
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays, swapped = false, loading = false }: ByDayChartProps) {
-  // Show skeleton when loading
-  if (loading) {
-    return <ByDayChartSkeleton />;
-  }
+  // All hooks must be called before any early returns
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {
@@ -177,6 +175,11 @@ export default function ByDayChart({ data, comparisonData, metric: _metric, sele
       value2: swapped ? item.value : (filteredComparisonData?.[index]?.value ?? 0)
     }));
   }, [filteredData, filteredComparisonData, comparisonData, swapped]);
+
+  // Show skeleton when loading (after all hooks)
+  if (loading) {
+    return <ByDayChartSkeleton />;
+  }
 
   const isComparisonMode = !!comparisonData;
 

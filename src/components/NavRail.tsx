@@ -46,6 +46,7 @@ const ComponentsIcon = () => (
   </svg>
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OpenPanelIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="9" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 9 6.99382e-07)" fill="currentColor"/>
@@ -54,6 +55,7 @@ const OpenPanelIcon = () => (
   </svg>
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ClosePanelIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="12" y="6.99382e-07" width="16" height="2" rx="1" transform="rotate(90 12 6.99382e-07)" fill="currentColor"/>
@@ -148,6 +150,7 @@ const NavRail: React.FC<NavRailProps> = ({
   const handleProfileClick = () => {
     if (profileButtonRef.current) {
       const rect = profileButtonRef.current.getBoundingClientRect();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const menuWidth = 240;
       const menuHeight = 60; // Approximate height of the menu
       setProfileMenuPosition({

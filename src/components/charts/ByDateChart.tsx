@@ -212,6 +212,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
   }, [chartData, isComparisonMode]);
 
   // Render larger dataset first (behind), smaller dataset last (on top)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const value1IsLarger = value1Total >= value2Total;
 
   // Show skeleton when loading (after all hooks)
