@@ -3128,7 +3128,7 @@ export default function MapCanvas() {
     return [...color, alpha] as [number, number, number, number];
   }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const getStopCenterColor = React.useCallback((_d: any): [number, number, number, number] => {
     // When showing segment coloring (load metrics) or amenities view, use black center
     if (showSegmentColoring || isAmenitiesView) {
@@ -4281,6 +4281,7 @@ export default function MapCanvas() {
                           sortKey: trip.start_time
                         }))
                       ).sort((a, b) => (a as { sortKey: string }).sortKey.localeCompare((b as { sortKey: string }).sortKey))
+                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                        .map(({ sortKey, ...rest }) => rest as { value: string; label: string; description: string })}
                     />
                   </div>
