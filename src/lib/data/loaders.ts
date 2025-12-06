@@ -1,20 +1,27 @@
+// Helper function to decompress gzipped fetch response
+async function fetchGzipped<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load ${url}`);
+
+  const blob = await res.blob();
+  const ds = new DecompressionStream('gzip');
+  const decompressedStream = blob.stream().pipeThrough(ds);
+  const decompressedBlob = await new Response(decompressedStream).blob();
+  const text = await decompressedBlob.text();
+  return JSON.parse(text) as T;
+}
+
 export async function fetchShapesKCM() {
-  const res = await fetch('/data/shapes_kcm_subset_complete.geojson', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load shapes_kcm_subset_complete.geojson');
-  return res.json() as Promise<GeoJSON.FeatureCollection>;
+  return fetchGzipped<GeoJSON.FeatureCollection>('/data/shapes_kcm_subset_complete.geojson.gz');
 }
 
 export async function fetchStopsKCM() {
-  const res = await fetch('/data/stops_kcm_subset.geojson', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load stops_kcm_subset.geojson');
-  return res.json() as Promise<GeoJSON.FeatureCollection>;
+  return fetchGzipped<GeoJSON.FeatureCollection>('/data/stops_kcm_subset.geojson.gz');
 }
 
 // Fetch pre-built route-stops mapping
 export async function fetchRouteStopsMap(): Promise<{ [routeId: string]: Set<string> }> {
-  const res = await fetch('/data/route_stops_map.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load route_stops_map.json');
-  const data = await res.json() as { [routeId: string]: string[] };
+  const data = await fetchGzipped<{ [routeId: string]: string[] }>('/data/route_stops_map.json.gz');
 
   // Convert arrays back to Sets
   const routeStopsMap: { [routeId: string]: Set<string> } = {};
@@ -50,16 +57,12 @@ export interface RoutePatternInfo {
 
 // Fetch pattern lookup table (shape_id -> pattern info)
 export async function fetchPatternLookup(): Promise<{ [shapeId: string]: PatternInfo }> {
-  const res = await fetch('/data/pattern_lookup.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load pattern_lookup.json');
-  return res.json();
+  return fetchGzipped<{ [shapeId: string]: PatternInfo }>('/data/pattern_lookup.json.gz');
 }
 
 // Fetch route patterns (route_id -> pattern list)
 export async function fetchRoutePatterns(): Promise<{ [routeId: string]: RoutePatternInfo }> {
-  const res = await fetch('/data/route_patterns.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load route_patterns.json');
-  return res.json();
+  return fetchGzipped<{ [routeId: string]: RoutePatternInfo }>('/data/route_patterns.json.gz');
 }
 
 // Trip data types
@@ -79,11 +82,9 @@ export interface TripsByPattern {
   trips: Trip[];
 }
 
-// Fetch all route trips from GTFS
+// Fetch all route trips from GTFS (using gzipped file for faster loading)
 export async function fetchRouteTrips(): Promise<{ [routeId: string]: Trip[] }> {
-  const res = await fetch('/data/route_trips.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load route_trips.json');
-  const data = await res.json() as { [routeId: string]: Trip[] };
+  const data = await fetchGzipped<{ [routeId: string]: Trip[] }>('/data/route_trips.json.gz');
 
   // Add placeholder ridership to each trip (random between 50-500)
   for (const trips of Object.values(data)) {
@@ -120,7 +121,7 @@ export async function fetchTripStopTimes(): Promise<{ [tripId: string]: TripStop
     return tripStopTimesCache;
   }
 
-  const res = await fetch('/data/trip_stop_times.json.gz', { cache: 'no-store' });
+  const res = await fetch('/data/trip_stop_times.json.gz');
   if (!res.ok) throw new Error('Failed to load trip_stop_times.json.gz');
 
   // Decompress the gzipped response

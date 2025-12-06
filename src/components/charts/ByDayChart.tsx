@@ -15,6 +15,7 @@ interface ByDayChartProps {
   metric?: string;
   selectedDays?: string[] | null; // null or undefined means all days
   swapped?: boolean;
+  loading?: boolean;
 }
 
 // Map from full day names to abbreviated names used in data
@@ -31,7 +32,119 @@ const dayNameMap: Record<string, string> = {
 // Fixed chart height
 const CHART_HEIGHT = 240;
 
-export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays, swapped = false }: ByDayChartProps) {
+// Shimmer animation styles
+const shimmerStyles = `
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes shimmerSvg {
+    0% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0.3;
+    }
+  }
+`;
+
+// Loading skeleton component
+const ByDayChartSkeleton = () => (
+  <div style={{
+    backgroundColor: 'var(--bg-elevated)',
+    border: 'var(--border-width) solid var(--border-default)',
+    borderRadius: 'var(--radius-default)',
+    padding: '16px',
+    marginBottom: '8px'
+  }}>
+    <style>{shimmerStyles}</style>
+    {/* Title skeleton */}
+    <div style={{
+      height: 14,
+      width: 50,
+      borderRadius: 2,
+      marginBottom: 'var(--space-4)',
+      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.5s infinite ease-in-out',
+      opacity: 0.6
+    }} />
+    <div style={{ width: '100%', height: CHART_HEIGHT, position: 'relative' }}>
+      {/* Y-axis area */}
+      <div style={{ position: 'absolute', left: 0, top: 10, width: 40, height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{
+            height: 8,
+            width: 24,
+            borderRadius: 2,
+            background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite ease-in-out',
+            animationDelay: `${i * 0.1}s`,
+            opacity: 0.6
+          }} />
+        ))}
+      </div>
+      {/* Chart area with vertical bars */}
+      <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 40px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 280 200" preserveAspectRatio="none">
+        {/* Horizontal grid lines */}
+        <line x1="0" y1="0" x2="280" y2="0" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="50" x2="280" y2="50" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="100" x2="280" y2="100" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="150" x2="280" y2="150" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="200" x2="280" y2="200" stroke="var(--border-default)" strokeWidth="0.5" />
+        {/* Vertical bars - 7 days */}
+        {[0, 1, 2, 3, 4, 5, 6].map(i => {
+          const barWidth = 24;
+          const gap = 16;
+          const x = i * (barWidth + gap) + 8;
+          const heights = [120, 140, 130, 150, 135, 80, 70]; // Varied heights for visual interest
+          const height = heights[i];
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={200 - height}
+              width={barWidth}
+              height={height}
+              rx={4}
+              ry={4}
+              fill="var(--border-hover)"
+            />
+          );
+        })}
+      </svg>
+      {/* X-axis labels */}
+      <div style={{ position: 'absolute', left: 40, bottom: 0, width: 'calc(100% - 50px)', display: 'flex', justifyContent: 'space-around' }}>
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((_, i) => (
+          <div key={i} style={{
+            width: 24,
+            height: 12,
+            borderRadius: 2,
+            background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite ease-in-out',
+            animationDelay: `${i * 0.05}s`,
+            opacity: 0.6
+          }} />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays, swapped = false, loading = false }: ByDayChartProps) {
+  // Show skeleton when loading
+  if (loading) {
+    return <ByDayChartSkeleton />;
+  }
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {

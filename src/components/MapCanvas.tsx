@@ -89,8 +89,8 @@ const INITIAL_VIEW_STATE = {
 };
 
 // Data range constraints - ridership data is only available for this period
-const DATA_START_DATE = new Date(2024, 11, 1); // December 1, 2024
-const DATA_END_DATE = new Date(2025, 10, 30);   // November 30, 2025
+const DATA_START_DATE = new Date(2025, 8, 1);  // September 1, 2025
+const DATA_END_DATE = new Date(2025, 8, 30);   // September 30, 2025
 
 // Helper to check if a date is within the valid data range
 function isDateInDataRange(date: Date): boolean {
@@ -574,22 +574,23 @@ export default function MapCanvas() {
   const stopSortButtonRef = useRef<HTMLButtonElement>(null);
 
   // Date picker state - Applied state (what's actually being used)
-  const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
+  // Default to September 2025 (the range of available Supabase data)
+  const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
   const [appliedQuickPick, setAppliedQuickPick] = useState<string | null>(null);
-  const [appliedStartDate, setAppliedStartDate] = useState<Date | null>(null);
-  const [appliedEndDate, setAppliedEndDate] = useState<Date | null>(null);
+  const [appliedStartDate, setAppliedStartDate] = useState<Date | null>(new Date(2025, 8, 1));  // Sept 1, 2025
+  const [appliedEndDate, setAppliedEndDate] = useState<Date | null>(new Date(2025, 8, 30));    // Sept 30, 2025
 
   // Staged state (temporary changes in the picker)
-  const [datePickerMode, setDatePickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
+  const [datePickerMode, setDatePickerMode] = useState<'shortcuts' | 'custom'>('custom');
   const [selectedYear, setSelectedYear] = useState(2025);
-  const [stagedSeason, setStagedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'fall', year: 2025 });
+  const [stagedSeason, setStagedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
   const [stagedQuickPick, setStagedQuickPick] = useState<string | null>(null);
   const [calendarStartMonth, setCalendarStartMonth] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth());
+    // Default to September 2025 (the range of available Supabase data)
+    return new Date(2025, 8);
   });
-  const [stagedStartDate, setStagedStartDate] = useState<Date | null>(null);
-  const [stagedEndDate, setStagedEndDate] = useState<Date | null>(null);
+  const [stagedStartDate, setStagedStartDate] = useState<Date | null>(new Date(2025, 8, 1));
+  const [stagedEndDate, setStagedEndDate] = useState<Date | null>(new Date(2025, 8, 30));
 
   // Original state when picker was opened (for Reset)
   const [originalSeason, setOriginalSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
@@ -803,6 +804,15 @@ export default function MapCanvas() {
         case 'Total boardings':
           value = d.totalBoardings;
           break;
+        case 'Average daily alightings':
+          value = Math.round(d.totalAlightings / (d.dayCount || 1));
+          break;
+        case 'Average daily activity':
+          value = Math.round((d.totalBoardings + d.totalAlightings) / (d.dayCount || 1));
+          break;
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
         case 'Average load':
           value = d.avgLoad;
           break;
@@ -846,6 +856,10 @@ export default function MapCanvas() {
         case 'Average daily alightings':
           value = d.totalAlightings;
           break;
+        case 'Average daily activity':
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
         case 'Average load':
           value = d.avgLoad;
           break;
@@ -876,6 +890,15 @@ export default function MapCanvas() {
           break;
         case 'Total boardings':
           value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = Math.round(d.totalAlightings / (d.dayCount || 1));
+          break;
+        case 'Average daily activity':
+          value = Math.round((d.totalBoardings + d.totalAlightings) / (d.dayCount || 1));
+          break;
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
           break;
         case 'Average load':
           value = d.avgLoad;
@@ -919,6 +942,10 @@ export default function MapCanvas() {
         case 'Average daily alightings':
           value = d.totalAlightings;
           break;
+        case 'Average daily activity':
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
         case 'Average load':
           value = d.avgLoad;
           break;
@@ -950,9 +977,9 @@ export default function MapCanvas() {
   const { data: allStopsData, isLoading: isAllStopsLoading } = useAllStopsData(filterState, !!effectiveDateRange.start);
 
   // Fetch stop-specific data when a stop is selected (for SDV charts)
-  const { data: stopByDateData } = useStopByDateData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
-  const { data: stopByDayData } = useStopByDayData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
-  const { data: stopByPeriodData } = useStopByPeriodData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
+  const { data: stopByDateData, isLoading: isStopByDateLoading } = useStopByDateData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
+  const { data: stopByDayData, isLoading: isStopByDayLoading } = useStopByDayData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
+  const { data: stopByPeriodData, isLoading: isStopByPeriodLoading } = useStopByPeriodData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
 
   // Fetch trip-specific data when a trip is selected (for TDV)
   const { data: tripData } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
@@ -994,6 +1021,34 @@ export default function MapCanvas() {
     });
     return values;
   }, [allStopsData, selectedMetric, systemData?.metrics?.daysInRange]);
+
+  // Trip-specific stop values (for map coloring when viewing a trip)
+  const tripStopRidershipValues = useMemo(() => {
+    if (!tripData?.stops) return {};
+    const values: { [key: string]: number } = {};
+    tripData.stops.forEach(s => {
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          values[s.stopId] = s.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          values[s.stopId] = s.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          values[s.stopId] = s.avgDailyAlightings;
+          break;
+        case 'Average daily activity':
+          values[s.stopId] = s.avgDailyActivity;
+          break;
+        case 'Total activity':
+          values[s.stopId] = s.totalActivity;
+          break;
+        default:
+          values[s.stopId] = s.avgDailyBoardings;
+      }
+    });
+    return values;
+  }, [tripData, selectedMetric]);
 
   // Transform route-specific data for charts (used in RDV) - respects selected metric
   const routeDataByPeriod = useMemo(() => {
@@ -1110,6 +1165,11 @@ export default function MapCanvas() {
   const activeDataByPeriod = selectedStopId ? stopDataByPeriod : (selectedRouteId ? routeDataByPeriod : dataByPeriod);
   const activeDataByDay = selectedStopId ? stopDataByDay : dataByDay;
   const activeDataByDate = selectedStopId ? stopDataByDate : dataByDate;
+
+  // Active loading states based on context
+  const isActiveByDateLoading = selectedStopId ? isStopByDateLoading : (selectedRouteId ? isRouteLoading : isByDateLoading);
+  const isActiveByDayLoading = selectedStopId ? isStopByDayLoading : (selectedRouteId ? isRouteLoading : isByDayLoading);
+  const isActiveByPeriodLoading = selectedStopId ? isStopByPeriodLoading : (selectedRouteId ? isRouteLoading : isSystemLoading);
 
   // Extract unique routes from shapes data with ridership values from API
   const routesList = React.useMemo(() => {
@@ -1507,6 +1567,16 @@ export default function MapCanvas() {
         };
       }
 
+      // If a trip is selected, use trip-specific stop values for the range
+      if (selectedTrip && Object.keys(tripStopRidershipValues).length > 0) {
+        const tripStopValues = Object.values(tripStopRidershipValues);
+        return {
+          routeValueRange: { min: 0, max: 0 },
+          stopValueRange: getValueRange(tripStopValues),
+          scaleTitle: selectedMetric,
+        };
+      }
+
       // Route detail view OR stops tab - show stop data
       const visibleStopIds = new Set(filteredStops.map(s => s.properties.stop_id));
       const visibleStopValues = stopsList
@@ -1531,7 +1601,7 @@ export default function MapCanvas() {
         scaleTitle: selectedMetric,
       };
     }
-  }, [selectedRouteId, selectedStopId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric, showSegmentColoring, segmentValueRange]);
+  }, [selectedRouteId, selectedStopId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric, showSegmentColoring, segmentValueRange, selectedTrip, tripStopRidershipValues]);
 
   // Create lookup maps for values
   const routeValueMap = React.useMemo(() => {
@@ -1545,6 +1615,15 @@ export default function MapCanvas() {
     stopsList.forEach(stop => map.set(stop.id, stop.value));
     return map;
   }, [stopsList]);
+
+  // Trip-specific stop value map (for map coloring when viewing a trip)
+  const tripStopValueMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    Object.entries(tripStopRidershipValues).forEach(([stopId, value]) => {
+      map.set(stopId, value);
+    });
+    return map;
+  }, [tripStopRidershipValues]);
 
   // Create comparison value maps (percent change from Date-time 2 to Date-time 1)
   // Uses real API data when available
@@ -2769,12 +2848,22 @@ export default function MapCanvas() {
   useEffect(() => {
     (async () => {
       try {
-        const shapesFC = await fetchShapesKCM();
-        const stopsFC = await fetchStopsKCM();
-        const routeStopsData = await fetchRouteStopsMap();
-        const patternLookupData = await fetchPatternLookup();
-        const routePatternsData = await fetchRoutePatterns();
-        const tripsData = await fetchRouteTrips();
+        // Fetch all static data in parallel for faster loading
+        const [
+          shapesFC,
+          stopsFC,
+          routeStopsData,
+          patternLookupData,
+          routePatternsData,
+          tripsData
+        ] = await Promise.all([
+          fetchShapesKCM(),
+          fetchStopsKCM(),
+          fetchRouteStopsMap(),
+          fetchPatternLookup(),
+          fetchRoutePatterns(),
+          fetchRouteTrips()
+        ]);
         console.log('Loaded trips data for routes:', Object.keys(tripsData).length);
 
         const routeFeatures = shapesFC.features as RouteFeature[];
@@ -3021,11 +3110,14 @@ export default function MapCanvas() {
     }
 
     // Otherwise use data-driven color
-    const value = stopValueMap.get(stopId) || 0;
+    // When a trip is selected, use trip-specific values; otherwise use system-wide values
+    const value = (selectedTrip && tripStopValueMap.size > 0)
+      ? (tripStopValueMap.get(stopId) || 0)
+      : (stopValueMap.get(stopId) || 0);
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId, stopValueMap, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
+  }, [selectedStopId, stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
@@ -3119,6 +3211,10 @@ export default function MapCanvas() {
           getPath: (d) => d.path,
           getWidth: 9,
           getColor: (d) => {
+            // Show grey when loading ridership data
+            if (isRidershipLoading) {
+              return [186, 177, 169, 180]; // #BAB1A9 at medium opacity
+            }
             // If a route is selected (detail view), use hardcoded light gray
             if (selectedRouteId) {
               return [186, 177, 169, 255]; // #BAB1A9 at full opacity
@@ -3137,11 +3233,11 @@ export default function MapCanvas() {
             return [...color, opacity];
           },
           updateTriggers: {
-            getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange, comparisonMode, routeComparisonMap, comparisonValueRange]
+            getColor: [hoveredRoute, selectedRouteId, routeValueMap, routeValueRange, comparisonMode, routeComparisonMap, comparisonValueRange, isRidershipLoading]
           },
           widthMinPixels: 4.5,
           widthMaxPixels: 18,
-          pickable: !selectedRouteId, // Disable hover in route detail view
+          pickable: !selectedRouteId && !isRidershipLoading, // Disable hover in route detail view or while loading
         })
       );
     }
@@ -3230,9 +3326,11 @@ export default function MapCanvas() {
       const [lng, lat] = coords[midIndex];
 
       // Use data-driven color to match route coloring
-      // In comparison mode, use comparison colors; otherwise use normal colors
+      // Show grey when loading ridership data; otherwise use comparison or normal colors
       let color: [number, number, number];
-      if (comparisonMode) {
+      if (isRidershipLoading) {
+        color = [186, 177, 169]; // Grey (#BAB1A9) to match loading route color
+      } else if (comparisonMode) {
         const percentChange = routeComparisonMap.get(shape.properties.route_id) || 0;
         const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
         color = [compColor[0], compColor[1], compColor[2]];
@@ -3456,7 +3554,7 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange], // Force recalculation when selection, coloring mode, amenities view, or comparison mode changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap], // Force recalculation when selection, coloring mode, amenities view, comparison mode, or trip changes
             getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         }),
@@ -6074,6 +6172,43 @@ export default function MapCanvas() {
         />
       </DeckGL>
 
+      {/* Loading Spinner Overlay - positioned over the visible map area */}
+      {isRidershipLoading && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: isFiltersPanelOpen ? '716px' : '460px',
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            zIndex: 500,
+            pointerEvents: 'none',
+            transition: 'left 300ms ease-in-out',
+          }}
+        >
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              border: '4px solid var(--border-default)',
+              borderTopColor: 'var(--text-secondary)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }}
+          />
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* Stop Tooltip - shows when hovering stops in amenities view, stops tab, or SDV drill-down from routes/system tab at zoom >= 12 */}
       {(isAmenitiesView || activeTab === 'stops' || ((activeTab === 'routes' || activeTab === 'system') && selectedStopId)) && hoveredStop && hoveredStopCoords && viewState.zoom >= 12 && (() => {
         const hoveredStopData = stops.find(s => s.properties.stop_id === hoveredStop);
@@ -6490,18 +6625,22 @@ export default function MapCanvas() {
                         let value: number;
                         switch (selectedMetric) {
                           case 'Average daily boardings':
+                            value = s.avgDailyBoardings;
+                            break;
                           case 'Total boardings':
                             value = s.totalBoardings;
                             break;
                           case 'Average daily alightings':
-                            value = s.totalAlightings;
+                            value = s.avgDailyAlightings;
                             break;
                           case 'Average daily activity':
+                            value = s.avgDailyActivity;
+                            break;
                           case 'Total activity':
                             value = s.totalActivity;
                             break;
                           default:
-                            value = s.totalBoardings;
+                            value = s.avgDailyBoardings;
                         }
                         tripStopValueMap.set(s.stopId, value);
                       });
@@ -6845,6 +6984,7 @@ export default function MapCanvas() {
                       <MetricCard
                         title={selectedMetric}
                         value={stopsList.find((s) => s.id === selectedStopId)?.value || 0}
+                        loading={isActiveByPeriodLoading}
                       />
                     )}
                     <ByDateChart
@@ -6855,6 +6995,7 @@ export default function MapCanvas() {
                       startDate={effectiveDateRange.start}
                       endDate={effectiveDateRange.end}
                       swapped={comparisonSwapped}
+                      loading={isActiveByDateLoading}
                     />
                     <ByDayChart
                       data={activeDataByDay}
@@ -6862,6 +7003,7 @@ export default function MapCanvas() {
                       metric={selectedMetric}
                       selectedDays={effectiveSelectedDays}
                       swapped={comparisonSwapped}
+                      loading={isActiveByDayLoading}
                     />
                     <ByPeriodChart
                       data={activeDataByPeriod}
@@ -6872,6 +7014,7 @@ export default function MapCanvas() {
                       metric={selectedMetric}
                       swapped={comparisonSwapped}
                       selectedPeriods={effectiveSelectedPeriods}
+                      loading={isActiveByPeriodLoading}
                     />
                   </div>
                 ) : (
@@ -7422,6 +7565,7 @@ export default function MapCanvas() {
                   <MetricCard
                     title={selectedMetric}
                     value={routeData?.metrics ? getMetricValue(routeData.metrics, selectedMetric) : routesList.find((r) => r.id === selectedRouteId)?.value || 0}
+                    loading={isActiveByPeriodLoading}
                   />
                 )}
                 <ByDateChart
@@ -7432,6 +7576,7 @@ export default function MapCanvas() {
                   startDate={effectiveDateRange.start}
                   endDate={effectiveDateRange.end}
                   swapped={comparisonSwapped}
+                  loading={isActiveByDateLoading}
                 />
                 <ByDayChart
                   data={activeDataByDay}
@@ -7439,6 +7584,7 @@ export default function MapCanvas() {
                   metric={selectedMetric}
                   selectedDays={effectiveSelectedDays}
                   swapped={comparisonSwapped}
+                  loading={isActiveByDayLoading}
                 />
                 <ByPeriodChart
                   data={activeDataByPeriod}
@@ -7449,6 +7595,7 @@ export default function MapCanvas() {
                   setActivePieIndex={setActivePieIndex}
                   metric={selectedMetric}
                   selectedPeriods={effectiveSelectedPeriods}
+                  loading={isActiveByPeriodLoading}
                 />
               </div>
             ) : selectedRouteTab === 'Trips' ? (
@@ -8293,7 +8440,7 @@ export default function MapCanvas() {
                 );
               })()
             ) : (
-              <MetricCard title={selectedMetric} value={routesList.reduce((sum, r) => sum + r.value, 0).toLocaleString()} />
+              <MetricCard title={selectedMetric} value={routesList.reduce((sum, r) => sum + r.value, 0).toLocaleString()} loading={isSystemLoading} />
             )}
             <ByDateChart
               data={dataByDate}
@@ -8303,6 +8450,7 @@ export default function MapCanvas() {
               startDate={effectiveDateRange.start}
               endDate={effectiveDateRange.end}
               swapped={comparisonSwapped}
+              loading={isByDateLoading}
             />
             <ByDayChart
               data={dataByDay}
@@ -8310,6 +8458,7 @@ export default function MapCanvas() {
               metric={selectedMetric}
               selectedDays={effectiveSelectedDays}
               swapped={comparisonSwapped}
+              loading={isByDayLoading}
             />
             <ByPeriodChart
               data={dataByPeriod}
@@ -8320,6 +8469,7 @@ export default function MapCanvas() {
               metric={selectedMetric}
               selectedPeriods={effectiveSelectedPeriods}
               swapped={comparisonSwapped}
+              loading={isSystemLoading}
             />
           </div>
         ) : activeTab === 'components' ? (

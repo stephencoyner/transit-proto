@@ -17,6 +17,7 @@ interface ByDateChartProps {
   startDate?: Date | null;
   endDate?: Date | null;
   swapped?: boolean;
+  loading?: boolean;
 }
 
 // Helper to format a single date
@@ -84,7 +85,100 @@ const generateDateLabels = (
   }
 };
 
-export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate, swapped = false }: ByDateChartProps) {
+// Shimmer animation styles
+const shimmerStyles = `
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes shimmerSvg {
+    0% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0.3;
+    }
+  }
+`;
+
+// Loading skeleton component
+const ByDateChartSkeleton = () => (
+  <div style={{
+    backgroundColor: 'var(--bg-elevated)',
+    border: 'var(--border-width) solid var(--border-default)',
+    borderRadius: 'var(--radius-default)',
+    padding: '16px',
+    marginBottom: '8px'
+  }}>
+    <style>{shimmerStyles}</style>
+    {/* Title skeleton */}
+    <div style={{
+      height: 14,
+      width: 60,
+      borderRadius: 2,
+      marginBottom: 'var(--space-4)',
+      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.5s infinite ease-in-out',
+      opacity: 0.6
+    }} />
+    <div style={{ width: '100%', height: 200, position: 'relative' }}>
+      {/* Y-axis area */}
+      <div style={{ position: 'absolute', left: 0, top: 10, width: 40, height: 'calc(100% - 26px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{
+            height: 8,
+            width: 24,
+            borderRadius: 2,
+            background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite ease-in-out',
+            animationDelay: `${i * 0.1}s`,
+            opacity: 0.6
+          }} />
+        ))}
+      </div>
+      {/* Chart area with wave shape */}
+      <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 26px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 300 174" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="skeletonGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.6} />
+            <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.1} />
+          </linearGradient>
+        </defs>
+        {/* Horizontal grid lines */}
+        <line x1="0" y1="0" x2="300" y2="0" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="58" x2="300" y2="58" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="116" x2="300" y2="116" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="174" x2="300" y2="174" stroke="var(--border-default)" strokeWidth="0.5" />
+        {/* Wave area */}
+        <path
+          d="M0,140 Q50,100 100,120 T200,80 T300,100 L300,174 L0,174 Z"
+          fill="url(#skeletonGradient)"
+        />
+        <path
+          d="M0,140 Q50,100 100,120 T200,80 T300,100"
+          fill="none"
+          stroke="var(--border-hover)"
+          strokeWidth="2"
+        />
+      </svg>
+    </div>
+  </div>
+);
+
+export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate, swapped = false, loading = false }: ByDateChartProps) {
+  // Show skeleton when loading
+  if (loading) {
+    return <ByDateChartSkeleton />;
+  }
   // Generate proper date labels based on the date range
   const dateLabels = generateDateLabels(data.length, startDate, endDate);
 

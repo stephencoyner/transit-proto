@@ -18,10 +18,104 @@ interface ByPeriodChartProps {
   metric?: string;
   selectedPeriods?: string[] | null; // null or undefined means all periods
   swapped?: boolean;
+  loading?: boolean;
 }
 
 // Fixed chart height
 const CHART_HEIGHT = 240;
+
+// Shimmer animation styles
+const shimmerStyles = `
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes shimmerSvg {
+    0% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0.3;
+    }
+  }
+`;
+
+// Loading skeleton component
+const ByPeriodChartSkeleton = () => (
+  <div style={{
+    backgroundColor: 'var(--bg-elevated)',
+    border: 'var(--border-width) solid var(--border-default)',
+    borderRadius: 'var(--radius-default)',
+    padding: '16px',
+    marginBottom: '8px'
+  }}>
+    <style>{shimmerStyles}</style>
+    {/* Title skeleton */}
+    <div style={{
+      height: 14,
+      width: 70,
+      borderRadius: 2,
+      marginBottom: 'var(--space-4)',
+      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.5s infinite ease-in-out',
+      opacity: 0.6
+    }} />
+    <div style={{ width: '100%', height: CHART_HEIGHT, position: 'relative' }}>
+      {/* Y-axis labels area */}
+      <div style={{ position: 'absolute', left: 0, top: 10, width: 70, height: 'calc(100% - 20px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
+        {[0, 1, 2, 3, 4, 5].map(i => (
+          <div key={i} style={{
+            height: 10,
+            width: 50,
+            borderRadius: 2,
+            background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite ease-in-out',
+            animationDelay: `${i * 0.1}s`,
+            opacity: 0.6
+          }} />
+        ))}
+      </div>
+      {/* Chart area with horizontal bars */}
+      <svg style={{ position: 'absolute', left: 70, top: 10, width: 'calc(100% - 80px)', height: 'calc(100% - 20px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 200 220" preserveAspectRatio="none">
+        {/* Vertical grid lines */}
+        <line x1="0" y1="0" x2="0" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="50" y1="0" x2="50" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="100" y1="0" x2="100" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="150" y1="0" x2="150" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="200" y1="0" x2="200" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
+        {/* Horizontal bars - 6 time periods */}
+        {[0, 1, 2, 3, 4, 5].map(i => {
+          const barHeight = 24;
+          const gap = 12;
+          const y = i * (barHeight + gap) + 4;
+          const widths = [60, 140, 120, 160, 100, 50]; // Varied widths for visual interest
+          const width = widths[i];
+          return (
+            <rect
+              key={i}
+              x={0}
+              y={y}
+              width={width}
+              height={barHeight}
+              rx={4}
+              ry={4}
+              fill="var(--border-hover)"
+            />
+          );
+        })}
+      </svg>
+    </div>
+  </div>
+);
 
 export default function ByPeriodChart({
   data,
@@ -31,8 +125,13 @@ export default function ByPeriodChart({
   setActivePieIndex: _setActivePieIndex,
   metric: _metric,
   selectedPeriods,
-  swapped = false
+  swapped = false,
+  loading = false
 }: ByPeriodChartProps) {
+  // Show skeleton when loading
+  if (loading) {
+    return <ByPeriodChartSkeleton />;
+  }
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {

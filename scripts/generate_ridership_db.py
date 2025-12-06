@@ -21,10 +21,9 @@ import os
 
 # === CONFIGURATION ===
 
-# Generate 1 full year of data
-# December 2024 through November 2025
-GENERATE_START = date(2024, 12, 1)
-GENERATE_END = date(2025, 11, 30)
+# Generate only September 2025 (30 days) for smaller database
+GENERATE_START = date(2025, 9, 1)
+GENERATE_END = date(2025, 9, 30)
 
 # Time periods (matching your platform UI)
 TIME_PERIODS = {
