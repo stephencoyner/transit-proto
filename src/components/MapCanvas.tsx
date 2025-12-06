@@ -15,7 +15,7 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 
 // Type for bounds
@@ -389,6 +389,7 @@ export default function MapCanvas() {
   const [stickyPatterns, setStickyPatterns] = useState<Set<number>>(new Set());
 
   // Track scroll position for smooth border radius animation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [scrollProgress, setScrollProgress] = useState(0);
 
   // Add hover state tracking for filters and button
@@ -401,6 +402,7 @@ export default function MapCanvas() {
   // Comparison mode state
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
   const [comparisonDateRange, setComparisonDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [comparisonPreset, setComparisonPreset] = useState<'previous-period' | 'previous-year' | 'custom' | null>(null);
   const [comparisonSwapped, setComparisonSwapped] = useState<boolean>(false);
 
@@ -492,6 +494,7 @@ export default function MapCanvas() {
   } | null>(null);
 
   // State to track which trip is being hovered (format: "groupIndex-tripIndex")
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [hoveredTrip, setHoveredTrip] = useState<string | null>(null);
 
   // State for selected trip (for trip detail view)
@@ -499,6 +502,7 @@ export default function MapCanvas() {
   const [selectedTripStops, setSelectedTripStops] = useState<TripStopTime[]>([]);
   const [isTripContentScrolled, setIsTripContentScrolled] = useState(false);
   const [isRouteContentScrolled, setIsRouteContentScrolled] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isAmenitiesScrolled, setIsAmenitiesScrolled] = useState(false);
 
   // Tooltip state for trips
@@ -635,7 +639,7 @@ export default function MapCanvas() {
   const [stopAmenities, setStopAmenities] = React.useState<{ [key: string]: { [amenity: string]: string | false } }>({});
 
   // Define available amenities
-  const STOP_AMENITIES = [
+  const STOP_AMENITIES = useMemo(() => [
     'Advertisement',
     'Bike Rack',
     'Lighting',
@@ -646,7 +650,7 @@ export default function MapCanvas() {
     'Tactile Paving',
     'Trash Can',
     'Wheelchair Access'
-  ];
+  ], []);
 
   // Compute the effective date range for API calls based on applied filters
   const effectiveDateRange = useMemo(() => {
@@ -874,6 +878,7 @@ export default function MapCanvas() {
   }, [systemByDateData, selectedMetric]);
 
   // Calculate average for By Day chart
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const averageDailyByDay = useMemo(() => {
     if (dataByDay.length === 0) return 0;
     return dataByDay.reduce((sum, item) => sum + item.value, 0) / dataByDay.length;
@@ -971,9 +976,11 @@ export default function MapCanvas() {
 
   // Fetch route-specific data when a route is selected
   const { data: routeData, isLoading: isRouteLoading } = useRouteData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
 
   // Fetch all stops data for stops view
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: allStopsData, isLoading: isAllStopsLoading } = useAllStopsData(filterState, !!effectiveDateRange.start);
 
   // Fetch stop-specific data when a stop is selected (for SDV charts)
@@ -2303,6 +2310,7 @@ export default function MapCanvas() {
     const temp2CustomDays = appliedCustomDays2;
     const temp2TimeMode = appliedTimeMode2;
     const temp2TimePeriods = appliedTimePeriods2;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const temp2DateRange = comparisonDateRange;
 
     // Set Date-time 1 to former Date-time 2 values
@@ -2341,6 +2349,7 @@ export default function MapCanvas() {
   };
 
   // Format comparison date range (handles null values)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const formatComparisonDateRange = (start: Date | null, end: Date | null): string => {
     if (!start || !end) return '';
     return formatDateRange(start, end);
@@ -3117,10 +3126,10 @@ export default function MapCanvas() {
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [selectedStopId, stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
+  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getStopCenterColor = React.useCallback((d: any): [number, number, number, number] => {
+  const getStopCenterColor = React.useCallback((_d: any): [number, number, number, number] => {
     // When showing segment coloring (load metrics) or amenities view, use black center
     if (showSegmentColoring || isAmenitiesView) {
       return [0, 0, 0, 255] as [number, number, number, number];
@@ -3129,7 +3138,7 @@ export default function MapCanvas() {
     // Otherwise use white center
     const alpha = 255;
     return [255, 255, 255, alpha] as [number, number, number, number];
-  }, [selectedStopId, showSegmentColoring, isAmenitiesView]);
+  }, [showSegmentColoring, isAmenitiesView]);
 
   const layers = [];
 
