@@ -211,6 +211,7 @@ export async function getSystem(request: NextRequest): Promise<NextResponse> {
     }));
 
     // Get counts - use simple count queries (these are efficient)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [routeCountResult, stopCountResult] = await Promise.all([
       supabase.from('routes').select('route_id', { count: 'exact', head: true }),
       supabase.from('stops').select('stop_id', { count: 'exact', head: true }),

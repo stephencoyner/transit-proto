@@ -120,18 +120,19 @@ const ByPeriodChartSkeleton = () => (
 export default function ByPeriodChart({
   data,
   comparisonData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   colors: _colors,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   activePieIndex: _activePieIndex,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setActivePieIndex: _setActivePieIndex,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   metric: _metric,
   selectedPeriods,
   swapped = false,
   loading = false
 }: ByPeriodChartProps) {
-  // Show skeleton when loading
-  if (loading) {
-    return <ByPeriodChartSkeleton />;
-  }
+  // All hooks must be called before any early returns
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
   useEffect(() => {
@@ -164,6 +165,11 @@ export default function ByPeriodChart({
       value2: swapped ? item.value : (filteredComparisonData?.[index]?.value ?? 0)
     }));
   }, [filteredData, filteredComparisonData, comparisonData, swapped]);
+
+  // Show skeleton when loading (after all hooks)
+  if (loading) {
+    return <ByPeriodChartSkeleton />;
+  }
 
   const isComparisonMode = !!comparisonData;
 

@@ -174,11 +174,9 @@ const ByDateChartSkeleton = () => (
   </div>
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate, swapped = false, loading = false }: ByDateChartProps) {
-  // Show skeleton when loading
-  if (loading) {
-    return <ByDateChartSkeleton />;
-  }
+  // All hooks must be called before any early returns
   // Generate proper date labels based on the date range
   const dateLabels = generateDateLabels(data.length, startDate, endDate);
 
@@ -215,6 +213,11 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
 
   // Render larger dataset first (behind), smaller dataset last (on top)
   const value1IsLarger = value1Total >= value2Total;
+
+  // Show skeleton when loading (after all hooks)
+  if (loading) {
+    return <ByDateChartSkeleton />;
+  }
 
   return (
     <div style={{
