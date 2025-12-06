@@ -6225,6 +6225,7 @@ export default function MapCanvas() {
         const hoveredStopData = stops.find(s => s.properties.stop_id === hoveredStop);
         const hoveredStopAmenities = stopAmenities[hoveredStop] || {};
         const amenitiesWithDates = Object.entries(hoveredStopAmenities)
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           .filter(([_, value]) => value !== false)
           .map(([amenity]) => amenity);
         const ridership = stopValueMap.get(hoveredStop) || 0;
