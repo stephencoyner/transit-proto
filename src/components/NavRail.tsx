@@ -9,10 +9,10 @@ interface NavRailProps {
   userInitial?: string;
   isFiltersPanelOpen: boolean;
   onToggleFiltersPanel: () => void;
-  experimentalDetailViewNav: boolean;
-  onExperimentalDetailViewNavChange: (value: boolean) => void;
   routeControlsTitleSemibold: boolean;
   onRouteControlsTitleSemiboldChange: (value: boolean) => void;
+  differentiatedPanelBackgrounds: boolean;
+  onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
 }
 
 // Inline SVG components for nav icons
@@ -101,10 +101,10 @@ const NavRail: React.FC<NavRailProps> = ({
   userInitial = 'S',
   isFiltersPanelOpen,
   onToggleFiltersPanel,
-  experimentalDetailViewNav,
-  onExperimentalDetailViewNavChange,
   routeControlsTitleSemibold,
-  onRouteControlsTitleSemiboldChange
+  onRouteControlsTitleSemiboldChange,
+  differentiatedPanelBackgrounds,
+  onDifferentiatedPanelBackgroundsChange
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
@@ -151,11 +151,11 @@ const NavRail: React.FC<NavRailProps> = ({
     if (profileButtonRef.current) {
       const rect = profileButtonRef.current.getBoundingClientRect();
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const menuWidth = 240;
-      const menuHeight = 60; // Approximate height of the menu
+      const menuWidth = 280;
+      const menuHeight = 130; // Approximate height of the menu with 2 toggles
       setProfileMenuPosition({
-        top: rect.top + window.scrollY - menuHeight - 8, // Position above the button with 8px gap
-        left: rect.right + window.scrollX + 8 // Position to the right of the button with 8px gap
+        top: rect.top + window.scrollY - menuHeight - 32, // Position 32px above the button
+        left: rect.left + window.scrollX // Left-aligned with the button
       });
     }
     setIsProfileMenuOpen(!isProfileMenuOpen);
@@ -183,8 +183,13 @@ const NavRail: React.FC<NavRailProps> = ({
     };
   }, [isProfileMenuOpen]);
 
+  // Determine NavRail background: when differentiated is on, use secondary when filter panel is open, primary when closed
+  const navRailBackground = differentiatedPanelBackgrounds
+    ? (isFiltersPanelOpen ? 'var(--bg-secondary)' : 'var(--bg-primary)')
+    : 'var(--bg-primary)';
+
   return (
-    <div className={`flex flex-col items-center h-full px-2 relative ${isFiltersPanelOpen ? 'bg-bg-secondary' : 'bg-bg-primary'}`} style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', transition: 'background-color 0.5s ease' }}>
+    <div className="flex flex-col items-center h-full px-2 relative" style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', backgroundColor: navRailBackground, transition: 'background-color 300ms ease-in-out' }}>
       {/* Toggle Filters Button */}
       <button
         onClick={handleClick}
@@ -253,7 +258,7 @@ const NavRail: React.FC<NavRailProps> = ({
             position: 'fixed',
             top: `${profileMenuPosition.top}px`,
             left: `${profileMenuPosition.left}px`,
-            width: '240px',
+            width: '280px',
             backgroundColor: 'var(--bg-elevated)',
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--radius-large)',
@@ -262,39 +267,6 @@ const NavRail: React.FC<NavRailProps> = ({
             zIndex: 9999
           }}
         >
-          {/* Toggle Item - Experimental Detail View Nav */}
-          <div
-            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-            onClick={() => onExperimentalDetailViewNavChange(!experimentalDetailViewNav)}
-          >
-            <span className="button-small text-text-primary">
-              Experimental Detail View Nav
-            </span>
-            <div
-              style={{
-                width: '40px',
-                height: '20px',
-                borderRadius: '10px',
-                backgroundColor: experimentalDetailViewNav ? 'var(--text-primary)' : 'var(--bg-secondary)',
-                border: '1px solid var(--border-default)',
-                position: 'relative',
-                transition: 'background-color 0.2s ease'
-              }}
-            >
-              <div
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--bg-elevated)',
-                  position: 'absolute',
-                  top: '1px',
-                  left: experimentalDetailViewNav ? '21px' : '1px',
-                  transition: 'left 0.2s ease'
-                }}
-              />
-            </div>
-          </div>
           {/* Toggle Item - Route Controls Title Semibold */}
           <div
             className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
@@ -323,6 +295,39 @@ const NavRail: React.FC<NavRailProps> = ({
                   position: 'absolute',
                   top: '1px',
                   left: routeControlsTitleSemibold ? '21px' : '1px',
+                  transition: 'left 0.2s ease'
+                }}
+              />
+            </div>
+          </div>
+          {/* Toggle Item - Differentiated Panel Backgrounds */}
+          <div
+            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+            onClick={() => onDifferentiatedPanelBackgroundsChange(!differentiatedPanelBackgrounds)}
+          >
+            <span className="button-small text-text-primary">
+              Differentiated Panel Backgrounds
+            </span>
+            <div
+              style={{
+                width: '40px',
+                height: '20px',
+                borderRadius: '10px',
+                backgroundColor: differentiatedPanelBackgrounds ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                position: 'relative',
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              <div
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--bg-elevated)',
+                  position: 'absolute',
+                  top: '1px',
+                  left: differentiatedPanelBackgrounds ? '21px' : '1px',
                   transition: 'left 0.2s ease'
                 }}
               />

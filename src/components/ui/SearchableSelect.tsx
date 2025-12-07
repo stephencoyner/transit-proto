@@ -48,10 +48,12 @@ export interface SearchableSelectProps {
   onClose?: () => void;
   /** Position for the menu when using menuOnly mode */
   menuPosition?: { top: number; left: number };
+  /** Background color token for the trigger button (e.g., 'var(--bg-secondary)') */
+  background?: string;
 }
 
 export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>(
-  ({ label, error, helperText, options, placeholder, searchPlaceholder = 'Search...', value, onChange, disabled, className = '', id, maxHeight = 300, menuOnly = false, isOpen: externalIsOpen, onClose, menuPosition }, ref) => {
+  ({ label, error, helperText, options, placeholder, searchPlaceholder = 'Search...', value, onChange, disabled, className = '', id, maxHeight = 300, menuOnly = false, isOpen: externalIsOpen, onClose, menuPosition, background = 'var(--bg-primary)' }, ref) => {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const isOpen = menuOnly ? (externalIsOpen ?? false) : internalIsOpen;
     const setIsOpen = menuOnly ? (open: boolean) => { if (!open && onClose) onClose(); } : setInternalIsOpen;
@@ -224,7 +226,7 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
     const style = {
       borderWidth: 'var(--border-width)',
       color: 'var(--text-secondary)',
-      backgroundColor: isOpen ? 'var(--bg-elevated)' : (isHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)')
+      backgroundColor: isOpen ? 'var(--bg-elevated)' : (isHovered ? 'var(--bg-elevated)' : background)
     } as React.CSSProperties;
 
     return (

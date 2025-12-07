@@ -34,10 +34,12 @@ export interface SelectProps {
   className?: string;
   id?: string;
   multiCheck?: string[]; // Additional values to show checkmarks for (for multi-state selections)
+  /** Background color token for the trigger button (e.g., 'var(--bg-secondary)') */
+  background?: string;
 }
 
 export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
-  ({ label, error, helperText, options, placeholder, value, onChange, disabled, className = '', id, multiCheck = [] }, ref) => {
+  ({ label, error, helperText, options, placeholder, value, onChange, disabled, className = '', id, multiCheck = [], background = 'var(--bg-primary)' }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedValue, setSelectedValue] = useState(value || '');
     const [isHovered, setIsHovered] = useState(false);
@@ -159,7 +161,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const style = {
       borderWidth: 'var(--border-width)',
       color: 'var(--text-secondary)',
-      backgroundColor: isOpen ? 'var(--bg-elevated)' : (isHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)')
+      backgroundColor: isOpen ? 'var(--bg-elevated)' : (isHovered ? 'var(--bg-elevated)' : background)
     } as React.CSSProperties;
 
     return (
