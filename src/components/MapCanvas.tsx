@@ -343,8 +343,9 @@ export default function MapCanvas() {
   const [navigationStack, setNavigationStack] = useState<NavStackItem[]>([]);
   const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
-  const [experimentalDetailViewNav, setExperimentalDetailViewNav] = useState<boolean>(true);
-  const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(true);
+  const [experimentalDetailViewNav] = useState<boolean>(true); // Always true - controls visibility of route/stop controls
+  const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
+  const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -3701,10 +3702,10 @@ export default function MapCanvas() {
           userInitial="S"
           isFiltersPanelOpen={isFiltersPanelOpen}
           onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
-          experimentalDetailViewNav={experimentalDetailViewNav}
-          onExperimentalDetailViewNavChange={setExperimentalDetailViewNav}
           routeControlsTitleSemibold={routeControlsTitleSemibold}
           onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
+          differentiatedPanelBackgrounds={differentiatedPanelBackgrounds}
+          onDifferentiatedPanelBackgroundsChange={setDifferentiatedPanelBackgrounds}
         />
       </div>
 
@@ -3714,7 +3715,7 @@ export default function MapCanvas() {
         style={{
           width: isFiltersPanelOpen ? '256px' : '0px',
           height: 'calc(100% - 24px)',
-          backgroundColor: 'var(--bg-primary)',
+          backgroundColor: differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
           borderBottom: '0.5px solid var(--border-default)',
           borderRight: isFiltersPanelOpen ? '0.5px solid var(--border-default)' : 'none',
@@ -3753,7 +3754,7 @@ export default function MapCanvas() {
                     className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                     style={{
                       borderWidth: 'var(--border-width)',
-                      backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : (differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)')),
                       borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
                       color: 'var(--text-secondary)'
                     }}
@@ -3784,7 +3785,7 @@ export default function MapCanvas() {
                     className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                     style={{
                       borderWidth: 'var(--border-width)',
-                      backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                      backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : (differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)')),
                       borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
                       color: 'var(--text-secondary)'
                     }}
@@ -3931,7 +3932,7 @@ export default function MapCanvas() {
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                        backgroundColor: openFilter === 'date' ? 'var(--bg-elevated)' : (isDateHovered ? 'var(--bg-elevated)' : (differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)')),
                         borderColor: openFilter === 'date' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -3962,7 +3963,7 @@ export default function MapCanvas() {
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                        backgroundColor: openFilter === 'days' ? 'var(--bg-elevated)' : (isDaysHovered ? 'var(--bg-elevated)' : (differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)')),
                         borderColor: openFilter === 'days' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -4047,7 +4048,7 @@ export default function MapCanvas() {
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'date2' ? 'var(--bg-elevated)' : (isDate2Hovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                        backgroundColor: openFilter === 'date2' ? 'var(--bg-elevated)' : (isDate2Hovered ? 'var(--bg-elevated)' : (differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)')),
                         borderColor: openFilter === 'date2' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -4078,7 +4079,7 @@ export default function MapCanvas() {
                       className="button-small h-10 px-4 flex items-center justify-between cursor-pointer transition-colors rounded-full border"
                       style={{
                         borderWidth: 'var(--border-width)',
-                        backgroundColor: openFilter === 'days2' ? 'var(--bg-elevated)' : (isDays2Hovered ? 'var(--bg-elevated)' : 'var(--bg-primary)'),
+                        backgroundColor: openFilter === 'days2' ? 'var(--bg-elevated)' : (isDays2Hovered ? 'var(--bg-elevated)' : (differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)')),
                         borderColor: openFilter === 'days2' ? 'var(--border-focus)' : 'var(--border-default)',
                         color: 'var(--text-secondary)'
                       }}
@@ -4131,6 +4132,7 @@ export default function MapCanvas() {
                 { value: 'Average load', label: 'Average load', disabled: isStopLevelView },
                 { value: 'Maxload', label: 'Maxload', disabled: isStopLevelView }
               ]}
+              background={differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)'}
             />
           </div>
 
@@ -4228,6 +4230,7 @@ export default function MapCanvas() {
                       value: route.id,
                       label: route.name
                     }))}
+                    background={differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)'}
                   />
                 </div>
 
@@ -4249,6 +4252,7 @@ export default function MapCanvas() {
                           description: `${Math.round(pattern.pct_of_route)}% of trips`
                         }))
                       ]}
+                      background={differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)'}
                     />
                   </div>
                 )}
@@ -4284,6 +4288,7 @@ export default function MapCanvas() {
                       ).sort((a, b) => (a as { sortKey: string }).sortKey.localeCompare((b as { sortKey: string }).sortKey))
                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
                        .map(({ sortKey, ...rest }) => rest as { value: string; label: string; description: string })}
+                      background={differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)'}
                     />
                   </div>
                 )}
@@ -4360,6 +4365,7 @@ export default function MapCanvas() {
                   }))}
                   searchPlaceholder="Search stops..."
                   maxHeight={300}
+                  background={differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)'}
                 />
               </div>
             </>
