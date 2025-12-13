@@ -16,7 +16,7 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 
 // Type for bounds
@@ -993,6 +993,84 @@ export default function MapCanvas() {
   // Fetch trip-specific data when a trip is selected (for TDV)
   const { data: tripData } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
 
+  // Fetch route trips ridership data for trips list view
+  const { data: routeTripsRidership } = useRouteTripsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+
+  // Fetch route stops ridership data for map stop coloring when route is selected
+  const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+
+  // Create a map of trip_id -> all metrics from the API data
+  const tripMetricsMap = useMemo(() => {
+    const map = new Map<string, {
+      avgDailyBoardings: number;
+      avgDailyAlightings: number;
+      avgDailyActivity: number;
+      totalBoardings: number;
+      totalAlightings: number;
+      totalActivity: number;
+      avgLoad: number;
+      maxLoad: number;
+    }>();
+    if (routeTripsRidership?.trips) {
+      const daysInRange = filterState.startDate && filterState.endDate
+        ? Math.ceil((filterState.endDate.getTime() - filterState.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 30;
+      for (const trip of routeTripsRidership.trips) {
+        map.set(trip.tripId, {
+          avgDailyBoardings: Math.round(trip.totalBoardings / daysInRange),
+          avgDailyAlightings: Math.round(trip.totalAlightings / daysInRange),
+          avgDailyActivity: Math.round((trip.totalBoardings + trip.totalAlightings) / daysInRange),
+          totalBoardings: trip.totalBoardings,
+          totalAlightings: trip.totalAlightings,
+          totalActivity: trip.totalBoardings + trip.totalAlightings,
+          avgLoad: Math.round(trip.avgLoad * 10) / 10,
+          maxLoad: trip.maxLoad,
+        });
+      }
+    }
+    return map;
+  }, [routeTripsRidership, filterState.startDate, filterState.endDate]);
+
+  // Get the metric value for a trip based on selected metric
+  const getTripMetricValue = useCallback((tripId: string, fallbackRidership: number): number => {
+    const metrics = tripMetricsMap.get(tripId);
+    if (!metrics) return fallbackRidership;
+
+    switch (selectedMetric) {
+      case 'Average daily boardings':
+        return metrics.avgDailyBoardings;
+      case 'Average daily alightings':
+        return metrics.avgDailyAlightings;
+      case 'Average daily activity':
+        return metrics.avgDailyActivity;
+      case 'Total boardings':
+      case 'Total daily boardings':
+        return metrics.totalBoardings;
+      case 'Total alightings':
+        return metrics.totalAlightings;
+      case 'Total activity':
+        return metrics.totalActivity;
+      case 'Average load':
+        return metrics.avgLoad;
+      case 'Maxload':
+        return metrics.maxLoad;
+      default:
+        return metrics.avgDailyBoardings;
+    }
+  }, [tripMetricsMap, selectedMetric]);
+
+  // Update routeTrips with real ridership data from API (based on selected metric)
+  const routeTripsWithRidership = useMemo(() => {
+    if (tripMetricsMap.size === 0) return routeTrips;
+    return routeTrips.map(pattern => ({
+      ...pattern,
+      trips: pattern.trips.map(trip => ({
+        ...trip,
+        ridership: getTripMetricValue(trip.trip_id, trip.ridership)
+      }))
+    }));
+  }, [routeTrips, tripMetricsMap, getTripMetricValue]);
+
   // Get the trip ridership value from API (falls back to mock value from selectedTrip)
   const tripRidershipValue = useMemo(() => {
     if (!tripData?.metrics) {
@@ -1046,11 +1124,20 @@ export default function MapCanvas() {
         case 'Average daily alightings':
           values[s.stopId] = s.avgDailyAlightings;
           break;
+        case 'Total alightings':
+          values[s.stopId] = s.totalAlightings;
+          break;
         case 'Average daily activity':
           values[s.stopId] = s.avgDailyActivity;
           break;
         case 'Total activity':
           values[s.stopId] = s.totalActivity;
+          break;
+        case 'Average load':
+          values[s.stopId] = s.avgLoad || 0;
+          break;
+        case 'Maxload':
+          values[s.stopId] = s.maxLoad || 0;
           break;
         default:
           values[s.stopId] = s.avgDailyBoardings;
@@ -1058,6 +1145,46 @@ export default function MapCanvas() {
     });
     return values;
   }, [tripData, selectedMetric]);
+
+  // Route-specific stop values (for map coloring when viewing a route)
+  const routeStopRidershipValues = useMemo(() => {
+    if (!routeStopsRidership?.stops) return {};
+    const values: { [key: string]: number } = {};
+    const daysInRange = routeData?.metrics?.daysInRange || 30;
+    routeStopsRidership.stops.forEach(s => {
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          values[s.stopId] = s.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          values[s.stopId] = s.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          values[s.stopId] = s.avgDailyAlightings;
+          break;
+        case 'Total alightings':
+          values[s.stopId] = s.totalAlightings;
+          break;
+        case 'Average daily activity':
+          values[s.stopId] = s.avgDailyActivity;
+          break;
+        case 'Total activity':
+          values[s.stopId] = s.totalActivity;
+          break;
+        case 'Average load':
+          // Stops don't have load, use boardings as proxy
+          values[s.stopId] = s.avgDailyBoardings;
+          break;
+        case 'Maxload':
+          // Stops don't have maxload, use total boardings as proxy
+          values[s.stopId] = Math.round(s.totalBoardings / daysInRange);
+          break;
+        default:
+          values[s.stopId] = s.avgDailyBoardings;
+      }
+    });
+    return values;
+  }, [routeStopsRidership, selectedMetric, routeData?.metrics?.daysInRange]);
 
   // Transform route-specific data for charts (used in RDV) - respects selected metric
   const routeDataByPeriod = useMemo(() => {
@@ -1224,8 +1351,13 @@ export default function MapCanvas() {
 
     const stopsWithValues = stops.map(stop => {
       const stopId = stop.properties.stop_id;
-      // Use real ridership value from API, or 0 if not yet loaded
-      const ridershipValue = stopRidershipValues[stopId] || 0;
+      // Use route-specific stop values if a route is selected, otherwise fall back to all stops data
+      // Trip-specific values take precedence when a trip is selected
+      const ridershipValue = selectedTrip
+        ? (tripStopRidershipValues[stopId] || 0)
+        : selectedRouteId
+        ? (routeStopRidershipValues[stopId] || 0)
+        : (stopRidershipValues[stopId] || 0);
       // Generate amenities if they don't exist (mock data)
       if (!newAmenities[stopId]) {
         newAmenities[stopId] = {};
@@ -1248,7 +1380,7 @@ export default function MapCanvas() {
     }
 
     return stopsWithValues.sort((a, b) => b.value - a.value);
-  }, [stops, stopRidershipValues, stopAmenities, STOP_AMENITIES]);
+  }, [stops, stopRidershipValues, routeStopRidershipValues, tripStopRidershipValues, selectedRouteId, selectedTrip, stopAmenities, STOP_AMENITIES]);
 
   // Create filtered and sorted stopsList for display
   const filteredAndSortedStopsList = React.useMemo(() => {
@@ -1426,12 +1558,22 @@ export default function MapCanvas() {
       return [];
     }
 
-    // Build a lookup map from API segment data: "fromStopId-toStopId" -> avgLoad
+    // Build a lookup map from API segment data: "fromStopId-toStopId" -> load value
+    // Use trip-specific data when a trip is selected, otherwise use route-level data
     const segmentLoadMap = new Map<string, number>();
-    if (routeSegmentsData?.segments) {
+    if (selectedTrip && tripData?.segments) {
+      // Use trip-specific segment data
+      tripData.segments.forEach(seg => {
+        const key = `${seg.fromStopId}-${seg.toStopId}`;
+        const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
+        segmentLoadMap.set(key, loadValue);
+      });
+    } else if (routeSegmentsData?.segments) {
+      // Use route-level segment data
       routeSegmentsData.segments.forEach(seg => {
         const key = `${seg.fromStopId}-${seg.toStopId}`;
-        segmentLoadMap.set(key, seg.avgLoad);
+        const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
+        segmentLoadMap.set(key, loadValue);
       });
     }
 
@@ -1527,7 +1669,7 @@ export default function MapCanvas() {
     });
 
     return segments;
-  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, routeSegmentsData]);
+  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, routeSegmentsData, selectedTrip, tripData, selectedMetric]);
 
   // Calculate value range for segments
   const segmentValueRange = React.useMemo(() => {
@@ -2955,9 +3097,9 @@ export default function MapCanvas() {
 
   // Load trip stop times when Grid tab is selected
   useEffect(() => {
-    if (selectedRouteTab === 'Grid' && routeTrips.length > 0) {
+    if (selectedRouteTab === 'Grid' && routeTripsWithRidership.length > 0) {
       // Check if we already have grid data loaded for the current trips
-      const relevantTrips = routeTrips
+      const relevantTrips = routeTripsWithRidership
         .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
         .flatMap(pg => pg.trips);
 
@@ -2970,8 +3112,8 @@ export default function MapCanvas() {
           try {
             const allTripStopTimes = await fetchTripStopTimes();
 
-            // Get all trip IDs from routeTrips (filtered by pattern if selected)
-            const relevantTrips = routeTrips
+            // Get all trip IDs from routeTripsWithRidership (filtered by pattern if selected)
+            const relevantTrips = routeTripsWithRidership
               .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
               .flatMap(pg => pg.trips);
 
@@ -2994,7 +3136,7 @@ export default function MapCanvas() {
         loadGridData();
       }
     }
-  }, [selectedRouteTab, routeTrips, selectedPattern, gridTripStops]);
+  }, [selectedRouteTab, routeTripsWithRidership, selectedPattern, gridTripStops]);
 
   // Update view state when route or stop is selected
   useEffect(() => {
@@ -4264,8 +4406,8 @@ export default function MapCanvas() {
                     <Select
                       value={selectedTrip.trip_id}
                       onChange={async (value) => {
-                        // Find the trip from routeTrips
-                        for (const pattern of routeTrips) {
+                        // Find the trip from routeTripsWithRidership
+                        for (const pattern of routeTripsWithRidership) {
                           const trip = pattern.trips.find(t => t.trip_id === value);
                           if (trip) {
                             setSelectedTrip(trip);
@@ -4278,7 +4420,7 @@ export default function MapCanvas() {
                           }
                         }
                       }}
-                      options={routeTrips.flatMap(pattern =>
+                      options={routeTripsWithRidership.flatMap(pattern =>
                         pattern.trips.map(trip => ({
                           value: trip.trip_id,
                           label: formatTime12Hour(trip.start_time),
@@ -7620,7 +7762,7 @@ export default function MapCanvas() {
               /* Trips View */
               (() => {
                 // Filter and sort trips
-                const filteredAndSortedRouteTrips = routeTrips
+                const filteredAndSortedRouteTrips = routeTripsWithRidership
                   .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
                   .map(patternGroup => {
                     let filteredTrips = patternGroup.trips;
@@ -7657,7 +7799,7 @@ export default function MapCanvas() {
                   .filter(patternGroup => patternGroup.trips.length > 0);
 
                 // Calculate total and filtered counts
-                const totalTripsCount = routeTrips
+                const totalTripsCount = routeTripsWithRidership
                   .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
                   .reduce((sum, pg) => sum + pg.trips.length, 0);
                 const filteredTripsCount = filteredAndSortedRouteTrips.reduce((sum, pg) => sum + pg.trips.length, 0);
@@ -7801,7 +7943,7 @@ export default function MapCanvas() {
                           fontFamily: 'Inter, sans-serif',
                           fontSize: 'var(--body-size)'
                         }}>
-                          {routeTrips.length === 0 ? 'No trips available for this route' : 'No trips match the current filters'}
+                          {routeTripsWithRidership.length === 0 ? 'No trips available for this route' : 'No trips match the current filters'}
                         </div>
                       ) : (
                         filteredAndSortedRouteTrips.map((patternGroup, groupIndex) => {
@@ -8157,7 +8299,7 @@ export default function MapCanvas() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: 'var(--body-size)'
                       }}>
-                        {routeTrips.length === 0 ? 'No trips available for this route' : 'No trips match the current pattern filter'}
+                        {routeTripsWithRidership.length === 0 ? 'No trips available for this route' : 'No trips match the current pattern filter'}
                       </div>
                     ) : (
                       <>

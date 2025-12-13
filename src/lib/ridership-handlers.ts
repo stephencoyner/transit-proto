@@ -1,22 +1,51 @@
 /**
- * Ridership API Route Handler (Supabase Version)
+ * Ridership API Route Handlers
  *
- * Endpoints:
- * GET /api/ridership/system     - System-wide metrics
- * GET /api/ridership/route/[id] - Route-level metrics
- * GET /api/ridership/route/[id]/stops - Route stop metrics
- * GET /api/ridership/route/[id]/segments - Route segment load
- * GET /api/ridership/trip/[id]  - Trip-level metrics
- * GET /api/ridership/stop/[id]  - Stop-level metrics (disaggregated)
- * GET /api/ridership/stops      - All stops for map
+ * === ENDPOINTS ===
  *
- * Query params (all endpoints):
- * - startDate: YYYY-MM-DD (required)
- * - endDate: YYYY-MM-DD (required)
- * - days: comma-separated day numbers (0=Mon, 6=Sun)
- * - periods: comma-separated time periods
- * - routes: comma-separated route IDs (where applicable)
- * - direction: 0 or 1
+ * System Level:
+ *   GET /api/ridership/system           - System-wide metrics
+ *   GET /api/ridership/system/by-date   - Daily totals (supports routeIds filter for route charts)
+ *   GET /api/ridership/system/by-day    - By day of week (supports routeIds filter)
+ *   GET /api/ridership/system/by-period - By time period (supports routeIds filter)
+ *   GET /api/ridership/system/compare   - Comparison mode
+ *
+ * Routes:
+ *   GET /api/ridership/routes           - All routes with metrics
+ *   GET /api/ridership/route/[id]       - Single route metrics
+ *   GET /api/ridership/route/[id]/stops - Per-stop breakdown along route
+ *   GET /api/ridership/route/[id]/segments - Segment loads
+ *   GET /api/ridership/route/[id]/trips - Trips list with ridership (for trips grid)
+ *   GET /api/ridership/route/[id]/compare - Comparison mode
+ *
+ * Stops:
+ *   GET /api/ridership/stops            - All stops with metrics
+ *   GET /api/ridership/stops/compare    - Comparison mode
+ *   GET /api/ridership/stop/[id]        - Single stop metrics
+ *   GET /api/ridership/stop/[id]/by-date - Daily totals
+ *   GET /api/ridership/stop/[id]/by-day  - By day of week
+ *   GET /api/ridership/stop/[id]/by-period - By time period
+ *   GET /api/ridership/stop/[id]/compare - Comparison mode
+ *
+ * Trips:
+ *   GET /api/ridership/trip/[id]        - Trip detail with stop/segment data
+ *
+ * === QUERY PARAMS ===
+ *
+ * Standard filters (all endpoints):
+ *   - startDate: YYYY-MM-DD (required)
+ *   - endDate: YYYY-MM-DD (required)
+ *   - daysOfWeek: comma-separated (0=Mon, 6=Sun)
+ *   - timePeriods: comma-separated (early_am, am_peak, midday, pm_peak, evening, night)
+ *   - routeIds: comma-separated route IDs
+ *   - directionId: 0 or 1
+ *
+ * Comparison mode (on /compare endpoints):
+ *   - compStartDate: YYYY-MM-DD
+ *   - compEndDate: YYYY-MM-DD
+ *
+ * Note: Route-level charts use system chart endpoints with routeIds filter.
+ * Example: /api/ridership/system/by-date?routeIds=101 for route 101's daily chart.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -255,7 +284,7 @@ export async function getRoute(
     // Get route info
     const { data: routeInfo, error: routeError } = await supabase
       .from('routes')
-      .select('route_id, route_name, route_type')
+      .select('route_id, route_short_name, route_type')
       .eq('route_id', routeId)
       .single();
 
@@ -346,7 +375,7 @@ export async function getRoute(
       filters,
       metrics: {
         routeId: routeInfo.route_id,
-        routeName: routeInfo.route_name,
+        routeName: routeInfo.route_short_name,
         routeType: routeInfo.route_type,
         tripCount: routeMetrics?.tripCount || 0,
         stopCount: routeMetrics?.stopCount || 0,
@@ -380,7 +409,7 @@ export async function getRouteStops(
     // Get route name
     const { data: routeInfo } = await supabase
       .from('routes')
-      .select('route_name')
+      .select('route_short_name')
       .eq('route_id', routeId)
       .single();
 
@@ -422,7 +451,7 @@ export async function getRouteStops(
     const response: RouteStopsResponse = {
       filters,
       routeId,
-      routeName: routeInfo.route_name,
+      routeName: routeInfo.route_short_name,
       stops,
       maxBoardings: Math.max(...stops.map(s => s.totalBoardings), 0),
       maxAlightings: Math.max(...stops.map(s => s.totalAlightings), 0),
@@ -449,7 +478,7 @@ export async function getRouteSegments(
     // Get route name
     const { data: routeInfo } = await supabase
       .from('routes')
-      .select('route_name')
+      .select('route_short_name')
       .eq('route_id', routeId)
       .single();
 
@@ -505,7 +534,7 @@ export async function getRouteSegments(
     const response: RouteSegmentsResponse = {
       filters,
       routeId,
-      routeName: routeInfo.route_name,
+      routeName: routeInfo.route_short_name,
       segments,
       minLoad: loads.length > 0 ? Math.min(...loads) : 0,
       maxLoad: segments.length > 0 ? Math.max(...segments.map(s => s.maxLoad)) : 0,
@@ -553,7 +582,7 @@ export async function getTrip(
     const routeId = tripData[0].route_id;
     const { data: routeInfo } = await supabase
       .from('routes')
-      .select('route_name')
+      .select('route_short_name')
       .eq('route_id', routeId)
       .single();
 
@@ -568,15 +597,16 @@ export async function getTrip(
     const uniqueDates = new Set(tripData.map(r => r.date));
 
     // Aggregate by stop
-    const stopAggregates = new Map<string, { boardings: number; alightings: number; sequence: number }>();
+    const stopAggregates = new Map<string, { boardings: number; alightings: number; sequence: number; loads: number[] }>();
     tripData.forEach(row => {
       const sid = row.stop_id;
       if (!stopAggregates.has(sid)) {
-        stopAggregates.set(sid, { boardings: 0, alightings: 0, sequence: row.stop_sequence || 0 });
+        stopAggregates.set(sid, { boardings: 0, alightings: 0, sequence: row.stop_sequence || 0, loads: [] });
       }
       const agg = stopAggregates.get(sid)!;
       agg.boardings += row.boardings || 0;
       agg.alightings += row.alightings || 0;
+      if (row.load_after) agg.loads.push(row.load_after);
     });
 
     // Get stop info
@@ -591,6 +621,10 @@ export async function getTrip(
     const stops = Array.from(stopAggregates.entries())
       .map(([stopId, agg]) => {
         const stop = stopMap.get(stopId);
+        const stopAvgLoad = agg.loads.length > 0
+          ? agg.loads.reduce((a, b) => a + b, 0) / agg.loads.length
+          : 0;
+        const stopMaxLoad = agg.loads.length > 0 ? Math.max(...agg.loads) : 0;
         return {
           stopId,
           stopName: stop?.stop_name || stopId,
@@ -599,6 +633,8 @@ export async function getTrip(
           lat: stop?.lat || 0,
           lon: stop?.lon || 0,
           ...calculateDerivedMetrics(agg.boardings, agg.alightings, daysInRange),
+          avgLoad: Math.round(stopAvgLoad * 10) / 10,
+          maxLoad: stopMaxLoad,
         };
       })
       .sort((a, b) => a.stopSequence - b.stopSequence);
@@ -651,7 +687,7 @@ export async function getTrip(
       metrics: {
         tripId,
         routeId,
-        routeName: routeInfo?.route_name || routeId,
+        routeName: routeInfo?.route_short_name || routeId,
         directionId: String(tripData[0].direction_id) as "0" | "1",
         headsign: tripData[0].direction_id === 1 ? "Inbound" : "Outbound",
         startTime: "",
@@ -815,7 +851,9 @@ export async function getAllStops(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(response);
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 });
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error('getAllStops error:', error);
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 }
 
@@ -936,6 +974,124 @@ export async function getSystemByDay(request: NextRequest): Promise<NextResponse
     const response: SystemByDayResponse = {
       filters,
       data,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === SYSTEM BY PERIOD ENDPOINT ===
+
+export interface SystemByPeriodResponse {
+  filters: RidershipFilters;
+  data: Array<{
+    timePeriod: TimePeriod;
+    totalBoardings: number;
+    totalAlightings: number;
+    avgLoad: number;
+    maxLoad: number;
+  }>;
+}
+
+export async function getSystemByPeriod(request: NextRequest): Promise<NextResponse> {
+  try {
+    const filters = parseFilters(request.nextUrl.searchParams);
+    const supabase = getServerSupabase();
+    const f = buildStopRidershipFilters(filters);
+
+    // Use RPC function for server-side aggregation
+    const { data: rpcData, error } = await supabase.rpc('get_metrics_by_period', {
+      p_start_date: f.startDate,
+      p_end_date: f.endDate,
+      p_days: f.days || null,
+      p_routes: f.routes || null,
+    });
+
+    if (error) throw error;
+
+    const byPeriodData = (rpcData || []) as Array<{
+      time_period: string;
+      total_boardings: number;
+      total_alightings: number;
+      avg_load: number;
+      max_load: number;
+    }>;
+
+    const data = byPeriodData.map(row => ({
+      timePeriod: row.time_period as TimePeriod,
+      totalBoardings: row.total_boardings,
+      totalAlightings: row.total_alightings,
+      avgLoad: Math.round((row.avg_load || 0) * 10) / 10,
+      maxLoad: row.max_load || 0,
+    }));
+
+    const response: SystemByPeriodResponse = {
+      filters,
+      data,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === ALL ROUTES ENDPOINT ===
+
+export interface AllRoutesResponse {
+  filters: RidershipFilters;
+  routes: Array<{
+    routeId: string;
+    routeName: string;
+    routeType: string;
+    totalBoardings: number;
+    totalAlightings: number;
+    avgLoad: number;
+    maxLoad: number;
+  }>;
+}
+
+export async function getAllRoutes(request: NextRequest): Promise<NextResponse> {
+  try {
+    const filters = parseFilters(request.nextUrl.searchParams);
+    const supabase = getServerSupabase();
+    const f = buildStopRidershipFilters(filters);
+
+    // Use RPC function for server-side aggregation
+    const { data: rpcData, error } = await supabase.rpc('get_metrics_by_route', {
+      p_start_date: f.startDate,
+      p_end_date: f.endDate,
+      p_days: f.days || null,
+      p_periods: f.periods || null,
+    });
+
+    if (error) throw error;
+
+    const routeData = (rpcData || []) as Array<{
+      route_id: string;
+      route_name: string;
+      route_type: string;
+      total_boardings: number;
+      total_alightings: number;
+      avg_load: number;
+      max_load: number;
+    }>;
+
+    const routes = routeData.map(row => ({
+      routeId: row.route_id,
+      routeName: row.route_name,
+      routeType: row.route_type,
+      totalBoardings: row.total_boardings,
+      totalAlightings: row.total_alightings,
+      avgLoad: Math.round((row.avg_load || 0) * 10) / 10,
+      maxLoad: row.max_load || 0,
+    }));
+
+    const response: AllRoutesResponse = {
+      filters,
+      routes,
     };
 
     return NextResponse.json(response);
@@ -1117,6 +1273,467 @@ export async function getStopByPeriod(
       filters,
       stopId,
       data,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === ROUTE TRIPS LIST ENDPOINT ===
+// Returns all trips for a route with ridership metrics (for trips grid view)
+
+export interface RouteTripsResponse {
+  filters: RidershipFilters;
+  routeId: string;
+  routeName: string;
+  trips: Array<{
+    tripId: string;
+    shapeId: string;
+    directionId: "0" | "1";
+    headsign: string;
+    startTime: string;
+    timePeriod: TimePeriod;
+    totalBoardings: number;
+    totalAlightings: number;
+    avgLoad: number;
+    maxLoad: number;
+  }>;
+}
+
+export async function getRouteTrips(
+  request: NextRequest,
+  routeId: string
+): Promise<NextResponse> {
+  try {
+    const filters = parseFilters(request.nextUrl.searchParams);
+    const supabase = getServerSupabase();
+    const f = buildStopRidershipFilters(filters);
+
+    // Get route name
+    const { data: routeInfo } = await supabase
+      .from('routes')
+      .select('route_short_name')
+      .eq('route_id', routeId)
+      .single();
+
+    if (!routeInfo) {
+      return NextResponse.json({ error: "Route not found" }, { status: 404 });
+    }
+
+    // Get trip-level metrics from trip_ridership table
+    // Use pagination to get all rows (Supabase default limit is 1000)
+    const allTripData: Array<{
+      trip_id: string;
+      shape_id: string;
+      direction_id: number;
+      start_time: string;
+      time_period: string;
+      total_boardings: number;
+      total_alightings: number;
+      avg_load: number;
+      max_load: number;
+    }> = [];
+
+    const pageSize = 1000;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('trip_ridership')
+        .select('trip_id, shape_id, direction_id, start_time, time_period, total_boardings, total_alightings, avg_load, max_load')
+        .eq('route_id', routeId)
+        .gte('date', f.startDate)
+        .lte('date', f.endDate)
+        .range(offset, offset + pageSize - 1);
+
+      if (f.days && f.days.length > 0) {
+        query = query.in('day_of_week', f.days);
+      }
+      if (f.periods && f.periods.length > 0) {
+        query = query.in('time_period', f.periods);
+      }
+      if (f.direction) {
+        query = query.eq('direction_id', parseInt(f.direction));
+      }
+
+      const { data: pageData, error } = await query;
+      if (error) throw error;
+
+      if (pageData && pageData.length > 0) {
+        allTripData.push(...pageData);
+        offset += pageSize;
+        hasMore = pageData.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const tripData = allTripData;
+
+    // Aggregate by trip_id (sum boardings/alightings across dates, avg load)
+    const tripAggregates = new Map<string, {
+      shapeId: string;
+      directionId: string;
+      startTime: string;
+      timePeriod: string;
+      totalBoardings: number;
+      totalAlightings: number;
+      loads: number[];
+      maxLoad: number;
+    }>();
+
+    for (const row of tripData || []) {
+      if (!tripAggregates.has(row.trip_id)) {
+        tripAggregates.set(row.trip_id, {
+          shapeId: row.shape_id,
+          directionId: String(row.direction_id),
+          startTime: row.start_time,
+          timePeriod: row.time_period,
+          totalBoardings: 0,
+          totalAlightings: 0,
+          loads: [],
+          maxLoad: 0,
+        });
+      }
+      const agg = tripAggregates.get(row.trip_id)!;
+      agg.totalBoardings += row.total_boardings || 0;
+      agg.totalAlightings += row.total_alightings || 0;
+      if (row.avg_load) agg.loads.push(row.avg_load);
+      if (row.max_load > agg.maxLoad) agg.maxLoad = row.max_load;
+    }
+
+    // Get headsign from trips table
+    const tripIds = Array.from(tripAggregates.keys());
+    const { data: tripsInfo } = await supabase
+      .from('trips')
+      .select('trip_id, headsign')
+      .in('trip_id', tripIds.slice(0, 1000)); // Limit to avoid query size issues
+
+    const headsignMap = new Map(tripsInfo?.map(t => [t.trip_id, t.headsign]) || []);
+
+    const trips = Array.from(tripAggregates.entries())
+      .map(([tripId, agg]) => ({
+        tripId,
+        shapeId: agg.shapeId,
+        directionId: agg.directionId as "0" | "1",
+        headsign: headsignMap.get(tripId) || (agg.directionId === "1" ? "Inbound" : "Outbound"),
+        startTime: agg.startTime,
+        timePeriod: agg.timePeriod as TimePeriod,
+        totalBoardings: agg.totalBoardings,
+        totalAlightings: agg.totalAlightings,
+        avgLoad: agg.loads.length > 0
+          ? Math.round((agg.loads.reduce((a, b) => a + b, 0) / agg.loads.length) * 10) / 10
+          : 0,
+        maxLoad: agg.maxLoad,
+      }))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    const response: RouteTripsResponse = {
+      filters,
+      routeId,
+      routeName: routeInfo.route_short_name,
+      trips,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === COMPARISON MODE HELPERS ===
+// Parse comparison filters from query params
+
+interface ComparisonFilters {
+  primary: RidershipFilters;
+  comparison?: RidershipFilters;
+}
+
+function parseComparisonFilters(searchParams: URLSearchParams): ComparisonFilters {
+  const primary = parseFilters(searchParams);
+
+  // Check for comparison date range
+  const compStartDate = searchParams.get("compStartDate");
+  const compEndDate = searchParams.get("compEndDate");
+
+  if (compStartDate && compEndDate) {
+    const comparison: RidershipFilters = {
+      dateRange: { startDate: compStartDate, endDate: compEndDate },
+      daysOfWeek: primary.daysOfWeek,
+      timePeriods: primary.timePeriods,
+      routeIds: primary.routeIds,
+      directionId: primary.directionId,
+    };
+    return { primary, comparison };
+  }
+
+  return { primary };
+}
+
+// Calculate percent change
+function percentChange(current: number, previous: number): number | null {
+  if (previous === 0) return current > 0 ? 100 : null;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+// === SYSTEM COMPARISON ENDPOINT ===
+
+export interface SystemComparisonResponse {
+  primary: SystemResponse;
+  comparison?: SystemResponse;
+  changes?: {
+    totalBoardings: number | null;
+    avgDailyBoardings: number | null;
+    avgLoad: number | null;
+    maxLoad: number | null;
+    byRoute: Array<{
+      routeId: string;
+      totalBoardings: number | null;
+    }>;
+  };
+}
+
+export async function getSystemComparison(request: NextRequest): Promise<NextResponse> {
+  try {
+    const { primary, comparison } = parseComparisonFilters(request.nextUrl.searchParams);
+
+    // Build primary request URL
+    const primaryUrl = new URL(request.url);
+    primaryUrl.searchParams.delete("compStartDate");
+    primaryUrl.searchParams.delete("compEndDate");
+
+    // Get primary response
+    const primaryRequest = new NextRequest(primaryUrl);
+    const primaryResponse = await getSystem(primaryRequest);
+    const primaryData = await primaryResponse.json() as SystemResponse;
+
+    if (!comparison) {
+      return NextResponse.json({ primary: primaryData });
+    }
+
+    // Build comparison request
+    const compUrl = new URL(request.url);
+    compUrl.searchParams.set("startDate", comparison.dateRange.startDate);
+    compUrl.searchParams.set("endDate", comparison.dateRange.endDate);
+    compUrl.searchParams.delete("compStartDate");
+    compUrl.searchParams.delete("compEndDate");
+
+    const compRequest = new NextRequest(compUrl);
+    const compResponse = await getSystem(compRequest);
+    const compData = await compResponse.json() as SystemResponse;
+
+    // Calculate changes
+    const changes = {
+      totalBoardings: percentChange(primaryData.metrics.totalBoardings, compData.metrics.totalBoardings),
+      avgDailyBoardings: percentChange(primaryData.metrics.avgDailyBoardings, compData.metrics.avgDailyBoardings),
+      avgLoad: percentChange(primaryData.metrics.avgLoad, compData.metrics.avgLoad),
+      maxLoad: percentChange(primaryData.metrics.maxLoad, compData.metrics.maxLoad),
+      byRoute: primaryData.byRoute.map(route => {
+        const compRoute = compData.byRoute.find(r => r.routeId === route.routeId);
+        return {
+          routeId: route.routeId,
+          totalBoardings: compRoute
+            ? percentChange(route.metrics.totalBoardings, compRoute.metrics.totalBoardings)
+            : null,
+        };
+      }),
+    };
+
+    const response: SystemComparisonResponse = {
+      primary: primaryData,
+      comparison: compData,
+      changes,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === ROUTE COMPARISON ENDPOINT ===
+
+export interface RouteComparisonResponse {
+  primary: RouteResponse;
+  comparison?: RouteResponse;
+  changes?: {
+    totalBoardings: number | null;
+    avgDailyBoardings: number | null;
+    avgLoad: number | null;
+    maxLoad: number | null;
+  };
+}
+
+export async function getRouteComparison(
+  request: NextRequest,
+  routeId: string
+): Promise<NextResponse> {
+  try {
+    const { primary, comparison } = parseComparisonFilters(request.nextUrl.searchParams);
+
+    // Build primary request URL
+    const primaryUrl = new URL(request.url);
+    primaryUrl.searchParams.delete("compStartDate");
+    primaryUrl.searchParams.delete("compEndDate");
+
+    const primaryRequest = new NextRequest(primaryUrl);
+    const primaryResponse = await getRoute(primaryRequest, routeId);
+    const primaryData = await primaryResponse.json() as RouteResponse;
+
+    if (!comparison) {
+      return NextResponse.json({ primary: primaryData });
+    }
+
+    // Build comparison request
+    const compUrl = new URL(request.url);
+    compUrl.searchParams.set("startDate", comparison.dateRange.startDate);
+    compUrl.searchParams.set("endDate", comparison.dateRange.endDate);
+    compUrl.searchParams.delete("compStartDate");
+    compUrl.searchParams.delete("compEndDate");
+
+    const compRequest = new NextRequest(compUrl);
+    const compResponse = await getRoute(compRequest, routeId);
+    const compData = await compResponse.json() as RouteResponse;
+
+    const changes = {
+      totalBoardings: percentChange(primaryData.metrics.totalBoardings, compData.metrics.totalBoardings),
+      avgDailyBoardings: percentChange(primaryData.metrics.avgDailyBoardings, compData.metrics.avgDailyBoardings),
+      avgLoad: percentChange(primaryData.metrics.avgLoad, compData.metrics.avgLoad),
+      maxLoad: percentChange(primaryData.metrics.maxLoad, compData.metrics.maxLoad),
+    };
+
+    const response: RouteComparisonResponse = {
+      primary: primaryData,
+      comparison: compData,
+      changes,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === STOP COMPARISON ENDPOINT ===
+
+export interface StopComparisonResponse {
+  primary: StopResponse;
+  comparison?: StopResponse;
+  changes?: {
+    totalBoardings: number | null;
+    avgDailyBoardings: number | null;
+    totalAlightings: number | null;
+  };
+}
+
+export async function getStopComparison(
+  request: NextRequest,
+  stopId: string
+): Promise<NextResponse> {
+  try {
+    const { primary, comparison } = parseComparisonFilters(request.nextUrl.searchParams);
+
+    const primaryUrl = new URL(request.url);
+    primaryUrl.searchParams.delete("compStartDate");
+    primaryUrl.searchParams.delete("compEndDate");
+
+    const primaryRequest = new NextRequest(primaryUrl);
+    const primaryResponse = await getStop(primaryRequest, stopId);
+    const primaryData = await primaryResponse.json() as StopResponse;
+
+    if (!comparison) {
+      return NextResponse.json({ primary: primaryData });
+    }
+
+    const compUrl = new URL(request.url);
+    compUrl.searchParams.set("startDate", comparison.dateRange.startDate);
+    compUrl.searchParams.set("endDate", comparison.dateRange.endDate);
+    compUrl.searchParams.delete("compStartDate");
+    compUrl.searchParams.delete("compEndDate");
+
+    const compRequest = new NextRequest(compUrl);
+    const compResponse = await getStop(compRequest, stopId);
+    const compData = await compResponse.json() as StopResponse;
+
+    const changes = {
+      totalBoardings: percentChange(primaryData.metrics.totalBoardings, compData.metrics.totalBoardings),
+      avgDailyBoardings: percentChange(primaryData.metrics.avgDailyBoardings, compData.metrics.avgDailyBoardings),
+      totalAlightings: percentChange(primaryData.metrics.totalAlightings, compData.metrics.totalAlightings),
+    };
+
+    const response: StopComparisonResponse = {
+      primary: primaryData,
+      comparison: compData,
+      changes,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === ALL STOPS COMPARISON ENDPOINT ===
+
+export interface AllStopsComparisonResponse {
+  primary: AllStopsResponse;
+  comparison?: AllStopsResponse;
+  changes?: Array<{
+    stopId: string;
+    totalBoardings: number | null;
+    avgDailyActivity: number | null;
+  }>;
+}
+
+export async function getAllStopsComparison(request: NextRequest): Promise<NextResponse> {
+  try {
+    const { primary, comparison } = parseComparisonFilters(request.nextUrl.searchParams);
+
+    const primaryUrl = new URL(request.url);
+    primaryUrl.searchParams.delete("compStartDate");
+    primaryUrl.searchParams.delete("compEndDate");
+
+    const primaryRequest = new NextRequest(primaryUrl);
+    const primaryResponse = await getAllStops(primaryRequest);
+    const primaryData = await primaryResponse.json() as AllStopsResponse;
+
+    if (!comparison) {
+      return NextResponse.json({ primary: primaryData });
+    }
+
+    const compUrl = new URL(request.url);
+    compUrl.searchParams.set("startDate", comparison.dateRange.startDate);
+    compUrl.searchParams.set("endDate", comparison.dateRange.endDate);
+    compUrl.searchParams.delete("compStartDate");
+    compUrl.searchParams.delete("compEndDate");
+
+    const compRequest = new NextRequest(compUrl);
+    const compResponse = await getAllStops(compRequest);
+    const compData = await compResponse.json() as AllStopsResponse;
+
+    // Build comparison map
+    const compStopMap = new Map(compData.stops.map(s => [s.stopId, s]));
+
+    const changes = primaryData.stops.map(stop => {
+      const compStop = compStopMap.get(stop.stopId);
+      return {
+        stopId: stop.stopId,
+        totalBoardings: compStop
+          ? percentChange(stop.totalBoardings, compStop.totalBoardings)
+          : null,
+        avgDailyActivity: compStop
+          ? percentChange(stop.avgDailyActivity, compStop.avgDailyActivity)
+          : null,
+      };
+    });
+
+    const response: AllStopsComparisonResponse = {
+      primary: primaryData,
+      comparison: compData,
+      changes,
     };
 
     return NextResponse.json(response);

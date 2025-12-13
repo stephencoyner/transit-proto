@@ -13,6 +13,7 @@ import type {
   SystemResponse,
   RouteResponse,
   RouteSegmentsResponse,
+  RouteStopsResponse,
   AllStopsResponse,
   StopResponse,
   TripResponse,
@@ -23,6 +24,7 @@ import type {
   StopByDateResponse,
   StopByDayResponse,
   StopByPeriodResponse,
+  RouteTripsResponse,
 } from '@/lib/ridership-handlers';
 
 // Simple in-memory cache
@@ -292,6 +294,30 @@ export function useTripData(
 ): UseRidershipResult<TripResponse> {
   const endpoint = tripId ? `trip/${tripId}` : null;
   return useRidershipFetch<TripResponse>(endpoint, filters, enabled && !!tripId);
+}
+
+/**
+ * Fetch route trips with ridership metrics (for trips list view)
+ */
+export function useRouteTripsData(
+  routeId: string | null,
+  filters: FilterState,
+  enabled: boolean = true
+): UseRidershipResult<RouteTripsResponse> {
+  const endpoint = routeId ? `route/${routeId}/trips` : null;
+  return useRidershipFetch<RouteTripsResponse>(endpoint, filters, enabled && !!routeId);
+}
+
+/**
+ * Fetch route stops with ridership metrics (for map stop coloring)
+ */
+export function useRouteStopsData(
+  routeId: string | null,
+  filters: FilterState,
+  enabled: boolean = true
+): UseRidershipResult<RouteStopsResponse> {
+  const endpoint = routeId ? `route/${routeId}/stops` : null;
+  return useRidershipFetch<RouteStopsResponse>(endpoint, filters, enabled && !!routeId);
 }
 
 /**

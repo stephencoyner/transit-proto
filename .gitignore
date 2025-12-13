@@ -45,3 +45,7 @@ data/
 public/data/ridership.db
 public/data/trip_stop_times.json
 *.db
+
+# Generated ridership data
+scripts/ridership_generation/output/*.csv
+scripts/ridership_generation/output/split/*.csv
