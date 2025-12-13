@@ -106,7 +106,7 @@ export interface DirectionBreakdown {
   percentOfRoute: number;
 }
 
-export interface StopBreakdown extends BaseMetrics {
+export interface StopBreakdown extends BaseMetrics, Partial<LoadMetrics> {
   stopId: string;
   stopName: string;
   stopSequence: number;
