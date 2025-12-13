@@ -25,6 +25,7 @@ import type {
   StopByDayResponse,
   StopByPeriodResponse,
   RouteTripsResponse,
+  RouteGridDataResponse,
 } from '@/lib/ridership-handlers';
 
 // Simple in-memory cache
@@ -318,6 +319,18 @@ export function useRouteStopsData(
 ): UseRidershipResult<RouteStopsResponse> {
   const endpoint = routeId ? `route/${routeId}/stops` : null;
   return useRidershipFetch<RouteStopsResponse>(endpoint, filters, enabled && !!routeId);
+}
+
+/**
+ * Fetch route grid data (per-trip per-stop ridership for trips grid view)
+ */
+export function useRouteGridData(
+  routeId: string | null,
+  filters: FilterState,
+  enabled: boolean = true
+): UseRidershipResult<RouteGridDataResponse> {
+  const endpoint = routeId ? `route/${routeId}/grid` : null;
+  return useRidershipFetch<RouteGridDataResponse>(endpoint, filters, enabled && !!routeId);
 }
 
 /**
