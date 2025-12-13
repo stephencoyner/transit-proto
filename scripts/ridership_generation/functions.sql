@@ -601,6 +601,7 @@ END;
 $$;
 
 -- Get all stops with metrics (for map view)
+-- Uses pre-aggregated daily_stop_summary for fast queries when no route/period filters
 CREATE OR REPLACE FUNCTION get_all_stops_metrics(
   p_start_date DATE,
   p_end_date DATE,
@@ -621,24 +622,45 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  RETURN QUERY
-  SELECT
-    sr.stop_id,
-    s.stop_name,
-    s.lat,
-    s.lon,
-    COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
-    COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings,
-    COUNT(DISTINCT sr.route_id)::BIGINT AS route_count
-  FROM stop_ridership sr
-  JOIN stops s ON sr.stop_id = s.stop_id
-  WHERE sr.date >= p_start_date
-    AND sr.date <= p_end_date
-    AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
-    AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
-    AND (p_routes IS NULL OR sr.route_id = ANY(p_routes))
-  GROUP BY sr.stop_id, s.stop_name, s.lat, s.lon
-  ORDER BY total_boardings DESC;
+  -- Fast path: use pre-aggregated daily_stop_summary when no route/period filters
+  IF p_periods IS NULL AND p_routes IS NULL THEN
+    RETURN QUERY
+    SELECT
+      dss.stop_id,
+      s.stop_name,
+      s.lat,
+      s.lon,
+      COALESCE(SUM(dss.total_boardings), 0)::BIGINT AS total_boardings,
+      COALESCE(SUM(dss.total_alightings), 0)::BIGINT AS total_alightings,
+      1::BIGINT AS route_count  -- Not available in summary table
+    FROM daily_stop_summary dss
+    JOIN stops s ON dss.stop_id = s.stop_id
+    WHERE dss.date >= p_start_date
+      AND dss.date <= p_end_date
+      AND (p_days IS NULL OR dss.day_of_week = ANY(p_days))
+    GROUP BY dss.stop_id, s.stop_name, s.lat, s.lon
+    ORDER BY total_boardings DESC;
+  ELSE
+    -- Slow path: query stop_ridership when filters require it
+    RETURN QUERY
+    SELECT
+      sr.stop_id,
+      s.stop_name,
+      s.lat,
+      s.lon,
+      COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
+      COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings,
+      COUNT(DISTINCT sr.route_id)::BIGINT AS route_count
+    FROM stop_ridership sr
+    JOIN stops s ON sr.stop_id = s.stop_id
+    WHERE sr.date >= p_start_date
+      AND sr.date <= p_end_date
+      AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
+      AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
+      AND (p_routes IS NULL OR sr.route_id = ANY(p_routes))
+    GROUP BY sr.stop_id, s.stop_name, s.lat, s.lon
+    ORDER BY total_boardings DESC;
+  END IF;
 END;
 $$;
 

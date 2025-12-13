@@ -981,9 +981,10 @@ export default function MapCanvas() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
 
-  // Fetch all stops data for stops view
+  // Fetch all stops data for stops view - only when on stops tab (this query is slow)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: allStopsData, isLoading: isAllStopsLoading } = useAllStopsData(filterState, !!effectiveDateRange.start);
+  const needsAllStopsData = activeTab === 'stops' && !selectedRouteId && !selectedStopId;
+  const { data: allStopsData, isLoading: isAllStopsLoading } = useAllStopsData(filterState, !!effectiveDateRange.start && needsAllStopsData);
 
   // Fetch stop-specific data when a stop is selected (for SDV charts)
   const { data: stopByDateData, isLoading: isStopByDateLoading } = useStopByDateData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
