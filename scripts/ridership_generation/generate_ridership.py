@@ -669,10 +669,10 @@ def generate_daily_summaries(
     stop_ridership: list[StopRidership],
     trip_ridership: list[TripRidership],
     routes: dict[str, Route],
-) -> tuple[list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
     """
     Generate pre-aggregated summary tables.
-    Returns (daily_system_summary, daily_route_summary, daily_stop_summary).
+    Returns (daily_system_summary, daily_route_summary, daily_stop_summary, daily_period_summary).
     """
     # Group by date
     trips_by_date = defaultdict(list)
@@ -680,12 +680,15 @@ def generate_daily_summaries(
         trips_by_date[tr.date].append(tr)
 
     stops_by_date_stop = defaultdict(lambda: defaultdict(list))
+    stops_by_date_period = defaultdict(lambda: defaultdict(list))
     for sr in stop_ridership:
         stops_by_date_stop[sr.date][sr.stop_id].append(sr)
+        stops_by_date_period[sr.date][sr.time_period].append(sr)
 
     daily_system = []
     daily_route = []
     daily_stop = []
+    daily_period = []
 
     for d in sorted(trips_by_date.keys()):
         day_trips = trips_by_date[d]
@@ -742,7 +745,23 @@ def generate_daily_summaries(
                 "total_alightings": stop_alightings,
             })
 
-    return daily_system, daily_route, daily_stop
+        # Period summaries (for fast by-period queries)
+        for time_period, period_records in stops_by_date_period[d].items():
+            period_boardings = sum(sr.boardings for sr in period_records)
+            period_alightings = sum(sr.alightings for sr in period_records)
+            period_loads = [sr.load_after for sr in period_records if sr.load_after > 0]
+
+            daily_period.append({
+                "date": d.isoformat(),
+                "time_period": time_period,
+                "day_of_week": day_of_week,
+                "total_boardings": period_boardings,
+                "total_alightings": period_alightings,
+                "avg_load": round(statistics.mean(period_loads), 2) if period_loads else 0,
+                "max_load": max(period_loads) if period_loads else 0,
+            })
+
+    return daily_system, daily_route, daily_stop, daily_period
 
 
 # ============================================
@@ -769,6 +788,7 @@ def output_all_csv(
     daily_system: list[dict],
     daily_route: list[dict],
     daily_stop: list[dict],
+    daily_period: list[dict],
 ):
     """Write all data to CSV files."""
     os.makedirs(output_dir, exist_ok=True)
@@ -866,6 +886,9 @@ def output_all_csv(
     ])
     write_csv(output_dir, "daily_stop_summary.csv", daily_stop, [
         "date", "stop_id", "day_of_week", "total_boardings", "total_alightings"
+    ])
+    write_csv(output_dir, "daily_period_summary.csv", daily_period, [
+        "date", "time_period", "day_of_week", "total_boardings", "total_alightings", "avg_load", "max_load"
     ])
 
 
@@ -1076,12 +1099,13 @@ def main():
 
     # Generate summary tables
     print("\nGenerating summary tables...")
-    daily_system, daily_route, daily_stop = generate_daily_summaries(
+    daily_system, daily_route, daily_stop, daily_period = generate_daily_summaries(
         stop_ridership, trip_ridership, routes
     )
     print(f"  Generated {len(daily_system)} daily system summaries")
     print(f"  Generated {len(daily_route)} daily route summaries")
     print(f"  Generated {len(daily_stop)} daily stop summaries")
+    print(f"  Generated {len(daily_period)} daily period summaries")
 
     # Write CSV files
     print("\nWriting CSV files...")
@@ -1089,7 +1113,7 @@ def main():
         output_dir,
         routes, stops, trips,
         stop_ridership, trip_ridership,
-        daily_system, daily_route, daily_stop
+        daily_system, daily_route, daily_stop, daily_period
     )
 
     # Run acceptance tests

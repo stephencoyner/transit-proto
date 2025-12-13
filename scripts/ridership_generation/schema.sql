@@ -148,6 +148,20 @@ CREATE TABLE IF NOT EXISTS daily_stop_summary (
 
 COMMENT ON TABLE daily_stop_summary IS 'Per-stop daily aggregates across all routes. No load metrics (no route context).';
 
+-- Daily time-period summary (for fast by-period queries)
+CREATE TABLE IF NOT EXISTS daily_period_summary (
+  date DATE NOT NULL,
+  time_period TEXT NOT NULL,
+  day_of_week INTEGER NOT NULL,
+  total_boardings INTEGER NOT NULL,
+  total_alightings INTEGER NOT NULL,
+  avg_load REAL NOT NULL,
+  max_load INTEGER NOT NULL,
+  PRIMARY KEY (date, time_period)
+);
+
+COMMENT ON TABLE daily_period_summary IS 'Per-period daily aggregates. 30 days × 6 periods = 180 rows max.';
+
 -- ============================================
 -- Indexes for Query Performance
 -- ============================================
@@ -186,6 +200,10 @@ CREATE INDEX IF NOT EXISTS idx_daily_stop_summary_date ON daily_stop_summary(dat
 CREATE INDEX IF NOT EXISTS idx_daily_stop_summary_stop ON daily_stop_summary(stop_id);
 CREATE INDEX IF NOT EXISTS idx_daily_stop_summary_dow ON daily_stop_summary(day_of_week);
 
+CREATE INDEX IF NOT EXISTS idx_daily_period_summary_date ON daily_period_summary(date);
+CREATE INDEX IF NOT EXISTS idx_daily_period_summary_period ON daily_period_summary(time_period);
+CREATE INDEX IF NOT EXISTS idx_daily_period_summary_dow ON daily_period_summary(day_of_week);
+
 -- Trips table indexes
 CREATE INDEX IF NOT EXISTS idx_trips_route ON trips(route_id);
 CREATE INDEX IF NOT EXISTS idx_trips_shape ON trips(shape_id);
@@ -214,6 +232,7 @@ ALTER TABLE trip_ridership ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_system_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_route_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_stop_summary ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_period_summary ENABLE ROW LEVEL SECURITY;
 
 -- Public read policies
 CREATE POLICY "Allow public read" ON routes FOR SELECT USING (true);
@@ -224,6 +243,7 @@ CREATE POLICY "Allow public read" ON trip_ridership FOR SELECT USING (true);
 CREATE POLICY "Allow public read" ON daily_system_summary FOR SELECT USING (true);
 CREATE POLICY "Allow public read" ON daily_route_summary FOR SELECT USING (true);
 CREATE POLICY "Allow public read" ON daily_stop_summary FOR SELECT USING (true);
+CREATE POLICY "Allow public read" ON daily_period_summary FOR SELECT USING (true);
 
 -- ============================================
 -- Utility Views (optional, for convenience)

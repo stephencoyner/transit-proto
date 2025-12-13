@@ -1444,6 +1444,95 @@ export async function getRouteTrips(
   }
 }
 
+// === ROUTE GRID DATA ENDPOINT ===
+// Returns per-trip per-stop ridership for the trips grid view
+
+export interface RouteGridDataResponse {
+  filters: RidershipFilters;
+  routeId: string;
+  routeName: string;
+  // Map of tripId -> stopId -> metrics
+  data: {
+    [tripId: string]: {
+      [stopId: string]: {
+        stopSequence: number;
+        totalBoardings: number;
+        totalAlightings: number;
+        avgLoad: number;
+        maxLoad: number;
+      };
+    };
+  };
+}
+
+export async function getRouteGridData(
+  request: NextRequest,
+  routeId: string
+): Promise<NextResponse> {
+  try {
+    const filters = parseFilters(request.nextUrl.searchParams);
+    const supabase = getServerSupabase();
+    const f = buildStopRidershipFilters(filters);
+
+    // Get route name
+    const { data: routeInfo } = await supabase
+      .from('routes')
+      .select('route_short_name')
+      .eq('route_id', routeId)
+      .single();
+
+    if (!routeInfo) {
+      return NextResponse.json({ error: "Route not found" }, { status: 404 });
+    }
+
+    // Use RPC function for server-side aggregation (single call)
+    const { data: allRows, error: rpcError } = await supabase
+      .rpc('get_route_grid_data', {
+        p_route_id: routeId,
+        p_start_date: f.startDate,
+        p_end_date: f.endDate,
+        p_days: f.days || null,
+        p_periods: f.periods || null,
+        p_direction: f.direction || null,
+      });
+
+    if (rpcError) throw rpcError;
+
+    // Transform RPC result into nested map structure: tripId -> stopId -> metrics
+    const gridData: { [tripId: string]: { [stopId: string]: {
+      stopSequence: number;
+      totalBoardings: number;
+      totalAlightings: number;
+      avgLoad: number;
+      maxLoad: number;
+    }}} = {};
+
+    for (const row of (allRows || [])) {
+      if (!gridData[row.trip_id]) {
+        gridData[row.trip_id] = {};
+      }
+      gridData[row.trip_id][row.stop_id] = {
+        stopSequence: row.stop_sequence,
+        totalBoardings: row.total_boardings,
+        totalAlightings: row.total_alightings,
+        avgLoad: Math.round((row.avg_load || 0) * 10) / 10,
+        maxLoad: row.max_load || 0,
+      };
+    }
+
+    const response: RouteGridDataResponse = {
+      filters,
+      routeId,
+      routeName: routeInfo.route_short_name,
+      data: gridData,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
 // === COMPARISON MODE HELPERS ===
 // Parse comparison filters from query params
 

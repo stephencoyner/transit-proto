@@ -16,7 +16,7 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 
 // Type for bounds
@@ -1000,6 +1000,14 @@ export default function MapCanvas() {
   // Fetch route stops ridership data for map stop coloring when route is selected
   const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
 
+  // Fetch route grid data for trips grid view (per-trip per-stop ridership)
+  // Only fetch when Grid tab is active to avoid unnecessary API calls
+  const { data: routeGridData } = useRouteGridData(
+    selectedRouteId,
+    filterState,
+    !!effectiveDateRange.start && !!selectedRouteId && selectedRouteTab === 'Grid'
+  );
+
   // Create a map of trip_id -> all metrics from the API data
   const tripMetricsMap = useMemo(() => {
     const map = new Map<string, {
@@ -1186,6 +1194,53 @@ export default function MapCanvas() {
     });
     return values;
   }, [routeStopsRidership, selectedMetric, routeData?.metrics?.daysInRange]);
+
+  // Grid-specific stop values (per-trip per-stop) from API data
+  // This provides trip-specific ridership values for the trips grid
+  const gridStopValues = useMemo(() => {
+    if (!routeGridData?.data) return new Map<string, Map<string, number>>();
+    const daysInRange = filterState.startDate && filterState.endDate
+      ? Math.ceil((filterState.endDate.getTime() - filterState.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      : 30;
+    const tripMap = new Map<string, Map<string, number>>();
+    for (const [tripId, stops] of Object.entries(routeGridData.data)) {
+      const stopMap = new Map<string, number>();
+      for (const [stopId, metrics] of Object.entries(stops)) {
+        let value: number;
+        switch (selectedMetric) {
+          case 'Average daily boardings':
+            value = Math.round(metrics.totalBoardings / daysInRange);
+            break;
+          case 'Total boardings':
+            value = metrics.totalBoardings;
+            break;
+          case 'Average daily alightings':
+            value = Math.round(metrics.totalAlightings / daysInRange);
+            break;
+          case 'Total alightings':
+            value = metrics.totalAlightings;
+            break;
+          case 'Average daily activity':
+            value = Math.round((metrics.totalBoardings + metrics.totalAlightings) / daysInRange);
+            break;
+          case 'Total activity':
+            value = metrics.totalBoardings + metrics.totalAlightings;
+            break;
+          case 'Average load':
+            value = metrics.avgLoad;
+            break;
+          case 'Maxload':
+            value = metrics.maxLoad;
+            break;
+          default:
+            value = Math.round(metrics.totalBoardings / daysInRange);
+        }
+        stopMap.set(stopId, value);
+      }
+      tripMap.set(tripId, stopMap);
+    }
+    return tripMap;
+  }, [routeGridData, selectedMetric, filterState.startDate, filterState.endDate]);
 
   // Transform route-specific data for charts (used in RDV) - respects selected metric
   const routeDataByPeriod = useMemo(() => {
@@ -1754,6 +1809,23 @@ export default function MapCanvas() {
       };
     }
   }, [selectedRouteId, selectedStopId, activeTab, filteredShapes, filteredStops, routesList, stopsList, selectedMetric, showSegmentColoring, segmentValueRange, selectedTrip, tripStopRidershipValues]);
+
+  // Calculate value range for grid view (uses trip-specific stop values)
+  const gridValueRange = React.useMemo(() => {
+    if (gridStopValues.size === 0) {
+      return stopValueRange; // Fall back to route-level stop values
+    }
+    const allValues: number[] = [];
+    for (const stopMap of gridStopValues.values()) {
+      for (const value of stopMap.values()) {
+        allValues.push(value);
+      }
+    }
+    if (allValues.length === 0) {
+      return stopValueRange;
+    }
+    return getValueRange(allValues);
+  }, [gridStopValues, stopValueRange]);
 
   // Create lookup maps for values
   const routeValueMap = React.useMemo(() => {
@@ -8455,11 +8527,15 @@ export default function MapCanvas() {
                                         const tripStopTimes = gridTripStops[trip.trip_id] || [];
                                         const stopTimeMap = new Map(tripStopTimes.map(st => [st.id, st]));
                                         const stopTime = stopTimeMap.get(stop.id);
-                                        const stopValue = stopTime ? (stopValueMap.get(stop.id) || 0) : 0;
+                                        // Use trip-specific stop value from grid data, fall back to route-level stopValueMap
+                                        const tripStopData = gridStopValues.get(trip.trip_id);
+                                        const stopValue = stopTime
+                                          ? (tripStopData?.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0)
+                                          : 0;
                                         const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
                                         const cellColor = comparisonMode
                                           ? getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max)
-                                          : valueToColor(stopValue, stopValueRange.min, stopValueRange.max);
+                                          : valueToColor(stopValue, gridValueRange.min, gridValueRange.max);
 
                                         const darkerColor = [
                                           Math.max(0, cellColor[0] - 40),
