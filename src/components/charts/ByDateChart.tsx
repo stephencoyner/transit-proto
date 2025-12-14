@@ -16,6 +16,8 @@ interface ByDateChartProps {
   metric?: string;
   startDate?: Date | null;
   endDate?: Date | null;
+  comparisonStartDate?: Date | null;
+  comparisonEndDate?: Date | null;
   swapped?: boolean;
   loading?: boolean;
 }
@@ -174,10 +176,11 @@ const ByDateChartSkeleton = () => (
   </div>
 );
 
-export default function ByDateChart({ data, comparisonData, gradientId, metric, startDate, endDate, swapped = false, loading = false }: ByDateChartProps) {
+export default function ByDateChart({ data, comparisonData, gradientId, metric, startDate, endDate, comparisonStartDate, comparisonEndDate, swapped = false, loading = false }: ByDateChartProps) {
   // All hooks must be called before any early returns
   // Generate proper date labels based on the date range
   const dateLabels = generateDateLabels(data.length, startDate, endDate);
+  const comparisonDateLabels = generateDateLabels(comparisonData?.length || data.length, comparisonStartDate, comparisonEndDate);
 
   // Update data with proper date labels
   const chartData = useMemo(() => {
@@ -190,12 +193,14 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
 
     // Merge primary and comparison data for dual-line chart
     // If swapped, reverse which data goes to value1 vs value2
+    // Include both date labels for tooltip display
     return data.map((point, index) => ({
       date: dateLabels[index] || point.date,
+      date2: comparisonDateLabels[index] || comparisonData[index]?.date || '',
       value1: swapped ? (comparisonData[index]?.value ?? 0) : point.value,
       value2: swapped ? point.value : (comparisonData[index]?.value ?? 0)
     }));
-  }, [data, comparisonData, dateLabels, swapped]);
+  }, [data, comparisonData, dateLabels, comparisonDateLabels, swapped]);
 
   const isComparisonMode = !!comparisonData;
 

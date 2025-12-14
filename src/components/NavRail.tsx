@@ -13,6 +13,8 @@ interface NavRailProps {
   onRouteControlsTitleSemiboldChange: (value: boolean) => void;
   differentiatedPanelBackgrounds: boolean;
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
+  allowAbsoluteNumberComparisons: boolean;
+  onAllowAbsoluteNumberComparisonsChange: (value: boolean) => void;
 }
 
 // Inline SVG components for nav icons
@@ -104,7 +106,9 @@ const NavRail: React.FC<NavRailProps> = ({
   routeControlsTitleSemibold,
   onRouteControlsTitleSemiboldChange,
   differentiatedPanelBackgrounds,
-  onDifferentiatedPanelBackgroundsChange
+  onDifferentiatedPanelBackgroundsChange,
+  allowAbsoluteNumberComparisons,
+  onAllowAbsoluteNumberComparisonsChange
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
@@ -328,6 +332,39 @@ const NavRail: React.FC<NavRailProps> = ({
                   position: 'absolute',
                   top: '1px',
                   left: differentiatedPanelBackgrounds ? '21px' : '1px',
+                  transition: 'left 0.2s ease'
+                }}
+              />
+            </div>
+          </div>
+          {/* Toggle Item - Allow Absolute Number Comparisons */}
+          <div
+            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+            onClick={() => onAllowAbsoluteNumberComparisonsChange(!allowAbsoluteNumberComparisons)}
+          >
+            <span className="button-small text-text-primary">
+              Absolute Number Comparisons (In Progress)
+            </span>
+            <div
+              style={{
+                width: '40px',
+                height: '20px',
+                borderRadius: '10px',
+                backgroundColor: allowAbsoluteNumberComparisons ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                position: 'relative',
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              <div
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--bg-elevated)',
+                  position: 'absolute',
+                  top: '1px',
+                  left: allowAbsoluteNumberComparisons ? '21px' : '1px',
                   transition: 'left 0.2s ease'
                 }}
               />
