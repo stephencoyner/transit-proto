@@ -16,7 +16,7 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 
 // Type for bounds
@@ -1001,6 +1001,8 @@ export default function MapCanvas() {
   const { data: routeData, isLoading: isRouteLoading } = useRouteData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
+  const { data: routeByDateData, isLoading: isRouteByDateLoading } = useRouteByDateData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
+  const { data: routeByDayData, isLoading: isRouteByDayLoading } = useRouteByDayData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
 
   // Fetch all stops data for stops view - only when on stops tab (this query is slow)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1090,16 +1092,24 @@ export default function MapCanvas() {
   }, [tripMetricsMap, selectedMetric]);
 
   // Update routeTrips with real ridership data from API (based on selected metric)
+  // When time periods are filtered, only show trips that have ridership data (trips that run during the selected time period)
   const routeTripsWithRidership = useMemo(() => {
     if (tripMetricsMap.size === 0) return routeTrips;
+
+    // Check if time period filter is active (not "All day")
+    const hasTimePeriodFilter = appliedTimeMode === 'custom' && appliedTimePeriods.length > 0 && appliedTimePeriods.length < 6;
+
     return routeTrips.map(pattern => ({
       ...pattern,
-      trips: pattern.trips.map(trip => ({
-        ...trip,
-        ridership: getTripMetricValue(trip.trip_id, trip.ridership)
-      }))
-    }));
-  }, [routeTrips, tripMetricsMap, getTripMetricValue]);
+      trips: pattern.trips
+        // Filter out trips that don't have data when time period filter is active
+        .filter(trip => !hasTimePeriodFilter || tripMetricsMap.has(trip.trip_id))
+        .map(trip => ({
+          ...trip,
+          ridership: getTripMetricValue(trip.trip_id, trip.ridership)
+        }))
+    })).filter(pattern => pattern.trips.length > 0); // Remove empty patterns
+  }, [routeTrips, tripMetricsMap, getTripMetricValue, appliedTimeMode, appliedTimePeriods]);
 
   // Get the trip ridership value from API (falls back to mock value from selectedTrip)
   const tripRidershipValue = useMemo(() => {
@@ -1280,6 +1290,66 @@ export default function MapCanvas() {
     }));
   }, [routeData, selectedMetric, getMetricValue]);
 
+  // Transform route-specific by-date data for charts (used in RDV)
+  const routeDataByDate = useMemo(() => {
+    if (!routeByDateData?.data) return [];
+    return routeByDateData.data.map(d => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+        case 'Total boardings':
+        case 'Total daily boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = d.totalAlightings;
+          break;
+        case 'Average daily activity':
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
+        default:
+          value = d.totalBoardings;
+      }
+      return { date: d.date, value };
+    });
+  }, [routeByDateData, selectedMetric]);
+
+  // Transform route-specific by-day data for charts (used in RDV)
+  const routeDataByDay = useMemo(() => {
+    if (!routeByDayData?.data) return [];
+    return routeByDayData.data.map(d => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = d.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = Math.round(d.totalAlightings / (d.dayCount || 1));
+          break;
+        case 'Average daily activity':
+          value = Math.round((d.totalBoardings + d.totalAlightings) / (d.dayCount || 1));
+          break;
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
+        default:
+          value = d.avgDailyBoardings;
+      }
+      return {
+        day: d.dayName,
+        value,
+        dayOfWeek: d.dayOfWeek,
+        dayCount: d.dayCount,
+        totalBoardings: d.totalBoardings,
+        totalAlightings: d.totalAlightings,
+      };
+    });
+  }, [routeByDayData, selectedMetric]);
+
   // Transform route data for ByPatternChart
   // Uses routePatterns for all patterns and distributes direction ridership proportionally
   // Aggregates patterns with the same headsign
@@ -1456,12 +1526,12 @@ export default function MapCanvas() {
 
   // Use route-specific, stop-specific, or system data based on selection
   const activeDataByPeriod = selectedStopId ? stopDataByPeriod : (selectedRouteId ? routeDataByPeriod : dataByPeriod);
-  const activeDataByDay = selectedStopId ? stopDataByDay : dataByDay;
-  const activeDataByDate = selectedStopId ? stopDataByDate : dataByDate;
+  const activeDataByDay = selectedStopId ? stopDataByDay : (selectedRouteId ? routeDataByDay : dataByDay);
+  const activeDataByDate = selectedStopId ? stopDataByDate : (selectedRouteId ? routeDataByDate : dataByDate);
 
   // Active loading states based on context
-  const isActiveByDateLoading = selectedStopId ? isStopByDateLoading : (selectedRouteId ? isRouteLoading : isByDateLoading);
-  const isActiveByDayLoading = selectedStopId ? isStopByDayLoading : (selectedRouteId ? isRouteLoading : isByDayLoading);
+  const isActiveByDateLoading = selectedStopId ? isStopByDateLoading : (selectedRouteId ? isRouteByDateLoading : isByDateLoading);
+  const isActiveByDayLoading = selectedStopId ? isStopByDayLoading : (selectedRouteId ? isRouteByDayLoading : isByDayLoading);
   const isActiveByPeriodLoading = selectedStopId ? isStopByPeriodLoading : (selectedRouteId ? isRouteLoading : isSystemLoading);
 
   // Extract unique routes from shapes data with ridership values from API
@@ -4009,6 +4079,9 @@ export default function MapCanvas() {
             setActiveTab(tab);
             setSelectedRouteId(null);
             setSelectedStopId(null);
+            // Clear trip selection when switching main tabs
+            setSelectedTrip(null);
+            setSelectedTripStops([]);
             // Reset detail view tabs when switching main tabs
             setSelectedStopTab('Summary');
             setSelectedRouteTab('Summary');
@@ -6720,23 +6793,101 @@ export default function MapCanvas() {
               {selectedTrip.headsign}
             </div>
 
-            {/* Divider - only shown when scrolled */}
-            <div style={{
-              position: 'relative',
-              marginLeft: '-16px',
-              marginRight: '-16px',
-              flexShrink: 0
-            }}>
+            {/* Summary/Trips/Grid Tabs - Show in trip detail view to allow navigation back */}
+            {!experimentalDetailViewNav && (
               <div style={{
-                height: '0.5px',
-                backgroundColor: 'var(--border-default)',
-                marginLeft: '16px',
-                marginRight: '16px',
-                marginTop: '12px',
-                opacity: isTripContentScrolled ? 1 : 0,
-                transition: 'opacity 0.2s ease'
-              }} />
-            </div>
+                position: 'relative',
+                marginLeft: '-16px',
+                marginRight: '-16px',
+                flexShrink: 0
+              }}>
+                {/* Tabs */}
+                <div style={{
+                  position: 'relative',
+                  display: 'flex',
+                  gap: '24px',
+                  paddingLeft: '16px'
+                }}>
+                  {(['Summary', 'Trips', 'Grid'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => {
+                        // Clear trip selection and navigate to the selected tab
+                        setSelectedTrip(null);
+                        setSelectedTripStops([]);
+                        setIsTripContentScrolled(false);
+                        setSelectedBoardingStop(null);
+                        setHoveredSegment(null);
+                        setSelectedRouteTab(tab);
+
+                        // Handle grid transition
+                        if (tab === 'Grid') {
+                          setIsGridTransitioning(true);
+                          setTimeout(() => setIsGridTransitioning(false), 300);
+                        }
+                      }}
+                      style={{
+                        position: 'relative',
+                        padding: '12px 0',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: 'var(--data-small-size)',
+                        fontWeight: 'var(--data-small-weight)',
+                        color: tab === 'Trips' ? 'var(--text-secondary)' : 'var(--text-disabled)',
+                        lineHeight: 'var(--data-small-line-height)',
+                        transition: 'color 0.2s ease'
+                      }}
+                    >
+                      {tab}
+                      {/* Underline indicator - Trips is active when viewing a trip */}
+                      {tab === 'Trips' && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '1px',
+                          left: 0,
+                          right: 0,
+                          height: '2px',
+                          backgroundColor: 'var(--text-secondary)',
+                          borderTopLeftRadius: '2px',
+                          borderTopRightRadius: '2px'
+                        }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {/* Divider */}
+                <div style={{
+                  height: '0.5px',
+                  backgroundColor: 'var(--border-default)',
+                  marginLeft: '16px',
+                  marginRight: '16px',
+                  marginTop: '-1px'
+                }} />
+              </div>
+            )}
+
+            {/* Divider - only shown when scrolled (for experimental mode) */}
+            {experimentalDetailViewNav && (
+              <div style={{
+                position: 'relative',
+                marginLeft: '-16px',
+                marginRight: '-16px',
+                flexShrink: 0
+              }}>
+                <div style={{
+                  height: '0.5px',
+                  backgroundColor: 'var(--border-default)',
+                  marginLeft: '16px',
+                  marginRight: '16px',
+                  marginTop: '12px',
+                  opacity: isTripContentScrolled ? 1 : 0,
+                  transition: 'opacity 0.2s ease'
+                }} />
+              </div>
+            )}
 
             {/* Trip Content */}
             <div
@@ -8267,8 +8418,9 @@ export default function MapCanvas() {
                               {patternGroup.trips.map((trip, tripIndex) => {
                                 const value1 = trip.ridership;
                                 const value2 = getComparisonRidership(trip.ridership);
-                                const barWidth1 = (value1 / maxRidership) * 100;
-                                const barWidth2 = (value2 / maxRidership) * 100;
+                                // Handle division by zero when maxRidership is 0
+                                const barWidth1 = maxRidership > 0 ? (value1 / maxRidership) * 100 : 0;
+                                const barWidth2 = maxRidership > 0 ? (value2 / maxRidership) * 100 : 0;
                                 const tripKey = `${groupIndex}-${tripIndex}`;
 
                                 return (

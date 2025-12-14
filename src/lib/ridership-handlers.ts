@@ -464,6 +464,141 @@ export async function getRouteStops(
   }
 }
 
+// === ROUTE BY DATE ENDPOINT ===
+
+export interface RouteByDateResponse {
+  filters: RidershipFilters;
+  routeId: string;
+  data: Array<{
+    date: string;
+    dayOfWeek: number;
+    totalBoardings: number;
+    totalAlightings: number;
+    avgLoad: number;
+    maxLoad: number;
+  }>;
+}
+
+export async function getRouteByDate(
+  request: NextRequest,
+  routeId: string
+): Promise<NextResponse> {
+  try {
+    const filters = parseFilters(request.nextUrl.searchParams);
+    const supabase = getServerSupabase();
+    const f = buildStopRidershipFilters(filters);
+
+    // Use the existing RPC function with route filter
+    const { data: rpcData, error } = await supabase.rpc('get_metrics_by_date', {
+      p_start_date: f.startDate,
+      p_end_date: f.endDate,
+      p_days: f.days || null,
+      p_periods: f.periods || null,
+      p_routes: [routeId],
+    });
+
+    if (error) throw error;
+
+    const byDateData = (rpcData || []) as Array<{
+      date: string;
+      day_of_week: number;
+      total_boardings: number;
+      total_alightings: number;
+      avg_load: number;
+      max_load: number;
+    }>;
+
+    const data = byDateData.map(row => ({
+      date: row.date,
+      dayOfWeek: row.day_of_week,
+      totalBoardings: row.total_boardings,
+      totalAlightings: row.total_alightings,
+      avgLoad: Math.round((row.avg_load || 0) * 10) / 10,
+      maxLoad: row.max_load || 0,
+    }));
+
+    const response: RouteByDateResponse = {
+      filters,
+      routeId,
+      data,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
+// === ROUTE BY DAY OF WEEK ENDPOINT ===
+
+export interface RouteByDayResponse {
+  filters: RidershipFilters;
+  routeId: string;
+  data: Array<{
+    dayOfWeek: number;
+    dayName: string;
+    totalBoardings: number;
+    totalAlightings: number;
+    avgLoad: number;
+    maxLoad: number;
+    dayCount: number;
+    avgDailyBoardings: number;
+  }>;
+}
+
+const ROUTE_DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+export async function getRouteByDay(
+  request: NextRequest,
+  routeId: string
+): Promise<NextResponse> {
+  try {
+    const filters = parseFilters(request.nextUrl.searchParams);
+    const supabase = getServerSupabase();
+    const f = buildStopRidershipFilters(filters);
+
+    // Use the existing RPC function with route filter
+    const { data: rpcData, error } = await supabase.rpc('get_metrics_by_day_of_week', {
+      p_start_date: f.startDate,
+      p_end_date: f.endDate,
+      p_periods: f.periods || null,
+      p_routes: [routeId],
+    });
+
+    if (error) throw error;
+
+    const byDayData = (rpcData || []) as Array<{
+      day_of_week: number;
+      total_boardings: number;
+      total_alightings: number;
+      avg_load: number;
+      max_load: number;
+      day_count: number;
+    }>;
+
+    const data = byDayData.map(row => ({
+      dayOfWeek: row.day_of_week,
+      dayName: ROUTE_DAY_NAMES[row.day_of_week],
+      totalBoardings: row.total_boardings,
+      totalAlightings: row.total_alightings,
+      avgLoad: Math.round((row.avg_load || 0) * 10) / 10,
+      maxLoad: row.max_load || 0,
+      dayCount: row.day_count,
+      avgDailyBoardings: row.day_count > 0 ? Math.round(row.total_boardings / row.day_count) : 0,
+    }));
+
+    const response: RouteByDayResponse = {
+      filters,
+      routeId,
+      data,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+}
+
 // === ROUTE SEGMENTS ENDPOINT ===
 
 export async function getRouteSegments(
@@ -569,6 +704,10 @@ export async function getTrip(
 
     if (f.days && f.days.length > 0) {
       query = query.in('day_of_week', f.days);
+    }
+
+    if (f.periods && f.periods.length > 0) {
+      query = query.in('time_period', f.periods);
     }
 
     const { data: tripData, error: tripError } = await query;
