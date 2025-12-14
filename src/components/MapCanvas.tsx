@@ -8625,13 +8625,15 @@ export default function MapCanvas() {
                                       ) : (
                                         /* Normal mode: Single bar */
                                         <div
+                                          className="trip-bar-hover"
                                           style={{
                                             position: 'relative',
                                             height: '24px',
-                                            width: `${barWidth1}%`,
+                                            width: '100%',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer'
                                           }}
                                           onMouseEnter={(e) => {
-                                            setHoveredTrip(tripKey);
                                             const rect = e.currentTarget.getBoundingClientRect();
                                             setTripTooltip({
                                               show: true,
@@ -8642,11 +8644,9 @@ export default function MapCanvas() {
                                             });
                                           }}
                                           onMouseLeave={() => {
-                                            setHoveredTrip(null);
                                             setTripTooltip(null);
                                           }}
                                           onClick={async () => {
-                                            setHoveredTrip(null);
                                             setTripTooltip(null);
                                             setSelectedTrip(trip);
                                             const stops = await getTripStopTimes(trip.trip_id);
@@ -8658,10 +8658,11 @@ export default function MapCanvas() {
                                           <div
                                             style={{
                                               height: '100%',
+                                              width: barWidth1 === 0 ? '2px' : `${barWidth1}%`,
+                                              minWidth: barWidth1 === 0 ? '2px' : '3px',
                                               backgroundColor: 'var(--border-hover)',
-                                              borderRadius: '4px',
-                                              transition: 'width 0.3s ease',
-                                              cursor: 'pointer'
+                                              borderRadius: barWidth1 === 0 ? '1px' : '4px',
+                                              transition: 'width 0.3s ease'
                                             }}
                                           />
                                         </div>
