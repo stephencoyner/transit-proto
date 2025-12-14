@@ -348,3 +348,14 @@ body {
   color: var(--text-primary);
   font-family: var(--font-primary);
 }
+
+/* Trip bar hover effect - uses CSS for instant feedback */
+/* Uses same color as ByDayChart hover (var(--border-default) at 10% opacity) */
+.trip-bar-hover {
+  background-color: transparent !important;
+  transition: background-color 0.1s ease !important;
+}
+
+.trip-bar-hover:hover {
+  background-color: rgba(212, 201, 186, 0.1) !important;
+}
