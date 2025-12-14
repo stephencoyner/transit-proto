@@ -26,6 +26,8 @@ import type {
   StopByPeriodResponse,
   RouteTripsResponse,
   RouteGridDataResponse,
+  RouteByDateResponse,
+  RouteByDayResponse,
 } from '@/lib/ridership-handlers';
 
 // Simple in-memory cache
@@ -225,6 +227,30 @@ export function useRouteSegmentsData(
 ): UseRidershipResult<RouteSegmentsResponse> {
   const endpoint = routeId ? `route/${routeId}/segments` : null;
   return useRidershipFetch<RouteSegmentsResponse>(endpoint, filters, enabled && !!routeId);
+}
+
+/**
+ * Fetch route by-date data (for line chart)
+ */
+export function useRouteByDateData(
+  routeId: string | null,
+  filters: FilterState,
+  enabled: boolean = true
+): UseRidershipResult<RouteByDateResponse> {
+  const endpoint = routeId ? `route/${routeId}/by-date` : null;
+  return useRidershipFetch<RouteByDateResponse>(endpoint, filters, enabled && !!routeId);
+}
+
+/**
+ * Fetch route by-day data (for bar chart)
+ */
+export function useRouteByDayData(
+  routeId: string | null,
+  filters: FilterState,
+  enabled: boolean = true
+): UseRidershipResult<RouteByDayResponse> {
+  const endpoint = routeId ? `route/${routeId}/by-day` : null;
+  return useRidershipFetch<RouteByDayResponse>(endpoint, filters, enabled && !!routeId);
 }
 
 /**
