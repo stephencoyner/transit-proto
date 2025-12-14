@@ -1308,6 +1308,12 @@ export default function MapCanvas() {
         case 'Total activity':
           value = d.totalBoardings + d.totalAlightings;
           break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
         default:
           value = d.totalBoardings;
       }
@@ -1335,6 +1341,12 @@ export default function MapCanvas() {
           break;
         case 'Total activity':
           value = d.totalBoardings + d.totalAlightings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
           break;
         default:
           value = d.avgDailyBoardings;
