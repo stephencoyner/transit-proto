@@ -8935,14 +8935,21 @@ export default function MapCanvas() {
             {/* Charts */}
             {comparisonMode ? (
               (() => {
-                // Aggregate all route values for system-wide metric
-                const value1 = routesList.reduce((sum, r) => sum + r.value, 0);
-                // Calculate value2 from average percent change across all routes
-                const allPercentChanges = routesList.map(r => routeComparisonMap.get(r.id) || 0);
-                const avgPercentChange = allPercentChanges.length > 0
-                  ? allPercentChanges.reduce((sum, p) => sum + p, 0) / allPercentChanges.length
-                  : 0;
-                const value2 = Math.round(value1 / (1 + avgPercentChange / 100));
+                // For average/max metrics, use system-wide value directly; for totals, sum route values
+                const isAverageMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
+                const value1 = isAverageMetric
+                  ? (systemData?.metrics ? getMetricValue(systemData.metrics, selectedMetric) : 0)
+                  : routesList.reduce((sum, r) => sum + r.value, 0);
+                // Calculate value2 from comparison data
+                const value2 = isAverageMetric
+                  ? (systemData2?.metrics ? getMetricValue(systemData2.metrics, selectedMetric) : 0)
+                  : (() => {
+                      const allPercentChanges = routesList.map(r => routeComparisonMap.get(r.id) || 0);
+                      const avgPercentChange = allPercentChanges.length > 0
+                        ? allPercentChanges.reduce((sum, p) => sum + p, 0) / allPercentChanges.length
+                        : 0;
+                      return Math.round(value1 / (1 + avgPercentChange / 100));
+                    })();
                 return (
                   <ComparisonMetricCard
                     title={selectedMetric}
@@ -8952,7 +8959,14 @@ export default function MapCanvas() {
                 );
               })()
             ) : (
-              <MetricCard title={selectedMetric} value={routesList.reduce((sum, r) => sum + r.value, 0).toLocaleString()} loading={isSystemLoading} />
+              (() => {
+                // For average/max metrics, use system-wide value directly; for totals, sum route values
+                const isAverageMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
+                const value = isAverageMetric
+                  ? (systemData?.metrics ? getMetricValue(systemData.metrics, selectedMetric) : 0)
+                  : routesList.reduce((sum, r) => sum + r.value, 0);
+                return <MetricCard title={selectedMetric} value={value.toLocaleString()} loading={isSystemLoading} />;
+              })()
             )}
             <ByDateChart
               data={dataByDate}
