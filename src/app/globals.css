@@ -348,3 +348,13 @@ body {
   color: var(--text-primary);
   font-family: var(--font-primary);
 }
+
+/* Trip bar hover effect - uses CSS for instant feedback */
+.trip-bar-hover {
+  background-color: transparent !important;
+  transition: background-color 0.1s ease !important;
+}
+
+.trip-bar-hover:hover {
+  background-color: rgba(128, 128, 128, 0.1) !important;
+}
