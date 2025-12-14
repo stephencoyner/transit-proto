@@ -13,7 +13,7 @@ import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, SearchableSelect, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart, ByPatternChart } from '@/components/charts';
-import MapScale from '@/components/MapScale';
+import MapScale, { ComparisonDisplayMode } from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
@@ -346,6 +346,7 @@ export default function MapCanvas() {
   const [experimentalDetailViewNav] = useState<boolean>(true); // Always true - controls visibility of route/stop controls
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
+  const [allowAbsoluteNumberComparisons, setAllowAbsoluteNumberComparisons] = useState<boolean>(false);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -407,6 +408,7 @@ export default function MapCanvas() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [comparisonPreset, setComparisonPreset] = useState<'previous-period' | 'previous-year' | 'custom' | null>(null);
   const [comparisonSwapped, setComparisonSwapped] = useState<boolean>(false);
+  const [comparisonDisplayMode, setComparisonDisplayMode] = useState<ComparisonDisplayMode>('percent');
 
   // Date-time 2 picker state (comparison range)
   const [date2PickerMode, setDate2PickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
@@ -512,6 +514,8 @@ export default function MapCanvas() {
     show: boolean;
     time: string;
     ridership: number;
+    ridership2?: number;
+    isComparisonMode?: boolean;
     x: number;
     y: number;
   } | null>(null);
@@ -2130,11 +2134,52 @@ export default function MapCanvas() {
     if (!comparisonMode) return { min: 0, max: 0 };
     const allValues = [...routeComparisonMap.values(), ...stopComparisonMap.values()];
     if (allValues.length === 0) return { min: 0, max: 0 };
+
+    const minVal = Math.min(...allValues);
+    const maxVal = Math.max(...allValues);
+
+    // Guard against Infinity/-Infinity and NaN
     return {
-      min: Math.min(...allValues),
-      max: Math.max(...allValues)
+      min: Number.isFinite(minVal) ? minVal : 0,
+      max: Number.isFinite(maxVal) ? maxVal : 0
     };
   }, [routeComparisonMap, stopComparisonMap, comparisonMode]);
+
+  // Get the range of absolute difference values for number mode
+  const comparisonDiffRange = React.useMemo(() => {
+    if (!comparisonMode) return { min: 0, max: 0 };
+
+    const allDiffs: number[] = [];
+
+    // Calculate absolute differences for stops
+    stopsList.forEach(stop => {
+      const percentChange = stopComparisonMap.get(stop.id) || 0;
+      const value1 = stop.value;
+      const value2 = percentChange === 0 ? value1 : Math.round(value1 / (1 + percentChange / 100));
+      const diff = value1 - value2;
+      allDiffs.push(diff);
+    });
+
+    // Calculate absolute differences for routes
+    routesList.forEach(route => {
+      const percentChange = routeComparisonMap.get(route.id) || 0;
+      const value1 = route.value;
+      const value2 = percentChange === 0 ? value1 : Math.round(value1 / (1 + percentChange / 100));
+      const diff = value1 - value2;
+      allDiffs.push(diff);
+    });
+
+    if (allDiffs.length === 0) return { min: 0, max: 0 };
+
+    const minVal = Math.min(...allDiffs);
+    const maxVal = Math.max(...allDiffs);
+
+    // Guard against Infinity/-Infinity and NaN
+    return {
+      min: Number.isFinite(minVal) ? minVal : 0,
+      max: Number.isFinite(maxVal) ? maxVal : 0
+    };
+  }, [comparisonMode, stopsList, routesList, stopComparisonMap, routeComparisonMap]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -2970,10 +3015,10 @@ export default function MapCanvas() {
 
     // Time text
     if (appliedTimeMode2 === 'all') {
-      timeText = 'All Periods';
+      timeText = 'All Day';
     } else if (appliedTimeMode2 === 'custom' && appliedTimePeriods2.length > 0) {
       if (appliedTimePeriods2.length === 6) {
-        timeText = 'All Periods';
+        timeText = 'All Day';
       } else {
         timeText = appliedTimePeriods2.join(', ');
       }
@@ -4148,6 +4193,8 @@ export default function MapCanvas() {
           onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
           differentiatedPanelBackgrounds={differentiatedPanelBackgrounds}
           onDifferentiatedPanelBackgroundsChange={setDifferentiatedPanelBackgrounds}
+          allowAbsoluteNumberComparisons={allowAbsoluteNumberComparisons}
+          onAllowAbsoluteNumberComparisonsChange={setAllowAbsoluteNumberComparisons}
         />
       </div>
 
@@ -6790,6 +6837,10 @@ export default function MapCanvas() {
             ? (showSegmentColoring ? segmentComparisonRange.max : comparisonValueRange.max)
             : ((selectedRouteId || activeTab === 'stops') ? stopValueRange.max : routeValueRange.max)}
           comparisonMode={comparisonMode}
+          comparisonDisplayMode={comparisonDisplayMode}
+          onComparisonDisplayModeChange={allowAbsoluteNumberComparisons ? setComparisonDisplayMode : undefined}
+          minDiff={comparisonDiffRange.min}
+          maxDiff={comparisonDiffRange.max}
         />
       )}
 
@@ -7538,6 +7589,8 @@ export default function MapCanvas() {
                       metric={selectedMetric}
                       startDate={effectiveDateRange.start}
                       endDate={effectiveDateRange.end}
+                      comparisonStartDate={comparisonDateRange.start}
+                      comparisonEndDate={comparisonDateRange.end}
                       swapped={comparisonSwapped}
                       loading={isActiveByDateLoading}
                     />
@@ -8135,6 +8188,8 @@ export default function MapCanvas() {
                   metric={selectedMetric}
                   startDate={effectiveDateRange.start}
                   endDate={effectiveDateRange.end}
+                  comparisonStartDate={comparisonDateRange.start}
+                  comparisonEndDate={comparisonDateRange.end}
                   swapped={comparisonSwapped}
                   loading={isActiveByDateLoading}
                 />
@@ -8513,6 +8568,8 @@ export default function MapCanvas() {
                                               show: true,
                                               time: formatTime12Hour(trip.start_time),
                                               ridership: value1,
+                                              ridership2: value2,
+                                              isComparisonMode: true,
                                               x: rect.left,
                                               y: rect.top
                                             });
@@ -8623,8 +8680,12 @@ export default function MapCanvas() {
                   .filter(patternGroup => patternGroup.trips.length > 0);
 
                 // Use grid size config from outer scope
-                const CELL_WIDTH = config.cellWidth;
+                // Increase cell width in comparison mode to fit both values side by side
+                const CELL_WIDTH = comparisonMode ? config.cellWidth + 40 : config.cellWidth;
                 const CELL_HEIGHT = config.cellHeight;
+
+                // Pre-compute neutral color for 0-0 cells in comparison mode
+                const neutralColor = getComparisonColorRGB(0, comparisonValueRange.min, comparisonValueRange.max);
 
                 // Handle scroll for updating current pattern - directly manipulates DOM for instant update
                 const handleGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -8853,23 +8914,19 @@ export default function MapCanvas() {
                                       {/* Stop Value Cells */}
                                       {patternGroup.trips.map((trip, tripIndex) => {
                                         const tripStopTimes = gridTripStops[trip.trip_id] || [];
-                                        const stopTimeMap = new Map(tripStopTimes.map(st => [st.id, st]));
-                                        const stopTime = stopTimeMap.get(stop.id);
+                                        const stopTime = tripStopTimes.find(st => st.id === stop.id);
                                         // Use trip-specific stop value from grid data, fall back to route-level stopValueMap
                                         const tripStopData = gridStopValues.get(trip.trip_id);
                                         const stopValue = stopTime
                                           ? (tripStopData?.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0)
                                           : 0;
                                         const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
+                                        // Calculate value2 for comparison mode
+                                        const value2ForCell = stopPercentChange === 0 ? stopValue : Math.round(stopValue / (1 + stopPercentChange / 100));
+                                        // If both values are 0, use pre-computed neutral color
                                         const cellColor = comparisonMode
-                                          ? getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max)
+                                          ? (stopValue === 0 && value2ForCell === 0 ? neutralColor : getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max))
                                           : valueToColor(stopValue, gridValueRange.min, gridValueRange.max);
-
-                                        const darkerColor = [
-                                          Math.max(0, cellColor[0] - 40),
-                                          Math.max(0, cellColor[1] - 40),
-                                          Math.max(0, cellColor[2] - 40)
-                                        ];
 
                                         return (
                                           <div
@@ -8889,8 +8946,7 @@ export default function MapCanvas() {
                                               borderLeft: tripIndex === 0 ? '0.5px solid var(--border-default)' : 'none',
                                               borderRight: '0.5px solid var(--border-default)',
                                               borderBottom: '0.5px solid var(--border-default)',
-                                              cursor: `url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cg clip-path='url(%23clip0_248_2004)'%3E%3Cpath d='M12 1C14.3771 1 16.4795 1.8429 18.2656 3.49023C20.1092 5.19067 21 7.46492 21 10.2002C20.9999 12.1341 20.2327 14.141 18.8408 16.1982C17.4469 18.2583 15.3703 20.4456 12.6484 22.7617L12 23.3135L11.3516 22.7617C8.6297 20.4456 6.55307 18.2583 5.15918 16.1982C3.76727 14.141 3.00005 12.1341 3 10.2002C3 7.46492 3.89078 5.19067 5.73438 3.49023C7.52053 1.8429 9.62291 1 12 1ZM12 9C11.7173 9 11.5005 9.0893 11.2949 9.29492C11.0893 9.50055 11 9.71732 11 10C11 10.2827 11.0893 10.4995 11.2949 10.7051C11.5005 10.9107 11.7173 11 12 11C12.2827 11 12.4995 10.9107 12.7051 10.7051C12.9107 10.4995 13 10.2827 13 10C13 9.71732 12.9107 9.50055 12.7051 9.29492C12.4995 9.0893 12.2827 9 12 9Z' fill='%23FAF9F5' stroke='%233D2817' stroke-width='2'/%3E%3C/g%3E%3Cdefs%3E%3CclipPath id='clip0_248_2004'%3E%3Crect width='24' height='24' fill='white'/%3E%3C/clipPath%3E%3C/defs%3E%3C/svg%3E") 12 12, pointer`,
-                                              transition: 'box-shadow 0.15s ease'
+                                              cursor: `url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cg clip-path='url(%23clip0_248_2004)'%3E%3Cpath d='M12 1C14.3771 1 16.4795 1.8429 18.2656 3.49023C20.1092 5.19067 21 7.46492 21 10.2002C20.9999 12.1341 20.2327 14.141 18.8408 16.1982C17.4469 18.2583 15.3703 20.4456 12.6484 22.7617L12 23.3135L11.3516 22.7617C8.6297 20.4456 6.55307 18.2583 5.15918 16.1982C3.76727 14.141 3.00005 12.1341 3 10.2002C3 7.46492 3.89078 5.19067 5.73438 3.49023C7.52053 1.8429 9.62291 1 12 1ZM12 9C11.7173 9 11.5005 9.0893 11.2949 9.29492C11.0893 9.50055 11 9.71732 11 10C11 10.2827 11.0893 10.4995 11.2949 10.7051C11.5005 10.9107 11.7173 11 12 11C12.2827 11 12.4995 10.9107 12.7051 10.7051C12.9107 10.4995 13 10.2827 13 10C13 9.71732 12.9107 9.50055 12.7051 9.29492C12.4995 9.0893 12.2827 9 12 9Z' fill='%23FAF9F5' stroke='%233D2817' stroke-width='2'/%3E%3C/g%3E%3Cdefs%3E%3CclipPath id='clip0_248_2004'%3E%3Crect width='24' height='24' fill='white'/%3E%3C/clipPath%3E%3C/defs%3E%3C/svg%3E") 12 12, pointer`
                                             }}
                                             onClick={async () => {
                                               // Set the selected trip and load its stop times
@@ -8956,13 +9012,24 @@ export default function MapCanvas() {
                                               });
                                             }}
                                             onMouseEnter={(e) => {
-                                              e.currentTarget.style.boxShadow = `inset 0 0 0 4px rgb(${darkerColor[0]}, ${darkerColor[1]}, ${darkerColor[2]})`;
+                                              e.currentTarget.style.boxShadow = 'inset 0 0 0 4px rgba(0,0,0,0.2)';
                                             }}
                                             onMouseLeave={(e) => {
                                               e.currentTarget.style.boxShadow = 'none';
                                             }}
                                           >
-                                            {stopValue}
+                                            {comparisonMode ? (
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                  <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: DATETIME_1_COLOR, flexShrink: 0 }} />
+                                                  <span style={{ fontSize: `${config.dataFont - 2}px` }}>{stopValue}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                  <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: DATETIME_2_COLOR, flexShrink: 0 }} />
+                                                  <span style={{ fontSize: `${config.dataFont - 2}px` }}>{value2ForCell}</span>
+                                                </div>
+                                              </div>
+                                            ) : stopValue}
                                           </div>
                                         );
                                       })}
@@ -9028,6 +9095,8 @@ export default function MapCanvas() {
               metric={selectedMetric}
               startDate={effectiveDateRange.start}
               endDate={effectiveDateRange.end}
+              comparisonStartDate={comparisonDateRange.start}
+              comparisonEndDate={comparisonDateRange.end}
               swapped={comparisonSwapped}
               loading={isByDateLoading}
             />
@@ -9827,26 +9896,94 @@ export default function MapCanvas() {
 
       {/* Trip Tooltip */}
       {tripTooltip && tripTooltip.show && (
-        <div
-          className="label"
-          style={{
-            position: 'fixed',
-            left: `${tripTooltip.x}px`,
-            top: `${tripTooltip.y - 8}px`,
-            transform: 'translate(0, -100%)',
-            backgroundColor: 'var(--btn-primary)',
-            color: 'var(--text-btn-primary)',
-            padding: '8px 12px',
-            borderRadius: 'var(--radius-sm)',
-            whiteSpace: 'nowrap',
-            zIndex: 10001,
-            boxShadow: 'var(--shadow-lg)',
-            pointerEvents: 'none'
-          }}
-        >
-          <div>{tripTooltip.time}</div>
-          <div>{tripTooltip.ridership} {selectedMetric.toLowerCase()}</div>
-        </div>
+        tripTooltip.isComparisonMode ? (
+          /* Comparison mode tooltip */
+          (() => {
+            const value1 = tripTooltip.ridership;
+            const value2 = tripTooltip.ridership2 ?? 0;
+            const percentChange = value2 !== 0 ? ((value1 - value2) / value2) * 100 : 0;
+            const isPositive = percentChange > 0;
+            const isNegative = percentChange < 0;
+            return (
+              <div
+                className="label"
+                style={{
+                  position: 'fixed',
+                  left: `${tripTooltip.x}px`,
+                  top: `${tripTooltip.y - 8}px`,
+                  transform: 'translate(0, -100%)',
+                  backgroundColor: 'white',
+                  color: 'var(--text-tertiary)',
+                  border: '0.5px solid var(--border-default)',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  whiteSpace: 'nowrap',
+                  zIndex: 10001,
+                  boxShadow: 'var(--shadow-lg)',
+                  pointerEvents: 'none',
+                  minWidth: '120px'
+                }}
+              >
+                <div style={{ marginBottom: '2px', fontWeight: 600, color: 'var(--text-secondary)' }}>{tripTooltip.time}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: DATETIME_1_COLOR,
+                    flexShrink: 0
+                  }} />
+                  <span style={{ color: 'var(--text-tertiary)' }}>{value1.toLocaleString()}</span>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '1px 6px',
+                    borderRadius: '12px',
+                    backgroundColor: isPositive ? '#dcfce7' : isNegative ? '#fee2e2' : 'var(--bg-secondary)',
+                    color: isPositive ? '#166534' : isNegative ? '#991b1b' : 'var(--text-secondary)',
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    marginLeft: '2px'
+                  }}>
+                    {isPositive ? '+' : ''}{percentChange.toFixed(1)}%
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: DATETIME_2_COLOR,
+                    flexShrink: 0
+                  }} />
+                  <span style={{ color: 'var(--text-tertiary)' }}>{value2.toLocaleString()}</span>
+                </div>
+              </div>
+            );
+          })()
+        ) : (
+          /* Normal mode tooltip */
+          <div
+            className="label"
+            style={{
+              position: 'fixed',
+              left: `${tripTooltip.x}px`,
+              top: `${tripTooltip.y - 8}px`,
+              transform: 'translate(0, -100%)',
+              backgroundColor: 'var(--btn-primary)',
+              color: 'var(--text-btn-primary)',
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              whiteSpace: 'nowrap',
+              zIndex: 10001,
+              boxShadow: 'var(--shadow-lg)',
+              pointerEvents: 'none'
+            }}
+          >
+            <div>{tripTooltip.time}</div>
+            <div>{tripTooltip.ridership.toLocaleString()} {selectedMetric.toLowerCase()}</div>
+          </div>
+        )
       )}
     </div>
   );

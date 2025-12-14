@@ -21,13 +21,14 @@ export default function ComparisonMetricCard({
   const isNegative = percentChange < 0;
 
   return (
-    <div style={{
-      backgroundColor: 'var(--bg-elevated)',
-      border: 'var(--border-width) solid var(--border-default)',
-      borderRadius: 'var(--radius-default)',
-      padding: '16px',
-      marginBottom: '8px'
-    }}>
+    <div
+      style={{
+        backgroundColor: 'var(--bg-elevated)',
+        border: 'var(--border-width) solid var(--border-default)',
+        borderRadius: 'var(--radius-default)',
+        padding: '16px',
+        marginBottom: '8px'
+      }}>
       <div style={{
         fontSize: 'var(--body-regular-size)',
         color: 'var(--text-tertiary)',
@@ -37,11 +38,13 @@ export default function ComparisonMetricCard({
       </div>
 
       {/* Values row - inline with circles and percent change */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'nowrap',
+          whiteSpace: 'nowrap'
+        }}>
         {/* Value 1 with circle */}
         <div style={{
           display: 'flex',
@@ -49,14 +52,14 @@ export default function ComparisonMetricCard({
           gap: '4px'
         }}>
           <div style={{
-            width: '12px',
-            height: '12px',
+            width: '10px',
+            height: '10px',
             borderRadius: '50%',
             backgroundColor: DATETIME_1_COLOR,
             flexShrink: 0
           }} />
           <span style={{
-            fontSize: 'var(--data-large-size)',
+            fontSize: '20px',
             fontWeight: 'var(--data-large-weight)',
             color: 'var(--text-primary)',
             lineHeight: '1'
@@ -76,7 +79,7 @@ export default function ComparisonMetricCard({
           fontSize: 'var(--caption-size)',
           fontWeight: 600,
           marginLeft: '8px',
-          marginRight: '20px'
+          marginRight: '16px'
         }}>
           {formatPercentChange(percentChange)}
         </div>
@@ -88,14 +91,14 @@ export default function ComparisonMetricCard({
           gap: '4px'
         }}>
           <div style={{
-            width: '12px',
-            height: '12px',
+            width: '10px',
+            height: '10px',
             borderRadius: '50%',
             backgroundColor: DATETIME_2_COLOR,
             flexShrink: 0
           }} />
           <span style={{
-            fontSize: 'var(--data-large-size)',
+            fontSize: '20px',
             fontWeight: 'var(--data-large-weight)',
             color: 'var(--text-primary)',
             lineHeight: '1'

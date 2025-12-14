@@ -9,6 +9,7 @@ interface CustomTooltipProps {
     color?: string;
     payload?: {
       fullName?: string;
+      date2?: string;
       [key: string]: unknown;
     };
   }>;
@@ -29,6 +30,7 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
   if (isComparisonMode && payload.length >= 2) {
     const value1 = payload.find(p => p.dataKey === 'value1')?.value ?? payload[0].value;
     const value2 = payload.find(p => p.dataKey === 'value2')?.value ?? payload[1].value;
+    const date2 = payload[0]?.payload?.date2;
     const percentChange = calculatePercentChange(value1, value2);
     const isPositive = percentChange > 0;
     const isNegative = percentChange < 0;
@@ -36,8 +38,9 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
     return (
       <div
         style={{
-          backgroundColor: 'var(--btn-primary)',
-          color: 'var(--text-btn-primary)',
+          backgroundColor: 'white',
+          color: 'var(--text-tertiary)',
+          border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--radius-sm)',
           fontSize: '0.75rem',
           fontWeight: 500,
@@ -49,10 +52,9 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
           minWidth: '160px'
         }}
       >
-        {displayLabel && <div style={{ marginBottom: '6px', fontWeight: 600 }}>{displayLabel}</div>}
-
-        {/* Date-time 1 row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+        {/* Date-time 1 label and value with percentage change */}
+        {displayLabel && <div style={{ marginBottom: '2px', fontWeight: 600, color: 'var(--text-secondary)' }}>{displayLabel}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
           <div style={{
             width: '8px',
             height: '8px',
@@ -60,11 +62,26 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
             backgroundColor: DATETIME_1_COLOR,
             flexShrink: 0
           }} />
-          <span>{value1.toLocaleString()}</span>
+          <span style={{ color: 'var(--text-tertiary)' }}>{value1.toLocaleString()}</span>
+          {/* Percentage change pill */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '1px 6px',
+            borderRadius: '12px',
+            backgroundColor: isPositive ? POSITIVE_PILL_BG : isNegative ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
+            color: isPositive ? POSITIVE_PILL_TEXT : isNegative ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
+            fontSize: '0.65rem',
+            fontWeight: 600,
+            marginLeft: '2px'
+          }}>
+            {formatPercentChange(percentChange)}
+          </div>
         </div>
 
-        {/* Date-time 2 row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+        {/* Date-time 2 label and value */}
+        {date2 && <div style={{ marginBottom: '2px', fontWeight: 600, color: 'var(--text-secondary)' }}>{date2}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <div style={{
             width: '8px',
             height: '8px',
@@ -72,21 +89,7 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
             backgroundColor: DATETIME_2_COLOR,
             flexShrink: 0
           }} />
-          <span>{value2.toLocaleString()}</span>
-        </div>
-
-        {/* Percentage change pill */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          padding: '2px 8px',
-          borderRadius: '12px',
-          backgroundColor: isPositive ? POSITIVE_PILL_BG : isNegative ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
-          color: isPositive ? POSITIVE_PILL_TEXT : isNegative ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
-          fontSize: '0.7rem',
-          fontWeight: 600
-        }}>
-          {formatPercentChange(percentChange)}
+          <span style={{ color: 'var(--text-tertiary)' }}>{value2.toLocaleString()}</span>
         </div>
       </div>
     );
