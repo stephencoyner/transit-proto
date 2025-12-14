@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import PortalTooltipContent from './PortalTooltip';
 
 interface PatternDataPoint {
@@ -230,10 +230,29 @@ const CustomYAxisTick = ({ y, payload, visibleTicksCount }: any) => {
 
 export default function ByPatternChart({ data, metric, loading = false, onPatternClick, selectedPattern }: ByPatternChartProps) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(300); // Default fallback
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setBorderDefault(getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim());
+    }
+  }, []);
+
+  // Measure container width for dynamic label truncation
+  useEffect(() => {
+    if (containerRef.current) {
+      const updateWidth = () => {
+        if (containerRef.current) {
+          // Account for padding (16px each side) and some margin
+          setContainerWidth(containerRef.current.offsetWidth - 32);
+        }
+      };
+      updateWidth();
+
+      const resizeObserver = new ResizeObserver(updateWidth);
+      resizeObserver.observe(containerRef.current);
+      return () => resizeObserver.disconnect();
     }
   }, []);
 
@@ -243,14 +262,27 @@ export default function ByPatternChart({ data, metric, loading = false, onPatter
   // Calculate dynamic height based on number of patterns for horizontal layout
   const chartHeight = isHorizontal ? Math.max(120, data.length * 36) : 160;
 
+  // Calculate max label width based on container width and number of patterns
+  const maxLabelWidth = useMemo(() => {
+    if (isHorizontal) {
+      return 70; // Fixed width for horizontal layout (Y-axis labels)
+    }
+    // For vertical layout, divide available width by number of patterns
+    // Account for Y-axis (40px) and some spacing between labels
+    const availableWidth = containerWidth - 40;
+    const widthPerLabel = Math.floor(availableWidth / Math.max(data.length, 1));
+    // Leave some padding between labels (at least 10px gap)
+    return Math.max(40, widthPerLabel - 10);
+  }, [isHorizontal, containerWidth, data.length]);
+
   // Prepare chart data with truncated labels
   const chartData = useMemo(() => {
     return data.map(d => ({
       ...d,
-      displayName: truncateHeadsign(d.headsign, isHorizontal ? 70 : 150),
+      displayName: truncateHeadsign(d.headsign, maxLabelWidth),
       fullName: d.headsign
     }));
-  }, [data, isHorizontal]);
+  }, [data, maxLabelWidth]);
 
   // Show skeleton when loading
   if (loading) {
@@ -276,14 +308,16 @@ export default function ByPatternChart({ data, metric, loading = false, onPatter
   };
 
   return (
-    <div style={{
-      backgroundColor: 'var(--bg-elevated)',
-      border: 'var(--border-width) solid var(--border-default)',
-      borderRadius: 'var(--radius-default)',
-      padding: '16px',
-      marginBottom: '8px',
-      overflow: 'visible'
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        backgroundColor: 'var(--bg-elevated)',
+        border: 'var(--border-width) solid var(--border-default)',
+        borderRadius: 'var(--radius-default)',
+        padding: '16px',
+        marginBottom: '8px',
+        overflow: 'visible'
+      }}>
       <div style={{
         fontSize: 'var(--body-regular-size)',
         fontWeight: 'var(--font-normal)',

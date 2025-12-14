@@ -2,6 +2,7 @@ interface MetricCardProps {
   value: string | number;
   title?: string;
   loading?: boolean;
+  valueLoading?: boolean; // Show title but shimmer for value only
 }
 
 // Shimmer animation styles - unique name to avoid conflicts
@@ -51,7 +52,23 @@ const MetricCardSkeleton = () => (
   </div>
 );
 
-export default function MetricCard({ value, title = 'Average daily boardings', loading = false }: MetricCardProps) {
+// Value-only skeleton (shows title, shimmer for value)
+const ValueSkeleton = () => (
+  <>
+    <style>{shimmerStyles}</style>
+    <div style={{
+      height: 24,
+      width: 80,
+      borderRadius: 4,
+      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'metricCardShimmer 1.5s infinite ease-in-out',
+      opacity: 0.6
+    }} />
+  </>
+);
+
+export default function MetricCard({ value, title = 'Average daily boardings', loading = false, valueLoading = false }: MetricCardProps) {
   if (loading) {
     return <MetricCardSkeleton />;
   }
@@ -77,7 +94,7 @@ export default function MetricCard({ value, title = 'Average daily boardings', l
         color: 'var(--text-primary)',
         lineHeight: '1'
       }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
+        {valueLoading ? <ValueSkeleton /> : (typeof value === 'number' ? value.toLocaleString() : value)}
       </div>
     </div>
   );
