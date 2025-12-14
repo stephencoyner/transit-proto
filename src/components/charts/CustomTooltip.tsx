@@ -7,15 +7,23 @@ interface CustomTooltipProps {
     name: string;
     dataKey: string;
     color?: string;
+    payload?: {
+      fullName?: string;
+      [key: string]: unknown;
+    };
   }>;
   label?: string;
   isComparisonMode?: boolean;
+  metricLabel?: string;
 }
 
-export default function CustomTooltip({ active, payload, label, isComparisonMode }: CustomTooltipProps) {
+export default function CustomTooltip({ active, payload, label, isComparisonMode, metricLabel = 'average daily boardings' }: CustomTooltipProps) {
   if (!active || !payload || !payload.length) {
     return null;
   }
+
+  // Use fullName from payload data if available (for pattern charts with truncated labels)
+  const displayLabel = payload[0]?.payload?.fullName || label;
 
   // Comparison mode - show both values and percentage change
   if (isComparisonMode && payload.length >= 2) {
@@ -41,7 +49,7 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
           minWidth: '160px'
         }}
       >
-        {label && <div style={{ marginBottom: '6px', fontWeight: 600 }}>{label}</div>}
+        {displayLabel && <div style={{ marginBottom: '6px', fontWeight: 600 }}>{displayLabel}</div>}
 
         {/* Date-time 1 row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
@@ -102,8 +110,8 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
         pointerEvents: 'none'
       }}
     >
-      {label && <div>{label}</div>}
-      <div>{value.toLocaleString()} average daily boardings</div>
+      {displayLabel && <div>{displayLabel}</div>}
+      <div>{value.toLocaleString()} {metricLabel.toLowerCase()}</div>
     </div>
   );
 }

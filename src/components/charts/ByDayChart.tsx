@@ -140,8 +140,7 @@ const ByDayChartSkeleton = () => (
   </div>
 );
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function ByDayChart({ data, comparisonData, metric: _metric, selectedDays, swapped = false, loading = false }: ByDayChartProps) {
+export default function ByDayChart({ data, comparisonData, metric, selectedDays, swapped = false, loading = false }: ByDayChartProps) {
   // All hooks must be called before any early returns
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
 
@@ -181,6 +180,11 @@ export default function ByDayChart({ data, comparisonData, metric: _metric, sele
     return <ByDayChartSkeleton />;
   }
 
+  // Hide chart if only 1 day is selected (nothing to compare)
+  if (selectedDays && selectedDays.length === 1) {
+    return null;
+  }
+
   const isComparisonMode = !!comparisonData;
 
   return (
@@ -218,11 +222,11 @@ export default function ByDayChart({ data, comparisonData, metric: _metric, sele
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value) => value === 0 ? '0' : `${(value / 1000).toFixed(0)}K`}
+            tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
             width={40}
           />
           <Tooltip
-            content={<CustomTooltip isComparisonMode={isComparisonMode} />}
+            content={<CustomTooltip isComparisonMode={isComparisonMode} metricLabel={metric} />}
             wrapperStyle={{ zIndex: 9999 }}
             cursor={{ fill: `url(#barCursor)` }}
           />

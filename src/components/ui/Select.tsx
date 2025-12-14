@@ -44,7 +44,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const [selectedValue, setSelectedValue] = useState(value || '');
     const [isHovered, setIsHovered] = useState(false);
     const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null);
-    const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+    const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
     const [showTooltip, setShowTooltip] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,10 +65,20 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     useEffect(() => {
       if (isOpen && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const dropdownMaxHeight = 640;
+        const gap = 8;
+
+        // Always open below, constrain maxHeight to available space
+        const top = rect.bottom + gap;
+        const availableHeight = Math.min(dropdownMaxHeight, Math.max(spaceBelow - gap, 100));
+
         setDropdownPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.left + window.scrollX,
-          width: rect.width
+          top: top,
+          left: rect.left,
+          width: rect.width,
+          maxHeight: availableHeight
         });
         // Clear tooltip timer and hide tooltip when menu opens
         if (tooltipTimerRef.current) {
@@ -224,7 +234,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
               minWidth: `${dropdownPosition.width}px`,
-              maxHeight: '640px',
+              maxHeight: `${dropdownPosition.maxHeight}px`,
               backgroundColor: 'var(--bg-elevated)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--radius-large)',
