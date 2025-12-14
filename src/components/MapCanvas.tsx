@@ -780,8 +780,8 @@ export default function MapCanvas() {
   // Fetch all stops data for comparison period
   const { data: allStopsData2 } = useAllStopsData(filterState2, comparisonMode && !!comparisonDateRange.start);
 
-  // Loading state for dimming
-  const isRidershipLoading = isSystemLoading || isByDateLoading || isByDayLoading;
+  // Loading state for dimming (basic - without stops loading which is defined later)
+  const isBasicRidershipLoading = isSystemLoading || isByDateLoading || isByDayLoading;
 
   // Helper function to get the correct metric value based on selected metric
   const getMetricValue = useCallback((metrics: {
@@ -1015,7 +1015,18 @@ export default function MapCanvas() {
   const { data: stopByPeriodData, isLoading: isStopByPeriodLoading } = useStopByPeriodData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
 
   // Fetch trip-specific data when a trip is selected (for TDV)
-  const { data: tripData } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
+  const { data: tripData, isLoading: isTripLoading } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
+
+  // Check if route data matches the selected route (handles stale cached data during route switch)
+  const isRouteDataStale = selectedRouteId && routeData && routeData.metrics.routeId !== selectedRouteId;
+  const isSegmentDataStale = selectedRouteId && routeSegmentsData && routeSegmentsData.routeId !== selectedRouteId;
+
+  // Full loading state for dimming - includes view-specific loading states
+  // Also consider "loading" if data is stale (from previous route)
+  // When a trip is selected, only check trip loading (not route stale data)
+  const isRidershipLoading = isBasicRidershipLoading
+    || (activeTab === 'stops' && isAllStopsLoading)
+    || (selectedTrip ? isTripLoading : (selectedRouteId && (isRouteLoading || isSegmentsLoading || isRouteDataStale || isSegmentDataStale)));
 
   // Fetch route trips ridership data for trips list view (uses routeFilterState for pattern/direction filtering)
   const { data: routeTripsRidership } = useRouteTripsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
@@ -3506,6 +3517,24 @@ export default function MapCanvas() {
   const getStopBorderColor = React.useCallback((d: any): [number, number, number, number] => {
     const stopId = d.properties.stop_id;
 
+    // When loading stops data in stops tab, show gray
+    if (activeTab === 'stops' && isAllStopsLoading) {
+      return [180, 180, 180, 200] as [number, number, number, number];
+    }
+
+    // When loading trip data in trip detail view, show gray (check this BEFORE route check)
+    // But if showing segment coloring (load metrics), don't gray out stops - only segments should be gray
+    if (selectedTrip && isTripLoading && !showSegmentColoring) {
+      return [180, 180, 180, 200] as [number, number, number, number];
+    }
+
+    // When loading route data in route detail view, show gray (includes stale data check)
+    // Skip stale data check when a trip is selected (trip uses its own data, not route data)
+    // But if showing segment coloring (load metrics), don't gray out stops - only segments should be gray
+    if (selectedRouteId && !selectedTrip && !showSegmentColoring && (isRouteLoading || isSegmentsLoading || isRouteDataStale || isSegmentDataStale)) {
+      return [180, 180, 180, 200] as [number, number, number, number];
+    }
+
     // When showing segment coloring (load metrics) or amenities view, use white border
     if (showSegmentColoring || isAmenitiesView) {
       return [255, 255, 255, 255] as [number, number, number, number];
@@ -3526,7 +3555,7 @@ export default function MapCanvas() {
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange]);
+  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const getStopCenterColor = React.useCallback((_d: any): [number, number, number, number] => {
@@ -3582,6 +3611,14 @@ export default function MapCanvas() {
       }
 
       // Render all segments with base styling
+      // Determine if segments are still loading
+      // When a trip is selected, only check trip loading (not route stale data)
+      // When no trip selected, check route loading and stale data
+      // Also check if data actually exists - if tripData has segments, we're not loading
+      const isSegmentDataLoading = selectedTrip
+        ? (isTripLoading && !(tripData?.segments && tripData.segments.length > 0))
+        : (isRouteLoading || isRouteDataStale || isSegmentDataStale || isSegmentsLoading);
+
       layers.push(
         new PathLayer({
           id: 'route-segments',
@@ -3589,6 +3626,10 @@ export default function MapCanvas() {
           getPath: (d) => d.path,
           getWidth: 15,
           getColor: (d) => {
+            // Show gray when loading segment data
+            if (isSegmentDataLoading) {
+              return [180, 180, 180, 200] as [number, number, number, number];
+            }
             // Use comparison colors when in comparison mode
             if (comparisonMode) {
               const segmentKey = `${d.fromStopId}-${d.toStopId}`;
@@ -3603,11 +3644,11 @@ export default function MapCanvas() {
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
-          pickable: true,
+          pickable: !isSegmentDataLoading, // Disable hover while loading
           onHover: ({ object }) => setHoveredSegment(object ? object.index : null),
         })
       );
@@ -3963,7 +4004,7 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap], // Force recalculation when selection, coloring mode, amenities view, comparison mode, or trip changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale], // Force recalculation when selection, coloring mode, amenities view, comparison mode, trip, or loading state changes
             getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         }),
@@ -9257,16 +9298,18 @@ export default function MapCanvas() {
                       <div
                         key={item.id}
                         onClick={() => {
-                          setSelectedStopId(item.id);
-                          setSelectedStopTab('Summary');
+                          if (!isAllStopsLoading) {
+                            setSelectedStopId(item.id);
+                            setSelectedStopTab('Summary');
+                          }
                         }}
                         style={{
-                          cursor: 'pointer'
+                          cursor: isAllStopsLoading ? 'default' : 'pointer'
                         }}>
                         {comparisonMode ? (
                           <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} />
                         ) : (
-                          <MetricCard value={item.value} title={item.name} />
+                          <MetricCard value={item.value} title={item.name} valueLoading={isAllStopsLoading} />
                         )}
                       </div>
                     );
