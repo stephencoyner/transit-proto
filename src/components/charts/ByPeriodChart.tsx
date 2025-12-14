@@ -126,8 +126,7 @@ export default function ByPeriodChart({
   activePieIndex: _activePieIndex,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setActivePieIndex: _setActivePieIndex,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  metric: _metric,
+  metric,
   selectedPeriods,
   swapped = false,
   loading = false
@@ -171,6 +170,11 @@ export default function ByPeriodChart({
     return <ByPeriodChartSkeleton />;
   }
 
+  // Hide chart if only 1 period is selected (nothing to compare)
+  if (selectedPeriods && selectedPeriods.length === 1) {
+    return null;
+  }
+
   const isComparisonMode = !!comparisonData;
 
   return (
@@ -211,10 +215,10 @@ export default function ByPeriodChart({
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value) => value === 0 ? '0' : `${(value / 1000).toFixed(0)}K`}
+            tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
           />
           <Tooltip
-            content={<CustomTooltip isComparisonMode={isComparisonMode} />}
+            content={<CustomTooltip isComparisonMode={isComparisonMode} metricLabel={metric} />}
             wrapperStyle={{ zIndex: 9999 }}
             cursor={{ fill: `url(#barCursorPeriod)` }}
           />

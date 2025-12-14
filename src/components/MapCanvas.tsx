@@ -12,7 +12,7 @@ import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, SearchableSelect, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart } from '@/components/charts';
+import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart, ByPatternChart } from '@/components/charts';
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
@@ -736,6 +736,27 @@ export default function MapCanvas() {
     timePeriods: appliedTimePeriods,
   }), [effectiveDateRange.start, effectiveDateRange.end, appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods]);
 
+  // Build filter state for route-specific API calls (includes direction from selected pattern)
+  const routeFilterState: FilterState = useMemo(() => {
+    // Look up direction_id from selected pattern
+    let directionId: '0' | '1' | undefined;
+    if (selectedPattern && selectedRouteId && routePatterns[selectedRouteId]) {
+      const patternInfo = routePatterns[selectedRouteId].patterns.find(p => p.headsign === selectedPattern);
+      if (patternInfo) {
+        directionId = patternInfo.direction_id as '0' | '1';
+      }
+    }
+    return {
+      startDate: effectiveDateRange.start,
+      endDate: effectiveDateRange.end,
+      daysMode: appliedDaysMode,
+      customDays: appliedCustomDays,
+      timeMode: appliedTimeMode,
+      timePeriods: appliedTimePeriods,
+      directionId,
+    };
+  }, [effectiveDateRange.start, effectiveDateRange.end, appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods, selectedPattern, selectedRouteId, routePatterns]);
+
   // Build filter state for comparison period (Date-time 2)
   const filterState2: FilterState = useMemo(() => ({
     startDate: comparisonDateRange.start,
@@ -976,10 +997,10 @@ export default function MapCanvas() {
     return values;
   }, [systemData, selectedMetric, getMetricValue]);
 
-  // Fetch route-specific data when a route is selected
-  const { data: routeData, isLoading: isRouteLoading } = useRouteData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+  // Fetch route-specific data when a route is selected (uses routeFilterState for pattern/direction filtering)
+  const { data: routeData, isLoading: isRouteLoading } = useRouteData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+  const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
 
   // Fetch all stops data for stops view - only when on stops tab (this query is slow)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -994,17 +1015,17 @@ export default function MapCanvas() {
   // Fetch trip-specific data when a trip is selected (for TDV)
   const { data: tripData } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
 
-  // Fetch route trips ridership data for trips list view
-  const { data: routeTripsRidership } = useRouteTripsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+  // Fetch route trips ridership data for trips list view (uses routeFilterState for pattern/direction filtering)
+  const { data: routeTripsRidership } = useRouteTripsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
 
-  // Fetch route stops ridership data for map stop coloring when route is selected
-  const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, filterState, !!effectiveDateRange.start && !!selectedRouteId);
+  // Fetch route stops ridership data for map stop coloring when route is selected (uses routeFilterState for pattern/direction filtering)
+  const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
 
   // Fetch route grid data for trips grid view (per-trip per-stop ridership)
-  // Only fetch when Grid tab is active to avoid unnecessary API calls
+  // Only fetch when Grid tab is active to avoid unnecessary API calls (uses routeFilterState for pattern/direction filtering)
   const { data: routeGridData } = useRouteGridData(
     selectedRouteId,
-    filterState,
+    routeFilterState,
     !!effectiveDateRange.start && !!selectedRouteId && selectedRouteTab === 'Grid'
   );
 
@@ -1258,6 +1279,86 @@ export default function MapCanvas() {
       value: getMetricValue(p.metrics, selectedMetric),
     }));
   }, [routeData, selectedMetric, getMetricValue]);
+
+  // Transform route data for ByPatternChart
+  // Uses routePatterns for all patterns and distributes direction ridership proportionally
+  // Aggregates patterns with the same headsign
+  const routeDataByPattern = useMemo(() => {
+    if (!selectedRouteId || !routePatterns[selectedRouteId]) return [];
+
+    const patterns = routePatterns[selectedRouteId].patterns;
+    if (!patterns || patterns.length === 0) return [];
+
+    // If we have byDirection data, use it to distribute ridership to patterns
+    if (routeData?.byDirection) {
+      // Create a map of direction_id -> ridership value
+      const directionValues = new Map<string, number>();
+      routeData.byDirection.forEach(d => {
+        directionValues.set(d.directionId, getMetricValue(d.metrics, selectedMetric));
+      });
+
+      // Group patterns by direction and calculate trip counts per direction
+      const tripCountsByDirection = new Map<string, number>();
+      patterns.forEach(p => {
+        const current = tripCountsByDirection.get(p.direction_id) || 0;
+        tripCountsByDirection.set(p.direction_id, current + p.trip_count);
+      });
+
+      // Calculate value for each pattern, then aggregate by headsign
+      const headsignAggregates = new Map<string, { value: number; percentOfRoute: number }>();
+
+      patterns.forEach(p => {
+        const directionValue = directionValues.get(p.direction_id) || 0;
+        const directionTripCount = tripCountsByDirection.get(p.direction_id) || 1;
+        const patternProportion = p.trip_count / directionTripCount;
+        const patternValue = Math.round(directionValue * patternProportion);
+
+        const existing = headsignAggregates.get(p.headsign);
+        if (existing) {
+          // Aggregate: sum values and percentOfRoute for same headsign
+          headsignAggregates.set(p.headsign, {
+            value: existing.value + patternValue,
+            percentOfRoute: existing.percentOfRoute + p.pct_of_route,
+          });
+        } else {
+          headsignAggregates.set(p.headsign, {
+            value: patternValue,
+            percentOfRoute: p.pct_of_route,
+          });
+        }
+      });
+
+      // Convert map to array
+      return Array.from(headsignAggregates.entries()).map(([headsign, data]) => ({
+        headsign,
+        value: data.value,
+        percentOfRoute: data.percentOfRoute,
+      }));
+    }
+
+    // Fallback: just use pct_of_route if no ridership data, aggregating by headsign
+    const headsignAggregates = new Map<string, { value: number; percentOfRoute: number }>();
+    patterns.forEach(p => {
+      const existing = headsignAggregates.get(p.headsign);
+      if (existing) {
+        headsignAggregates.set(p.headsign, {
+          value: 0,
+          percentOfRoute: existing.percentOfRoute + p.pct_of_route,
+        });
+      } else {
+        headsignAggregates.set(p.headsign, {
+          value: 0,
+          percentOfRoute: p.pct_of_route,
+        });
+      }
+    });
+
+    return Array.from(headsignAggregates.entries()).map(([headsign, data]) => ({
+      headsign,
+      value: data.value,
+      percentOfRoute: data.percentOfRoute,
+    }));
+  }, [routeData, selectedMetric, getMetricValue, selectedRouteId, routePatterns]);
 
   // Transform stop-specific data for SDV charts
   const stopDataByDate = useMemo(() => {
@@ -4392,6 +4493,12 @@ export default function MapCanvas() {
                           onClick={() => {
                             const wasGrid = selectedRouteTab === 'Grid';
                             const willBeGrid = view === 'Grid';
+
+                            // Clear trip selection when switching tabs
+                            if (selectedTrip) {
+                              setSelectedTrip(null);
+                              setSelectedTripStops([]);
+                            }
 
                             // Update tab immediately for instant panel expansion
                             setSelectedRouteTab(view);
@@ -7719,6 +7826,12 @@ export default function MapCanvas() {
                         const wasGrid = selectedRouteTab === 'Grid';
                         const willBeGrid = tab === 'Grid';
 
+                        // Clear trip selection when switching tabs
+                        if (selectedTrip) {
+                          setSelectedTrip(null);
+                          setSelectedTripStops([]);
+                        }
+
                         // Update tab immediately for instant panel expansion
                         setSelectedRouteTab(tab);
 
@@ -7799,6 +7912,16 @@ export default function MapCanvas() {
                     title={selectedMetric}
                     value={routeData?.metrics ? getMetricValue(routeData.metrics, selectedMetric) : routesList.find((r) => r.id === selectedRouteId)?.value || 0}
                     loading={isActiveByPeriodLoading}
+                  />
+                )}
+                {/* Pattern Chart - only show when not filtering by pattern and there are multiple patterns */}
+                {!selectedPattern && routeDataByPattern.length > 1 && !comparisonMode && (
+                  <ByPatternChart
+                    data={routeDataByPattern}
+                    metric={selectedMetric}
+                    loading={isRouteLoading}
+                    onPatternClick={(headsign) => setSelectedPattern(headsign === 'all' ? null : headsign)}
+                    selectedPattern={selectedPattern}
                   />
                 )}
                 <ByDateChart
@@ -9501,7 +9624,7 @@ export default function MapCanvas() {
           }}
         >
           <div>{tripTooltip.time}</div>
-          <div>{tripTooltip.ridership} average daily boardings</div>
+          <div>{tripTooltip.ridership} {selectedMetric.toLowerCase()}</div>
         </div>
       )}
     </div>

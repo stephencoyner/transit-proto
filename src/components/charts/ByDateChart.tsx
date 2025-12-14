@@ -174,8 +174,7 @@ const ByDateChartSkeleton = () => (
   </div>
 );
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function ByDateChart({ data, comparisonData, gradientId, metric: _metric, startDate, endDate, swapped = false, loading = false }: ByDateChartProps) {
+export default function ByDateChart({ data, comparisonData, gradientId, metric, startDate, endDate, swapped = false, loading = false }: ByDateChartProps) {
   // All hooks must be called before any early returns
   // Generate proper date labels based on the date range
   const dateLabels = generateDateLabels(data.length, startDate, endDate);
@@ -218,6 +217,11 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
   // Show skeleton when loading (after all hooks)
   if (loading) {
     return <ByDateChartSkeleton />;
+  }
+
+  // Hide chart if only 1 date (startDate equals endDate)
+  if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
+    return null;
   }
 
   return (
@@ -264,12 +268,12 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric: 
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value) => value === 0 ? '0' : `${(value / 1000).toFixed(0)}K`}
+            tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
             width={40}
             domain={[0, 'auto']}
           />
           <Tooltip
-            content={<CustomTooltip isComparisonMode={isComparisonMode} />}
+            content={<CustomTooltip isComparisonMode={isComparisonMode} metricLabel={metric} />}
             wrapperStyle={{ zIndex: 9999 }}
           />
           {isComparisonMode ? (
