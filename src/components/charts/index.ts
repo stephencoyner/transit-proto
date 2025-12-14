@@ -5,3 +5,4 @@ export { default as ByDateChart } from './ByDateChart';
 export { default as ByDayChart } from './ByDayChart';
 export { default as ByPeriodChart } from './ByPeriodChart';
 export { default as ByPatternChart } from './ByPatternChart';
+export { default as ByRouteChart } from './ByRouteChart';

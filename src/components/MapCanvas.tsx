@@ -12,11 +12,11 @@ import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
 import { Button, Card, Input, Select, SearchableSelect, StatefulButton } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart, ByPatternChart } from '@/components/charts';
+import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart, ByPatternChart, ByRouteChart } from '@/components/charts';
 import MapScale, { ComparisonDisplayMode } from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 
 // Type for bounds
@@ -1014,6 +1014,7 @@ export default function MapCanvas() {
   const { data: allStopsData, isLoading: isAllStopsLoading } = useAllStopsData(filterState, !!effectiveDateRange.start && needsAllStopsData);
 
   // Fetch stop-specific data when a stop is selected (for SDV charts)
+  const { data: stopData, isLoading: isStopDataLoading } = useStopData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
   const { data: stopByDateData, isLoading: isStopByDateLoading } = useStopByDateData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
   const { data: stopByDayData, isLoading: isStopByDayLoading } = useStopByDayData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
   const { data: stopByPeriodData, isLoading: isStopByPeriodLoading } = useStopByPeriodData(selectedStopId, filterState, !!effectiveDateRange.start && !!selectedStopId);
@@ -7582,6 +7583,16 @@ export default function MapCanvas() {
                         loading={isActiveByPeriodLoading}
                       />
                     )}
+                    <ByRouteChart
+                      data={(stopData?.byRoute || []).map(r => ({
+                        routeId: r.routeId,
+                        routeName: r.routeName,
+                        value: selectedMetric === 'Average daily boardings' ? r.metrics.avgDailyBoardings : selectedMetric === 'Average daily alightings' ? r.metrics.avgDailyAlightings : r.metrics.avgDailyActivity,
+                        percentOfStop: r.percentOfStop
+                      }))}
+                      metric={selectedMetric}
+                      loading={isStopDataLoading}
+                    />
                     <ByDateChart
                       data={activeDataByDate}
                       comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
