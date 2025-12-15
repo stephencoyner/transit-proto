@@ -522,6 +522,8 @@ export default function MapCanvas() {
 
   // Ref for trips scroll container
   const tripsScrollRef = useRef<HTMLDivElement>(null);
+  // Ref to preserve scroll position when entering/leaving trip detail view
+  const tripsScrollPositionRef = useRef<number>(0);
 
   // Grid view state
   const [gridTripStops, setGridTripStops] = useState<{ [tripId: string]: TripStopTime[] }>({});
@@ -3380,7 +3382,16 @@ export default function MapCanvas() {
     if (tripsScrollRef.current) {
       tripsScrollRef.current.scrollTop = 0;
     }
+    // Also reset saved scroll position
+    tripsScrollPositionRef.current = 0;
   }, [selectedRouteId, selectedPattern]);
+
+  // Restore trips scroll position when returning from trip detail view
+  useEffect(() => {
+    if (!selectedTrip && tripsScrollRef.current && tripsScrollPositionRef.current > 0) {
+      tripsScrollRef.current.scrollTop = tripsScrollPositionRef.current;
+    }
+  }, [selectedTrip]);
 
   // Reset route content scroll state when switching tabs
   useEffect(() => {
@@ -8591,6 +8602,10 @@ export default function MapCanvas() {
                                             setTripTooltip(null);
                                           }}
                                           onClick={async () => {
+                                            // Save scroll position before entering trip detail
+                                            if (tripsScrollRef.current) {
+                                              tripsScrollPositionRef.current = tripsScrollRef.current.scrollTop;
+                                            }
                                             setTripTooltip(null);
                                             setSelectedTrip(trip);
                                             const stops = await getTripStopTimes(trip.trip_id);
@@ -8647,6 +8662,10 @@ export default function MapCanvas() {
                                             setTripTooltip(null);
                                           }}
                                           onClick={async () => {
+                                            // Save scroll position before entering trip detail
+                                            if (tripsScrollRef.current) {
+                                              tripsScrollPositionRef.current = tripsScrollRef.current.scrollTop;
+                                            }
                                             setTripTooltip(null);
                                             setSelectedTrip(trip);
                                             const stops = await getTripStopTimes(trip.trip_id);
