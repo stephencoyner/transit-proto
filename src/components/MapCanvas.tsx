@@ -90,8 +90,8 @@ const INITIAL_VIEW_STATE = {
 };
 
 // Data range constraints - ridership data is only available for this period
-const DATA_START_DATE = new Date(2025, 8, 1);  // September 1, 2025
-const DATA_END_DATE = new Date(2025, 8, 30);   // September 30, 2025
+const DATA_START_DATE = new Date(2025, 2, 21);  // March 21, 2025
+const DATA_END_DATE = new Date(2025, 8, 30);    // September 30, 2025
 
 // Helper to check if a date is within the valid data range
 function isDateInDataRange(date: Date): boolean {
@@ -587,23 +587,23 @@ export default function MapCanvas() {
   const stopSortButtonRef = useRef<HTMLButtonElement>(null);
 
   // Date picker state - Applied state (what's actually being used)
-  // Default to September 2025 (the range of available Supabase data)
-  const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
+  // Default to Summer 2025 (June 20 - Sept 21)
+  const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'summer', year: 2025 });
   const [appliedQuickPick, setAppliedQuickPick] = useState<string | null>(null);
-  const [appliedStartDate, setAppliedStartDate] = useState<Date | null>(new Date(2025, 8, 1));  // Sept 1, 2025
-  const [appliedEndDate, setAppliedEndDate] = useState<Date | null>(new Date(2025, 8, 30));    // Sept 30, 2025
+  const [appliedStartDate, setAppliedStartDate] = useState<Date | null>(null);  // null when using season
+  const [appliedEndDate, setAppliedEndDate] = useState<Date | null>(null);      // null when using season
 
   // Staged state (temporary changes in the picker)
-  const [datePickerMode, setDatePickerMode] = useState<'shortcuts' | 'custom'>('custom');
+  const [datePickerMode, setDatePickerMode] = useState<'shortcuts' | 'custom'>('shortcuts');
   const [selectedYear, setSelectedYear] = useState(2025);
-  const [stagedSeason, setStagedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
+  const [stagedSeason, setStagedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'summer', year: 2025 });
   const [stagedQuickPick, setStagedQuickPick] = useState<string | null>(null);
   const [calendarStartMonth, setCalendarStartMonth] = useState(() => {
-    // Default to September 2025 (the range of available Supabase data)
-    return new Date(2025, 8);
+    // Default to June 2025 (start of Summer)
+    return new Date(2025, 5);
   });
-  const [stagedStartDate, setStagedStartDate] = useState<Date | null>(new Date(2025, 8, 1));
-  const [stagedEndDate, setStagedEndDate] = useState<Date | null>(new Date(2025, 8, 30));
+  const [stagedStartDate, setStagedStartDate] = useState<Date | null>(null);
+  const [stagedEndDate, setStagedEndDate] = useState<Date | null>(null);
 
   // Original state when picker was opened (for Reset)
   const [originalSeason, setOriginalSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>(null);
@@ -5057,6 +5057,12 @@ export default function MapCanvas() {
                       // Winter starts in the previous year, others start in selectedYear
                       const displayYear = season.key === 'winter' ? prevYear : selectedYear;
 
+                      // Only Spring and Summer 2025 have data available
+                      const isSeasonDisabled = !(
+                        selectedYear === 2025 &&
+                        (season.key === 'spring' || season.key === 'summer')
+                      );
+
                       switch(season.key) {
                         case 'winter':
                           dateRange = `9/21/${prevYear.toString().slice(-2)} - 3/20/${selectedYear.toString().slice(-2)}`;
@@ -5081,28 +5087,32 @@ export default function MapCanvas() {
                       <button
                         key={season.key}
                         type="button"
+                        disabled={isSeasonDisabled}
                         onClick={() => {
-                          setStagedSeason({ season: season.key as 'winter' | 'spring' | 'summer' | 'fall', year: displayYear });
-                          setStagedQuickPick(null);
-                          setStagedStartDate(null);
-                          setStagedEndDate(null);
+                          if (!isSeasonDisabled) {
+                            setStagedSeason({ season: season.key as 'winter' | 'spring' | 'summer' | 'fall', year: displayYear });
+                            setStagedQuickPick(null);
+                            setStagedStartDate(null);
+                            setStagedEndDate(null);
+                          }
                         }}
-                        onMouseEnter={() => setHoveredSeason(season.key)}
+                        onMouseEnter={() => !isSeasonDisabled && setHoveredSeason(season.key)}
                         onMouseLeave={() => setHoveredSeason(null)}
                         style={{
                           paddingTop: '20px',
                           paddingBottom: '20px',
                           paddingLeft: '12px',
                           paddingRight: '12px',
-                          backgroundColor: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? 'var(--bg-primary)' : (hoveredSeason === season.key ? 'var(--bg-primary)' : 'var(--bg-elevated)'),
+                          backgroundColor: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? 'var(--bg-primary)' : (hoveredSeason === season.key && !isSeasonDisabled ? 'var(--bg-primary)' : 'var(--bg-elevated)'),
                           border: '0.5px solid var(--border-default)',
                           boxShadow: stagedSeason?.season === season.key && stagedSeason?.year === displayYear ? 'inset 0 0 0 0.5px var(--border-focus)' : 'none',
                           borderRadius: '20px',
-                          cursor: 'pointer',
+                          cursor: isSeasonDisabled ? 'not-allowed' : 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
                           gap: '4px',
+                          opacity: isSeasonDisabled ? 0.4 : 1,
                         }}
                       >
                         <img
@@ -5113,13 +5123,13 @@ export default function MapCanvas() {
                             height: '48px',
                             marginBottom: '4px',
                             filter: 'brightness(0) saturate(100%)',
-                            opacity: '0.87'
+                            opacity: isSeasonDisabled ? 0.4 : 0.87
                           }}
                         />
                         <div style={{
                           fontSize: 'var(--button-small-size)',
                           fontWeight: 'var(--button-small-weight)',
-                          color: 'var(--text-primary)',
+                          color: isSeasonDisabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
                           fontFamily: 'Inter, sans-serif',
                           lineHeight: 'var(--button-small-line-height)'
                         }}>
@@ -5141,12 +5151,12 @@ export default function MapCanvas() {
                     })}
                   </div>
 
-                  {/* Quick Picks */}
-                  <div>
+                  {/* Quick Picks - Disabled since they use today's date which is outside data range */}
+                  <div style={{ opacity: 0.4 }}>
                     <div style={{
                       fontSize: 'var(--heading-3-size)',
                       fontWeight: 'var(--heading-3-weight)',
-                      color: 'var(--text-primary)',
+                      color: 'var(--text-tertiary)',
                       marginBottom: '16px',
                       textAlign: 'center',
                       lineHeight: 'var(--heading-3-line-height)',
@@ -5165,18 +5175,10 @@ export default function MapCanvas() {
                           <StatefulButton
                             key={pick}
                             size="medium"
-                            selected={stagedQuickPick === pick}
-                            onToggle={(selected) => {
-                              if (selected) {
-                                setStagedQuickPick(pick);
-                                setStagedSeason(null);
-                                setStagedStartDate(null);
-                                setStagedEndDate(null);
-                              } else {
-                                setStagedQuickPick(null);
-                              }
-                            }}
-                            style={{ whiteSpace: 'nowrap' }}
+                            selected={false}
+                            disabled={true}
+                            onToggle={() => {}}
+                            style={{ whiteSpace: 'nowrap', cursor: 'not-allowed' }}
                           >
                             {pick}
                           </StatefulButton>
@@ -5187,18 +5189,10 @@ export default function MapCanvas() {
                           <StatefulButton
                             key={pick}
                             size="medium"
-                            selected={stagedQuickPick === pick}
-                            onToggle={(selected) => {
-                              if (selected) {
-                                setStagedQuickPick(pick);
-                                setStagedSeason(null);
-                                setStagedStartDate(null);
-                                setStagedEndDate(null);
-                              } else {
-                                setStagedQuickPick(null);
-                              }
-                            }}
-                            style={{ whiteSpace: 'nowrap' }}
+                            selected={false}
+                            disabled={true}
+                            onToggle={() => {}}
+                            style={{ whiteSpace: 'nowrap', cursor: 'not-allowed' }}
                           >
                             {pick}
                           </StatefulButton>
@@ -5559,40 +5553,55 @@ export default function MapCanvas() {
                 marginRight: '-24px'
               }} />
 
-              {/* Action Buttons */}
+              {/* Footer with data info and action buttons */}
               <div style={{
                 display: 'flex',
                 gap: '12px',
                 padding: '20px 0 0 0',
-                justifyContent: 'flex-end'
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}>
-                <Button
-                  variant="tertiary"
-                  size="medium"
-                  onClick={handleResetDateFilter}
-                  disabled={!hasChanges}
-                  style={{
-                    backgroundColor: 'var(--bg-elevated)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (hasChanges) {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
-                  }}
-                >
-                  Reset
-                </Button>
-                <Button
-                  variant="primary"
-                  size="medium"
-                  onClick={handleApplyDateFilter}
-                  disabled={!hasChanges}
-                >
-                  Apply
-                </Button>
+                {/* Data availability info */}
+                <div style={{
+                  fontSize: 'var(--label-size)',
+                  color: 'var(--text-tertiary)'
+                }}>
+                  Data only available for Spring and Summer 2025
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px'
+                }}>
+                  <Button
+                    variant="tertiary"
+                    size="medium"
+                    onClick={handleResetDateFilter}
+                    disabled={!hasChanges}
+                    style={{
+                      backgroundColor: 'var(--bg-elevated)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (hasChanges) {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="medium"
+                    onClick={handleApplyDateFilter}
+                    disabled={!hasChanges}
+                  >
+                    Apply
+                  </Button>
+                </div>
               </div>
             </div>
           ) : openFilter === 'days' ? (
