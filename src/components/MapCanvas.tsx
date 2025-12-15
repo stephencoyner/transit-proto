@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import MapboxMap from 'react-map-gl/mapbox';
+import MapboxMap, { MapRef } from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer, Layer } from '@deck.gl/core';
@@ -331,6 +331,7 @@ export default function MapCanvas() {
   const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const selectedStopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const mapRef = useRef<MapRef>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'compare' | 'date2' | 'days2' | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -6684,6 +6685,7 @@ export default function MapCanvas() {
         style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
       >
         <MapboxMap
+          ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/stephencoynerseattle/cmgifl16g001u01s6699hg7iv"
           style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
@@ -6692,6 +6694,97 @@ export default function MapCanvas() {
           }}
           onLoad={() => {
             console.log('Custom map style loaded successfully');
+            const map = mapRef.current?.getMap();
+            if (map) {
+              // Debug: log available sources and layers
+              const style = map.getStyle();
+              console.log('Available sources:', Object.keys(style?.sources || {}));
+              console.log('Available layers:', style?.layers?.map(l => ({ id: l.id, type: l.type, source: (l as { source?: string }).source, sourceLayer: (l as { 'source-layer'?: string })['source-layer'] })));
+
+              // Add schools layer - all schools appear at same zoom level
+              // Include all school types: school, college, university
+              const schoolsFilter = [
+                'any',
+                ['==', ['get', 'class'], 'school'],
+                ['==', ['get', 'class'], 'college'],
+                ['==', ['get', 'maki'], 'school'],
+                ['==', ['get', 'maki'], 'college'],
+                // Match names containing school-related keywords
+                ['in', 'School', ['get', 'name']],
+                ['in', 'Elementary', ['get', 'name']],
+                ['in', 'Middle School', ['get', 'name']],
+                ['in', 'High School', ['get', 'name']],
+                ['in', 'Academy', ['get', 'name']]
+              ];
+              try {
+                // Create a school icon as an SVG data URL
+                const schoolIconSvg = `
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="14" fill="#3D2817" stroke="#ffffff" stroke-width="2"/>
+                    <path d="M16 8L9 12V14H23V12L16 8Z" fill="#ffffff"/>
+                    <rect x="10" y="14" width="12" height="8" fill="#ffffff"/>
+                    <rect x="12" y="16" width="3" height="3" fill="#3D2817"/>
+                    <rect x="17" y="16" width="3" height="3" fill="#3D2817"/>
+                    <rect x="14" y="19" width="4" height="3" fill="#3D2817"/>
+                  </svg>
+                `;
+                const schoolIconDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(schoolIconSvg);
+
+                // Load the school icon image
+                const img = new Image();
+                img.onload = () => {
+                  map.addImage('school-icon', img);
+
+                  // Add schools layer with icon
+                  map.addLayer({
+                    id: 'schools',
+                    type: 'symbol',
+                    source: 'composite',
+                    'source-layer': 'poi_label',
+                    minzoom: 11, // All schools appear at zoom 11
+                    filter: schoolsFilter,
+                    layout: {
+                      'icon-image': 'school-icon',
+                      'icon-size': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        11, 0.5,   // At zoom 11: 0.5x
+                        13, 0.7,   // At zoom 13: 0.7x
+                        16, 1.0    // At zoom 16: 1x
+                      ],
+                      'icon-allow-overlap': true
+                    }
+                  });
+
+                  // Add school labels layer
+                  map.addLayer({
+                    id: 'schools-labels',
+                    type: 'symbol',
+                    source: 'composite',
+                    'source-layer': 'poi_label',
+                    minzoom: 11, // Labels appear at same zoom as icons
+                    filter: schoolsFilter,
+                    layout: {
+                      'text-field': ['get', 'name'],
+                      'text-size': 11,
+                      'text-offset': [0, 1.5],
+                      'text-anchor': 'top',
+                      'text-max-width': 8
+                    },
+                    paint: {
+                      'text-color': '#333333',
+                      'text-halo-color': '#ffffff',
+                      'text-halo-width': 1.5
+                    }
+                  });
+                  console.log('Schools layer added successfully');
+                };
+                img.src = schoolIconDataUrl;
+              } catch (e) {
+                console.error('Error adding schools layer:', e);
+              }
+            }
           }}
         />
       </DeckGL>
