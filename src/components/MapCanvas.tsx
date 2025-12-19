@@ -1043,11 +1043,12 @@ export default function MapCanvas() {
   const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
 
   // Fetch route grid data for trips grid view (per-trip per-stop ridership)
-  // Only fetch when Grid tab is active to avoid unnecessary API calls (uses routeFilterState for pattern/direction filtering)
+  // Start fetching when route is selected (not waiting for Grid tab) to preload data in background
+  // This query takes ~10s for large date ranges, so preloading hides latency while user browses Trips list
   const { data: routeGridData } = useRouteGridData(
     selectedRouteId,
     routeFilterState,
-    !!effectiveDateRange.start && !!selectedRouteId && selectedRouteTab === 'Grid'
+    !!effectiveDateRange.start && !!selectedRouteId
   );
 
   // Create a map of trip_id -> all metrics from the API data
