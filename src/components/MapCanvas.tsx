@@ -3847,8 +3847,11 @@ export default function MapCanvas() {
     }
 
     // In comparison mode, use comparison colors (percent change)
+    // Use trip-specific comparison map when a trip is selected
     if (comparisonMode) {
-      const percentChange = stopComparisonMap.get(stopId) || 0;
+      const percentChange = (selectedTrip && tripStopComparisonMap.size > 0)
+        ? (tripStopComparisonMap.get(stopId) || 0)
+        : (stopComparisonMap.get(stopId) || 0);
       const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
       return [color[0], color[1], color[2], 255] as [number, number, number, number];
     }
@@ -3861,7 +3864,7 @@ export default function MapCanvas() {
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
+  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, tripStopComparisonMap, comparisonValueRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const getStopCenterColor = React.useCallback((_d: any): [number, number, number, number] => {
@@ -4219,9 +4222,12 @@ export default function MapCanvas() {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
       if (hoveredStopData.length > 0) {
         // Use comparison colors when in comparison mode
+        // Use trip-specific comparison map when a trip is selected
         let hoveredStopColor: [number, number, number];
         if (comparisonMode) {
-          const percentChange = stopComparisonMap.get(stopToHalo) || 0;
+          const percentChange = (selectedTrip && tripStopComparisonMap.size > 0)
+            ? (tripStopComparisonMap.get(stopToHalo) || 0)
+            : (stopComparisonMap.get(stopToHalo) || 0);
           const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
           hoveredStopColor = [compColor[0], compColor[1], compColor[2]];
         } else {
@@ -4310,7 +4316,7 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale], // Force recalculation when selection, coloring mode, amenities view, comparison mode, trip, or loading state changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, tripStopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale], // Force recalculation when selection, coloring mode, amenities view, comparison mode, trip, or loading state changes
             getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         }),
