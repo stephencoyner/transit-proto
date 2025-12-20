@@ -2314,55 +2314,39 @@ export default function MapCanvas() {
     }
     const map = new Map<string, number>();
 
-    // Build a map of tripData2 stop values for quick lookup
-    const tripData2ValueMap = new Map<string, number>();
-    const daysInRange2 = tripData2.metrics?.daysInRange || 1;
-    tripData2.stops.forEach(s => {
-      let value: number;
+    // Helper to get stop value based on metric
+    const getStopValue = (s: { avgDailyBoardings: number; totalBoardings: number; avgDailyAlightings: number; totalAlightings: number; avgDailyActivity: number; totalActivity: number; avgLoad?: number; maxLoad?: number }) => {
       switch (selectedMetric) {
         case 'Average daily boardings':
-          value = s.avgDailyBoardings;
-          break;
+          return s.avgDailyBoardings;
         case 'Total boardings':
-          value = s.totalBoardings;
-          break;
+          return s.totalBoardings;
         case 'Average daily alightings':
-          value = s.avgDailyAlightings;
-          break;
+          return s.avgDailyAlightings;
+        case 'Total alightings':
+          return s.totalAlightings;
         case 'Average daily activity':
-          value = s.avgDailyActivity;
-          break;
+          return s.avgDailyActivity;
         case 'Total activity':
-          value = s.totalActivity;
-          break;
+          return s.totalActivity;
+        case 'Average load':
+          return s.avgLoad || 0;
+        case 'Maxload':
+          return s.maxLoad || 0;
         default:
-          value = s.avgDailyBoardings;
+          return s.avgDailyBoardings;
       }
-      tripData2ValueMap.set(s.stopId, value);
+    };
+
+    // Build a map of tripData2 stop values for quick lookup
+    const tripData2ValueMap = new Map<string, number>();
+    tripData2.stops.forEach(s => {
+      tripData2ValueMap.set(s.stopId, getStopValue(s));
     });
 
     // Calculate percent change for each stop in tripData
     tripData.stops.forEach(s => {
-      let value1: number;
-      switch (selectedMetric) {
-        case 'Average daily boardings':
-          value1 = s.avgDailyBoardings;
-          break;
-        case 'Total boardings':
-          value1 = s.totalBoardings;
-          break;
-        case 'Average daily alightings':
-          value1 = s.avgDailyAlightings;
-          break;
-        case 'Average daily activity':
-          value1 = s.avgDailyActivity;
-          break;
-        case 'Total activity':
-          value1 = s.totalActivity;
-          break;
-        default:
-          value1 = s.avgDailyBoardings;
-      }
+      const value1 = getStopValue(s);
       const value2 = tripData2ValueMap.get(s.stopId);
 
       if (value2 !== undefined && value2 !== 0) {
