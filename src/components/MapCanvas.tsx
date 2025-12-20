@@ -3872,21 +3872,20 @@ export default function MapCanvas() {
       return [180, 180, 180, 200] as [number, number, number, number];
     }
 
-    // In comparison mode, use comparison colors (percent change)
+    // When showing segment coloring (load metrics) or amenities view, use white border
+    // For load metrics, the comparison colors go on segments, not stops
+    if (showSegmentColoring || isAmenitiesView) {
+      return [255, 255, 255, 255] as [number, number, number, number];
+    }
+
+    // In comparison mode, use comparison colors (percent change) for non-load metrics
     // Use trip-specific comparison map when a trip is selected
-    // This check comes before segment coloring so comparison colors are shown for load metrics too
     if (comparisonMode) {
       const percentChange = (selectedTrip && tripStopComparisonMap.size > 0)
         ? (tripStopComparisonMap.get(stopId) || 0)
         : (stopComparisonMap.get(stopId) || 0);
       const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
       return [color[0], color[1], color[2], 255] as [number, number, number, number];
-    }
-
-    // When showing segment coloring (load metrics) or amenities view, use white border
-    // (only in non-comparison mode)
-    if (showSegmentColoring || isAmenitiesView) {
-      return [255, 255, 255, 255] as [number, number, number, number];
     }
 
     // Otherwise use data-driven color
