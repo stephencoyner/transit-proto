@@ -53,21 +53,26 @@ export interface StatefulButtonProps extends Omit<React.ButtonHTMLAttributes<HTM
 }
 
 export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButtonProps>(
-  ({ size = 'small', selected = false, onToggle, className = '', children, ...props }, ref) => {
-    const baseClasses = 'button-small rounded-full transition-colors duration-200 cursor-pointer';
+  ({ size = 'small', selected = false, onToggle, className = '', children, disabled, ...props }, ref) => {
+    const baseClasses = 'button-small rounded-full transition-colors duration-200';
 
-    const stateClasses = selected
-      ? 'bg-bg-primary text-text-primary'
-      : 'bg-bg-elevated text-text-primary hover:bg-bg-primary';
+    const stateClasses = disabled
+      ? 'bg-bg-elevated text-text-tertiary'
+      : selected
+        ? 'bg-bg-primary text-text-primary'
+        : 'bg-bg-elevated text-text-primary hover:bg-bg-primary';
+
+    const cursorClass = disabled ? 'cursor-not-allowed' : 'cursor-pointer';
 
     const sizeClasses = {
       small: 'h-7 px-4',
       medium: 'h-10 px-4',
     };
 
-    const classes = `${baseClasses} ${stateClasses} ${sizeClasses[size]} ${className}`.trim();
+    const classes = `${baseClasses} ${stateClasses} ${cursorClass} ${sizeClasses[size]} ${className}`.trim();
 
     const handleClick = () => {
+      if (disabled) return;
       if (onToggle) {
         onToggle(!selected);
       }
@@ -78,7 +83,8 @@ export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButton
     const style = {
       ...propStyle,
       border: '0.5px solid var(--border-default)',
-      boxShadow: selected ? 'inset 0 0 0 0.5px var(--border-focus)' : 'none'
+      boxShadow: selected && !disabled ? 'inset 0 0 0 0.5px var(--border-focus)' : 'none',
+      opacity: disabled ? 0.4 : 1,
     };
 
     return (
@@ -87,6 +93,7 @@ export const StatefulButton = React.forwardRef<HTMLButtonElement, StatefulButton
         className={classes}
         style={style}
         onClick={handleClick}
+        disabled={disabled}
         {...restProps}
       >
         {children}
