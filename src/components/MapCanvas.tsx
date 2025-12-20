@@ -3962,8 +3962,11 @@ export default function MapCanvas() {
       // When a trip is selected, only check trip loading (not route stale data)
       // When no trip selected, check route loading and stale data
       // Also check if data actually exists - if tripData has segments, we're not loading
+      // In comparison mode with a trip selected, we need BOTH tripData and tripData2 segments
       const isSegmentDataLoading = selectedTrip
-        ? (isTripLoading && !(tripData?.segments && tripData.segments.length > 0))
+        ? (comparisonMode
+            ? (!(tripData?.segments && tripData.segments.length > 0) || !(tripData2?.segments && tripData2.segments.length > 0))
+            : (isTripLoading && !(tripData?.segments && tripData.segments.length > 0)))
         : (isRouteLoading || isRouteDataStale || isSegmentDataStale || isSegmentsLoading);
 
       layers.push(
@@ -3997,7 +4000,7 @@ export default function MapCanvas() {
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData, tripSegmentComparisonMap, tripSegmentComparisonRange]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
