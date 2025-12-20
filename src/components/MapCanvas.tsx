@@ -1104,6 +1104,9 @@ export default function MapCanvas() {
   // Fetch trip-specific data when a trip is selected (for TDV)
   const { data: tripData, isLoading: isTripLoading } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
 
+  // Fetch trip-specific comparison data (Date-time 2) for TDV comparison mode
+  const { data: tripData2 } = useTripData(selectedTrip?.trip_id || null, filterState2, comparisonMode && !!comparisonDateRange.start && !!selectedTrip);
+
   // Check if route data matches the selected route (handles stale cached data during route switch)
   const isRouteDataStale = selectedRouteId && routeData && routeData.metrics.routeId !== selectedRouteId;
   const isSegmentDataStale = selectedRouteId && routeSegmentsData && routeSegmentsData.routeId !== selectedRouteId;
@@ -2303,10 +2306,84 @@ export default function MapCanvas() {
     return map;
   }, [stopsList, comparisonMode, comparisonSwapped, stopComparisonValueMap]);
 
+  // Trip-specific stop comparison map for TDV comparison mode
+  // Uses tripData and tripData2 instead of allStopsData
+  const tripStopComparisonMap = React.useMemo(() => {
+    if (!comparisonMode || !selectedTrip || !tripData?.stops || !tripData2?.stops) {
+      return new Map<string, number>();
+    }
+    const map = new Map<string, number>();
+
+    // Build a map of tripData2 stop values for quick lookup
+    const tripData2ValueMap = new Map<string, number>();
+    const daysInRange2 = tripData2.metrics?.daysInRange || 1;
+    tripData2.stops.forEach(s => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = s.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value = s.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = s.avgDailyAlightings;
+          break;
+        case 'Average daily activity':
+          value = s.avgDailyActivity;
+          break;
+        case 'Total activity':
+          value = s.totalActivity;
+          break;
+        default:
+          value = s.avgDailyBoardings;
+      }
+      tripData2ValueMap.set(s.stopId, value);
+    });
+
+    // Calculate percent change for each stop in tripData
+    tripData.stops.forEach(s => {
+      let value1: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value1 = s.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value1 = s.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value1 = s.avgDailyAlightings;
+          break;
+        case 'Average daily activity':
+          value1 = s.avgDailyActivity;
+          break;
+        case 'Total activity':
+          value1 = s.totalActivity;
+          break;
+        default:
+          value1 = s.avgDailyBoardings;
+      }
+      const value2 = tripData2ValueMap.get(s.stopId);
+
+      if (value2 !== undefined && value2 !== 0) {
+        const percentChange = Math.round(((value1 - value2) / value2) * 100);
+        map.set(s.stopId, comparisonSwapped ? -percentChange : percentChange);
+      } else {
+        map.set(s.stopId, 0);
+      }
+    });
+
+    return map;
+  }, [comparisonMode, selectedTrip, tripData, tripData2, selectedMetric, comparisonSwapped]);
+
   // Get the range of comparison values for color scaling
   const comparisonValueRange = React.useMemo(() => {
     if (!comparisonMode) return { min: 0, max: 0 };
-    const allValues = [...routeComparisonMap.values(), ...stopComparisonMap.values()];
+    // Use trip-specific comparison values when a trip is selected
+    const stopValues = selectedTrip && tripStopComparisonMap.size > 0
+      ? [...tripStopComparisonMap.values()]
+      : [...stopComparisonMap.values()];
+    const allValues = [...routeComparisonMap.values(), ...stopValues];
     if (allValues.length === 0) return { min: 0, max: 0 };
 
     const minVal = Math.min(...allValues);
@@ -2317,7 +2394,7 @@ export default function MapCanvas() {
       min: Number.isFinite(minVal) ? minVal : 0,
       max: Number.isFinite(maxVal) ? maxVal : 0
     };
-  }, [routeComparisonMap, stopComparisonMap, comparisonMode]);
+  }, [routeComparisonMap, stopComparisonMap, tripStopComparisonMap, selectedTrip, comparisonMode]);
 
   // Get the range of absolute difference values for number mode
   const comparisonDiffRange = React.useMemo(() => {
@@ -7304,7 +7381,8 @@ export default function MapCanvas() {
                             const stopValue = tripStopValueMap.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0;
 
                         // Get comparison percent change for this stop
-                        const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
+                        // Use trip-specific comparison map when available, fall back to general stopComparisonMap
+                        const stopPercentChange = (tripStopComparisonMap.size > 0 ? tripStopComparisonMap.get(stop.id) : stopComparisonMap.get(stop.id)) || 0;
 
                         // Use comparison colors in comparison mode, otherwise normal colors
                         const stopColor = comparisonMode
