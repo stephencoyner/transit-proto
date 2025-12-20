@@ -162,6 +162,23 @@ CREATE TABLE IF NOT EXISTS daily_period_summary (
 
 COMMENT ON TABLE daily_period_summary IS 'Per-period daily aggregates. 30 days × 6 periods = 180 rows max.';
 
+-- Daily route-stop summary (for fast route detail queries)
+CREATE TABLE IF NOT EXISTS daily_route_stop_summary (
+  date DATE NOT NULL,
+  route_id TEXT NOT NULL REFERENCES routes(route_id),
+  stop_id TEXT NOT NULL REFERENCES stops(stop_id),
+  direction_id INTEGER NOT NULL,
+  day_of_week INTEGER NOT NULL,
+  stop_sequence INTEGER NOT NULL,
+  total_boardings INTEGER NOT NULL,
+  total_alightings INTEGER NOT NULL,
+  avg_load REAL NOT NULL,
+  max_load INTEGER NOT NULL,
+  PRIMARY KEY (date, route_id, stop_id, direction_id)
+);
+
+COMMENT ON TABLE daily_route_stop_summary IS 'Pre-aggregated stop-level metrics per route per day. Used for fast route detail queries.';
+
 -- ============================================
 -- Indexes for Query Performance
 -- ============================================
@@ -204,6 +221,13 @@ CREATE INDEX IF NOT EXISTS idx_daily_period_summary_date ON daily_period_summary
 CREATE INDEX IF NOT EXISTS idx_daily_period_summary_period ON daily_period_summary(time_period);
 CREATE INDEX IF NOT EXISTS idx_daily_period_summary_dow ON daily_period_summary(day_of_week);
 
+-- Daily route-stop summary indexes
+CREATE INDEX IF NOT EXISTS idx_drss_route ON daily_route_stop_summary(route_id);
+CREATE INDEX IF NOT EXISTS idx_drss_date ON daily_route_stop_summary(date);
+CREATE INDEX IF NOT EXISTS idx_drss_route_date ON daily_route_stop_summary(route_id, date);
+CREATE INDEX IF NOT EXISTS idx_drss_dow ON daily_route_stop_summary(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_drss_direction ON daily_route_stop_summary(direction_id);
+
 -- Trips table indexes
 CREATE INDEX IF NOT EXISTS idx_trips_route ON trips(route_id);
 CREATE INDEX IF NOT EXISTS idx_trips_shape ON trips(shape_id);
@@ -233,6 +257,7 @@ ALTER TABLE daily_system_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_route_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_stop_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_period_summary ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_route_stop_summary ENABLE ROW LEVEL SECURITY;
 
 -- Public read policies
 CREATE POLICY "Allow public read" ON routes FOR SELECT USING (true);
@@ -244,6 +269,7 @@ CREATE POLICY "Allow public read" ON daily_system_summary FOR SELECT USING (true
 CREATE POLICY "Allow public read" ON daily_route_summary FOR SELECT USING (true);
 CREATE POLICY "Allow public read" ON daily_stop_summary FOR SELECT USING (true);
 CREATE POLICY "Allow public read" ON daily_period_summary FOR SELECT USING (true);
+CREATE POLICY "Allow public read" ON daily_route_stop_summary FOR SELECT USING (true);
 
 -- ============================================
 -- Utility Views (optional, for convenience)

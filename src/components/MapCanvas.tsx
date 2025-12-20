@@ -1037,7 +1037,10 @@ export default function MapCanvas() {
     || (selectedTrip ? isTripLoading : (selectedRouteId && (isRouteLoading || isSegmentsLoading || isRouteDataStale || isSegmentDataStale)));
 
   // Fetch route trips ridership data for trips list view (uses routeFilterState for pattern/direction filtering)
-  const { data: routeTripsRidership } = useRouteTripsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
+  const { data: routeTripsRidership, isLoading: isTripsLoading } = useRouteTripsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
+
+  // Check if trips data is stale (from a different route than currently selected)
+  const isTripsDataStale = selectedRouteId && routeTripsRidership && routeTripsRidership.routeId !== selectedRouteId;
 
   // Fetch route stops ridership data for map stop coloring when route is selected (uses routeFilterState for pattern/direction filtering)
   const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
@@ -1045,11 +1048,14 @@ export default function MapCanvas() {
   // Fetch route grid data for trips grid view (per-trip per-stop ridership)
   // Start fetching when route is selected (not waiting for Grid tab) to preload data in background
   // This query takes ~10s for large date ranges, so preloading hides latency while user browses Trips list
-  const { data: routeGridData } = useRouteGridData(
+  const { data: routeGridData, isLoading: isGridDataLoading } = useRouteGridData(
     selectedRouteId,
     routeFilterState,
     !!effectiveDateRange.start && !!selectedRouteId
   );
+
+  // Check if grid data is stale (from a different route than currently selected)
+  const isGridDataStale = selectedRouteId && routeGridData && routeGridData.routeId !== selectedRouteId;
 
   // Create a map of trip_id -> all metrics from the API data
   const tripMetricsMap = useMemo(() => {
@@ -6832,6 +6838,10 @@ export default function MapCanvas() {
               0% { transform: rotate(0deg); }
               100% { transform: rotate(360deg); }
             }
+            @keyframes shimmer {
+              0% { background-position: -200% 0; }
+              100% { background-position: 200% 0; }
+            }
           `}</style>
         </div>
       )}
@@ -8515,7 +8525,130 @@ export default function MapCanvas() {
                         paddingBottom: '24px'
                       }}
                     >
-                      {filteredAndSortedRouteTrips.length === 0 ? (
+                      {isTripsLoading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <style>{`
+                            @keyframes shimmer {
+                              0% { background-position: -200% 0; }
+                              100% { background-position: 200% 0; }
+                            }
+                          `}</style>
+                          {/* Skeleton pattern header - matches actual pattern header */}
+                          <div style={{
+                            position: 'sticky',
+                            top: '0px',
+                            backgroundColor: 'var(--bg-primary)',
+                            zIndex: 10
+                          }}>
+                            <div style={{
+                              backgroundColor: 'var(--bg-elevated)',
+                              paddingTop: '12px',
+                              paddingBottom: '11px',
+                              paddingLeft: '12px',
+                              paddingRight: '12px',
+                              borderTop: '0.5px solid var(--border-default)',
+                              borderLeft: '0.5px solid var(--border-default)',
+                              borderRight: '0.5px solid var(--border-default)',
+                              borderBottom: '0.5px solid var(--border-default)',
+                              borderTopLeftRadius: '20px',
+                              borderTopRightRadius: '20px'
+                            }}>
+                              <div style={{
+                                height: 20,
+                                width: 120,
+                                borderRadius: 2,
+                                background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                backgroundSize: '200% 100%',
+                                animation: 'shimmer 1.5s infinite ease-in-out',
+                                opacity: 0.5
+                              }} />
+                            </div>
+                          </div>
+                          {/* Skeleton trips container - matches actual trips list container */}
+                          <div style={{
+                            position: 'relative',
+                            padding: '8px 16px 16px 16px',
+                            borderLeft: '0.5px solid var(--border-default)',
+                            borderRight: '0.5px solid var(--border-default)',
+                            borderBottom: '0.5px solid var(--border-default)',
+                            borderTop: 'none',
+                            borderBottomLeftRadius: '20px',
+                            borderBottomRightRadius: '20px',
+                            backgroundColor: 'var(--bg-elevated)'
+                          }}>
+                            {/* Skeleton axis labels row */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '8px',
+                              gap: '16px'
+                            }}>
+                              <div style={{ minWidth: '52px', flexShrink: 0 }} />
+                              <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '16px' }}>
+                                {[0, 1, 2, 3].map((i) => (
+                                  <div key={i} style={{
+                                    height: 10,
+                                    width: 24,
+                                    borderRadius: 2,
+                                    background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                    backgroundSize: '200% 100%',
+                                    animation: 'shimmer 1.5s infinite ease-in-out',
+                                    animationDelay: `${i * 0.1}s`,
+                                    opacity: 0.5
+                                  }} />
+                                ))}
+                              </div>
+                            </div>
+                            {/* Divider line below axis labels */}
+                            <div style={{
+                              height: '0.5px',
+                              backgroundColor: 'var(--border-default)',
+                              opacity: 0.5,
+                              marginLeft: '-16px',
+                              marginRight: '-16px'
+                            }} />
+                            {/* Skeleton trip rows */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '8px' }}>
+                              {[0.7, 0.55, 0.85, 0.4, 0.65, 0.5, 0.75, 0.45, 0.6, 0.8, 0.35, 0.72, 0.58, 0.9, 0.42, 0.68, 0.52, 0.78, 0.48, 0.62, 0.7, 0.55, 0.85, 0.4].map((width, i) => (
+                                <div
+                                  key={i}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '16px'
+                                  }}
+                                >
+                                  {/* Time label skeleton */}
+                                  <div style={{
+                                    height: 12,
+                                    width: 52,
+                                    borderRadius: 2,
+                                    flexShrink: 0,
+                                    background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                    backgroundSize: '200% 100%',
+                                    animation: 'shimmer 1.5s infinite ease-in-out',
+                                    animationDelay: `${i * 0.05}s`,
+                                    opacity: 0.5
+                                  }} />
+                                  {/* Bar skeleton */}
+                                  <div style={{ flex: 1, height: 24 }}>
+                                    <div style={{
+                                      height: '100%',
+                                      width: `${width * 100}%`,
+                                      borderRadius: 4,
+                                      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                      backgroundSize: '200% 100%',
+                                      animation: 'shimmer 1.5s infinite ease-in-out',
+                                      animationDelay: `${i * 0.05}s`,
+                                      opacity: 0.5
+                                    }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : filteredAndSortedRouteTrips.length === 0 ? (
                         <div style={{
                           padding: '24px',
                           textAlign: 'center',
@@ -8875,17 +9008,135 @@ export default function MapCanvas() {
                       marginLeft: '-16px'
                     }} />
 
-                    {isLoadingGridData ? (
+                    {isLoadingGridData || isTripsLoading || isTripsDataStale || isGridDataLoading || isGridDataStale ? (
                       <div style={{
                         flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--text-tertiary)',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 'var(--body-size)'
+                        overflow: 'hidden',
+                        marginLeft: '-16px',
+                        marginRight: '-16px'
                       }}>
-                        Loading grid data...
+                        <div style={{ display: 'inline-block', minWidth: '100%' }}>
+                          {/* Skeleton Header Row */}
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            borderBottom: '0.5px solid var(--border-default)'
+                          }}>
+                            {/* Stop Name Label */}
+                            <div style={{
+                              width: `${config.labelWidth}px`,
+                              flexShrink: 0,
+                              height: `${config.cellHeight}px`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'flex-start',
+                              paddingLeft: '16px',
+                              paddingRight: '12px',
+                              backgroundColor: 'var(--bg-primary)',
+                              borderRight: '0.5px solid var(--border-default)'
+                            }}>
+                              <div style={{
+                                height: 14,
+                                width: 80,
+                                borderRadius: 4,
+                                background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                backgroundSize: '200% 100%',
+                                animation: 'shimmer 1.5s infinite ease-in-out',
+                                opacity: 0.5
+                              }} />
+                            </div>
+                            {/* Time column headers - 16 columns */}
+                            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  width: `${config.cellWidth}px`,
+                                  flexShrink: 0,
+                                  height: `${config.cellHeight}px`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backgroundColor: 'var(--bg-primary)',
+                                  borderRight: '0.5px solid var(--border-default)'
+                                }}
+                              >
+                                <div style={{
+                                  height: 14,
+                                  width: 50,
+                                  borderRadius: 4,
+                                  background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                  backgroundSize: '200% 100%',
+                                  animation: 'shimmer 1.5s infinite ease-in-out',
+                                  animationDelay: `${i * 0.05}s`,
+                                  opacity: 0.5
+                                }} />
+                              </div>
+                            ))}
+                          </div>
+                          {/* Skeleton Stop Rows - 20 rows */}
+                          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((rowIndex) => (
+                            <div
+                              key={rowIndex}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                borderBottom: '0.5px solid var(--border-default)'
+                              }}
+                            >
+                              {/* Stop Name */}
+                              <div style={{
+                                width: `${config.labelWidth}px`,
+                                flexShrink: 0,
+                                height: `${config.cellHeight}px`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-start',
+                                paddingLeft: '16px',
+                                paddingRight: '8px',
+                                backgroundColor: 'var(--bg-primary)',
+                                borderRight: '0.5px solid var(--border-default)'
+                              }}>
+                                <div style={{
+                                  height: 14,
+                                  width: `${100 + (rowIndex % 5) * 20}px`,
+                                  borderRadius: 4,
+                                  background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                  backgroundSize: '200% 100%',
+                                  animation: 'shimmer 1.5s infinite ease-in-out',
+                                  animationDelay: `${rowIndex * 0.03}s`,
+                                  opacity: 0.5
+                                }} />
+                              </div>
+                              {/* Data cells - 16 columns */}
+                              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((colIndex) => (
+                                <div
+                                  key={colIndex}
+                                  style={{
+                                    width: `${config.cellWidth}px`,
+                                    flexShrink: 0,
+                                    height: `${config.cellHeight}px`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: 'var(--bg-primary)',
+                                    borderRight: '0.5px solid var(--border-default)'
+                                  }}
+                                >
+                                  <div style={{
+                                    height: 16,
+                                    width: 32,
+                                    borderRadius: 4,
+                                    background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                    backgroundSize: '200% 100%',
+                                    animation: 'shimmer 1.5s infinite ease-in-out',
+                                    animationDelay: `${(rowIndex * 16 + colIndex) * 0.01}s`,
+                                    opacity: 0.5
+                                  }} />
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ) : filteredGridTrips.length === 0 ? (
                       <div style={{

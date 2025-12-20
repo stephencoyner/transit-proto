@@ -197,7 +197,7 @@ END;
 $$;
 
 -- Get metrics by date
--- Uses pre-aggregated daily_system_summary for fast queries when no period/route filter
+-- Uses pre-aggregated tables for fast queries
 CREATE OR REPLACE FUNCTION get_metrics_by_date(
   p_start_date DATE,
   p_end_date DATE,
@@ -218,7 +218,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Fast path: use pre-aggregated daily_system_summary when no period/route filter
+  -- Fast path 1: use pre-aggregated daily_system_summary when no period/route filter
   IF p_periods IS NULL AND p_routes IS NULL THEN
     RETURN QUERY
     SELECT
@@ -233,8 +233,25 @@ BEGIN
       AND dss.date <= p_end_date
       AND (p_days IS NULL OR dss.day_of_week = ANY(p_days))
     ORDER BY dss.date;
+  -- Fast path 2: use daily_route_summary when filtering by route(s) but no period filter
+  ELSIF p_periods IS NULL AND p_routes IS NOT NULL THEN
+    RETURN QUERY
+    SELECT
+      drs.date,
+      drs.day_of_week,
+      SUM(drs.total_boardings)::BIGINT AS total_boardings,
+      SUM(drs.total_alightings)::BIGINT AS total_alightings,
+      AVG(drs.avg_load)::NUMERIC AS avg_load,
+      MAX(drs.max_load) AS max_load
+    FROM daily_route_summary drs
+    WHERE drs.date >= p_start_date
+      AND drs.date <= p_end_date
+      AND drs.route_id = ANY(p_routes)
+      AND (p_days IS NULL OR drs.day_of_week = ANY(p_days))
+    GROUP BY drs.date, drs.day_of_week
+    ORDER BY drs.date;
   ELSE
-    -- Slow path: query stop_ridership when filters require it
+    -- Slow path: query stop_ridership when period filter requires it
     RETURN QUERY
     SELECT
       sr.date,
@@ -256,7 +273,7 @@ END;
 $$;
 
 -- Get metrics by day of week
--- Uses pre-aggregated daily_system_summary for fast queries when no period/route filter
+-- Uses pre-aggregated tables for fast queries
 CREATE OR REPLACE FUNCTION get_metrics_by_day_of_week(
   p_start_date DATE,
   p_end_date DATE,
@@ -276,7 +293,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Fast path: use pre-aggregated daily_system_summary when no period/route filter
+  -- Fast path 1: use pre-aggregated daily_system_summary when no period/route filter
   IF p_periods IS NULL AND p_routes IS NULL THEN
     RETURN QUERY
     SELECT
@@ -291,8 +308,24 @@ BEGIN
       AND dss.date <= p_end_date
     GROUP BY dss.day_of_week
     ORDER BY dss.day_of_week;
+  -- Fast path 2: use daily_route_summary when filtering by route(s) but no period filter
+  ELSIF p_periods IS NULL AND p_routes IS NOT NULL THEN
+    RETURN QUERY
+    SELECT
+      drs.day_of_week,
+      SUM(drs.total_boardings)::BIGINT AS total_boardings,
+      SUM(drs.total_alightings)::BIGINT AS total_alightings,
+      AVG(drs.avg_load)::NUMERIC AS avg_load,
+      MAX(drs.max_load) AS max_load,
+      COUNT(DISTINCT drs.date)::BIGINT AS day_count
+    FROM daily_route_summary drs
+    WHERE drs.date >= p_start_date
+      AND drs.date <= p_end_date
+      AND drs.route_id = ANY(p_routes)
+    GROUP BY drs.day_of_week
+    ORDER BY drs.day_of_week;
   ELSE
-    -- Slow path: query stop_ridership when filters require it
+    -- Slow path: query stop_ridership when period filter requires it
     RETURN QUERY
     SELECT
       sr.day_of_week,
@@ -316,7 +349,7 @@ $$;
 -- ROUTE-LEVEL FUNCTIONS
 -- ============================================
 
--- Get route metrics
+-- Get route metrics (fast path using daily_route_stop_summary)
 CREATE OR REPLACE FUNCTION get_route_metrics(
   p_route_id TEXT,
   p_start_date DATE,
@@ -333,27 +366,46 @@ AS $$
 DECLARE
   result JSON;
 BEGIN
-  SELECT json_build_object(
-    'totalBoardings', COALESCE(SUM(boardings), 0),
-    'totalAlightings', COALESCE(SUM(alightings), 0),
-    'avgLoad', COALESCE(AVG(load_after), 0),
-    'maxLoad', COALESCE(MAX(load_after), 0),
-    'tripCount', COUNT(DISTINCT trip_id),
-    'stopCount', COUNT(DISTINCT stop_id)
-  ) INTO result
-  FROM stop_ridership sr
-  WHERE sr.route_id = p_route_id
-    AND sr.date >= p_start_date
-    AND sr.date <= p_end_date
-    AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
-    AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
-    AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER);
+  -- Fast path: use pre-aggregated daily_route_stop_summary when no period filter
+  IF p_periods IS NULL THEN
+    SELECT json_build_object(
+      'totalBoardings', COALESCE(SUM(total_boardings), 0),
+      'totalAlightings', COALESCE(SUM(total_alightings), 0),
+      'avgLoad', COALESCE(AVG(avg_load), 0),
+      'maxLoad', COALESCE(MAX(max_load), 0),
+      'tripCount', 0,  -- Not available in summary
+      'stopCount', COUNT(DISTINCT stop_id)
+    ) INTO result
+    FROM daily_route_stop_summary drss
+    WHERE drss.route_id = p_route_id
+      AND drss.date >= p_start_date
+      AND drss.date <= p_end_date
+      AND (p_days IS NULL OR drss.day_of_week = ANY(p_days))
+      AND (p_direction IS NULL OR drss.direction_id = p_direction::INTEGER);
+  ELSE
+    -- Slow path: query stop_ridership when period filter requires it
+    SELECT json_build_object(
+      'totalBoardings', COALESCE(SUM(boardings), 0),
+      'totalAlightings', COALESCE(SUM(alightings), 0),
+      'avgLoad', COALESCE(AVG(load_after), 0),
+      'maxLoad', COALESCE(MAX(load_after), 0),
+      'tripCount', COUNT(DISTINCT trip_id),
+      'stopCount', COUNT(DISTINCT stop_id)
+    ) INTO result
+    FROM stop_ridership sr
+    WHERE sr.route_id = p_route_id
+      AND sr.date >= p_start_date
+      AND sr.date <= p_end_date
+      AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
+      AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
+      AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER);
+  END IF;
 
   RETURN result;
 END;
 $$;
 
--- Get route by direction
+-- Get route by direction (fast path using daily_route_stop_summary)
 CREATE OR REPLACE FUNCTION get_route_by_direction(
   p_route_id TEXT,
   p_start_date DATE,
@@ -373,25 +425,44 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  RETURN QUERY
-  SELECT
-    sr.direction_id::TEXT,
-    COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
-    COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings,
-    COALESCE(AVG(sr.load_after), 0) AS avg_load,
-    COALESCE(MAX(sr.load_after), 0) AS max_load
-  FROM stop_ridership sr
-  WHERE sr.route_id = p_route_id
-    AND sr.date >= p_start_date
-    AND sr.date <= p_end_date
-    AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
-    AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
-  GROUP BY sr.direction_id
-  ORDER BY sr.direction_id;
+  -- Fast path: use pre-aggregated daily_route_stop_summary when no period filter
+  IF p_periods IS NULL THEN
+    RETURN QUERY
+    SELECT
+      drss.direction_id::TEXT,
+      COALESCE(SUM(drss.total_boardings), 0)::BIGINT AS total_boardings,
+      COALESCE(SUM(drss.total_alightings), 0)::BIGINT AS total_alightings,
+      COALESCE(AVG(drss.avg_load), 0)::NUMERIC AS avg_load,
+      COALESCE(MAX(drss.max_load), 0) AS max_load
+    FROM daily_route_stop_summary drss
+    WHERE drss.route_id = p_route_id
+      AND drss.date >= p_start_date
+      AND drss.date <= p_end_date
+      AND (p_days IS NULL OR drss.day_of_week = ANY(p_days))
+    GROUP BY drss.direction_id
+    ORDER BY drss.direction_id;
+  ELSE
+    -- Slow path: query stop_ridership when period filter requires it
+    RETURN QUERY
+    SELECT
+      sr.direction_id::TEXT,
+      COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
+      COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings,
+      COALESCE(AVG(sr.load_after), 0)::NUMERIC AS avg_load,
+      COALESCE(MAX(sr.load_after), 0) AS max_load
+    FROM stop_ridership sr
+    WHERE sr.route_id = p_route_id
+      AND sr.date >= p_start_date
+      AND sr.date <= p_end_date
+      AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
+      AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
+    GROUP BY sr.direction_id
+    ORDER BY sr.direction_id;
+  END IF;
 END;
 $$;
 
--- Get route by time period
+-- Get route by time period (uses trip_ridership for fast queries)
 CREATE OR REPLACE FUNCTION get_route_by_period(
   p_route_id TEXT,
   p_start_date DATE,
@@ -411,22 +482,24 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Use trip_ridership (pre-aggregated per trip) instead of stop_ridership
+  -- trip_ridership has ~800K rows vs 23M in stop_ridership
   RETURN QUERY
   SELECT
-    sr.time_period,
-    COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
-    COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings,
-    COALESCE(AVG(sr.load_after), 0) AS avg_load,
-    COALESCE(MAX(sr.load_after), 0) AS max_load
-  FROM stop_ridership sr
-  WHERE sr.route_id = p_route_id
-    AND sr.date >= p_start_date
-    AND sr.date <= p_end_date
-    AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
-    AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER)
-  GROUP BY sr.time_period
+    tr.time_period,
+    COALESCE(SUM(tr.total_boardings), 0)::BIGINT AS total_boardings,
+    COALESCE(SUM(tr.total_alightings), 0)::BIGINT AS total_alightings,
+    COALESCE(AVG(tr.avg_load), 0)::NUMERIC AS avg_load,
+    COALESCE(MAX(tr.max_load), 0) AS max_load
+  FROM trip_ridership tr
+  WHERE tr.route_id = p_route_id
+    AND tr.date >= p_start_date
+    AND tr.date <= p_end_date
+    AND (p_days IS NULL OR tr.day_of_week = ANY(p_days))
+    AND (p_direction IS NULL OR tr.direction_id = p_direction::INTEGER)
+  GROUP BY tr.time_period
   ORDER BY
-    CASE sr.time_period
+    CASE tr.time_period
       WHEN 'early_am' THEN 1
       WHEN 'am_peak' THEN 2
       WHEN 'midday' THEN 3
@@ -437,7 +510,7 @@ BEGIN
 END;
 $$;
 
--- Get route stops with metrics
+-- Get route stops with metrics (fast path using daily_route_stop_summary)
 CREATE OR REPLACE FUNCTION get_route_stops(
   p_route_id TEXT,
   p_start_date DATE,
@@ -460,29 +533,52 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  RETURN QUERY
-  SELECT
-    sr.stop_id,
-    s.stop_name,
-    s.lat,
-    s.lon,
-    MIN(sr.stop_sequence) AS min_sequence,
-    COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
-    COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings
-  FROM stop_ridership sr
-  JOIN stops s ON sr.stop_id = s.stop_id
-  WHERE sr.route_id = p_route_id
-    AND sr.date >= p_start_date
-    AND sr.date <= p_end_date
-    AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
-    AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
-    AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER)
-  GROUP BY sr.stop_id, s.stop_name, s.lat, s.lon
-  ORDER BY min_sequence;
+  -- Fast path: use pre-aggregated daily_route_stop_summary when no period filter
+  IF p_periods IS NULL THEN
+    RETURN QUERY
+    SELECT
+      drss.stop_id,
+      s.stop_name,
+      s.lat,
+      s.lon,
+      MIN(drss.stop_sequence) AS min_sequence,
+      COALESCE(SUM(drss.total_boardings), 0)::BIGINT AS total_boardings,
+      COALESCE(SUM(drss.total_alightings), 0)::BIGINT AS total_alightings
+    FROM daily_route_stop_summary drss
+    JOIN stops s ON drss.stop_id = s.stop_id
+    WHERE drss.route_id = p_route_id
+      AND drss.date >= p_start_date
+      AND drss.date <= p_end_date
+      AND (p_days IS NULL OR drss.day_of_week = ANY(p_days))
+      AND (p_direction IS NULL OR drss.direction_id = p_direction::INTEGER)
+    GROUP BY drss.stop_id, s.stop_name, s.lat, s.lon
+    ORDER BY min_sequence;
+  ELSE
+    -- Slow path: query stop_ridership when period filter requires it
+    RETURN QUERY
+    SELECT
+      sr.stop_id,
+      s.stop_name,
+      s.lat,
+      s.lon,
+      MIN(sr.stop_sequence) AS min_sequence,
+      COALESCE(SUM(sr.boardings), 0)::BIGINT AS total_boardings,
+      COALESCE(SUM(sr.alightings), 0)::BIGINT AS total_alightings
+    FROM stop_ridership sr
+    JOIN stops s ON sr.stop_id = s.stop_id
+    WHERE sr.route_id = p_route_id
+      AND sr.date >= p_start_date
+      AND sr.date <= p_end_date
+      AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
+      AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
+      AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER)
+    GROUP BY sr.stop_id, s.stop_name, s.lat, s.lon
+    ORDER BY min_sequence;
+  END IF;
 END;
 $$;
 
--- Get route segments with load data
+-- Get route segments with load data (fast path using daily_route_stop_summary)
 CREATE OR REPLACE FUNCTION get_route_segments(
   p_route_id TEXT,
   p_start_date DATE,
@@ -505,25 +601,48 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  RETURN QUERY
-  SELECT
-    sr.stop_id,
-    s.stop_name,
-    s.lat,
-    s.lon,
-    MIN(sr.stop_sequence) AS stop_sequence,
-    COALESCE(AVG(sr.load_after), 0) AS avg_load,
-    COALESCE(MAX(sr.load_after), 0) AS max_load
-  FROM stop_ridership sr
-  JOIN stops s ON sr.stop_id = s.stop_id
-  WHERE sr.route_id = p_route_id
-    AND sr.date >= p_start_date
-    AND sr.date <= p_end_date
-    AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
-    AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
-    AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER)
-  GROUP BY sr.stop_id, s.stop_name, s.lat, s.lon
-  ORDER BY stop_sequence;
+  -- Fast path: use pre-aggregated daily_route_stop_summary when no period filter
+  IF p_periods IS NULL THEN
+    RETURN QUERY
+    SELECT
+      drss.stop_id,
+      s.stop_name,
+      s.lat,
+      s.lon,
+      MIN(drss.stop_sequence) AS stop_sequence,
+      COALESCE(AVG(drss.avg_load), 0)::NUMERIC AS avg_load,
+      COALESCE(MAX(drss.max_load), 0) AS max_load
+    FROM daily_route_stop_summary drss
+    JOIN stops s ON drss.stop_id = s.stop_id
+    WHERE drss.route_id = p_route_id
+      AND drss.date >= p_start_date
+      AND drss.date <= p_end_date
+      AND (p_days IS NULL OR drss.day_of_week = ANY(p_days))
+      AND (p_direction IS NULL OR drss.direction_id = p_direction::INTEGER)
+    GROUP BY drss.stop_id, s.stop_name, s.lat, s.lon
+    ORDER BY stop_sequence;
+  ELSE
+    -- Slow path: query stop_ridership when period filter requires it
+    RETURN QUERY
+    SELECT
+      sr.stop_id,
+      s.stop_name,
+      s.lat,
+      s.lon,
+      MIN(sr.stop_sequence) AS stop_sequence,
+      COALESCE(AVG(sr.load_after), 0)::NUMERIC AS avg_load,
+      COALESCE(MAX(sr.load_after), 0) AS max_load
+    FROM stop_ridership sr
+    JOIN stops s ON sr.stop_id = s.stop_id
+    WHERE sr.route_id = p_route_id
+      AND sr.date >= p_start_date
+      AND sr.date <= p_end_date
+      AND (p_days IS NULL OR sr.day_of_week = ANY(p_days))
+      AND (p_periods IS NULL OR sr.time_period = ANY(p_periods))
+      AND (p_direction IS NULL OR sr.direction_id = p_direction::INTEGER)
+    GROUP BY sr.stop_id, s.stop_name, s.lat, s.lon
+    ORDER BY stop_sequence;
+  END IF;
 END;
 $$;
 
