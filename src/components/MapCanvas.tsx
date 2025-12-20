@@ -827,6 +827,27 @@ export default function MapCanvas() {
     timePeriods: appliedTimePeriods2,
   }), [comparisonDateRange.start, comparisonDateRange.end, appliedDaysMode2, appliedCustomDays2, appliedTimeMode2, appliedTimePeriods2]);
 
+  // Build route filter state for comparison period (Date-time 2) - includes direction from pattern selection
+  const routeFilterState2: FilterState = useMemo(() => {
+    // Look up direction_id from selected pattern (same as routeFilterState)
+    let directionId: '0' | '1' | undefined;
+    if (selectedPattern && selectedRouteId && routePatterns[selectedRouteId]) {
+      const patternInfo = routePatterns[selectedRouteId].patterns.find(p => p.headsign === selectedPattern);
+      if (patternInfo) {
+        directionId = patternInfo.direction_id as '0' | '1';
+      }
+    }
+    return {
+      startDate: comparisonDateRange.start,
+      endDate: comparisonDateRange.end,
+      daysMode: appliedDaysMode2,
+      customDays: appliedCustomDays2,
+      timeMode: appliedTimeMode2,
+      timePeriods: appliedTimePeriods2,
+      directionId,
+    };
+  }, [comparisonDateRange.start, comparisonDateRange.end, appliedDaysMode2, appliedCustomDays2, appliedTimeMode2, appliedTimePeriods2, selectedPattern, selectedRouteId, routePatterns]);
+
   // Fetch ridership data from API
   const { data: systemData, isLoading: isSystemLoading } = useSystemData(filterState, !!effectiveDateRange.start);
   const { data: systemByDateData, isLoading: isByDateLoading } = useSystemByDateData(filterState, !!effectiveDateRange.start);
@@ -1063,6 +1084,11 @@ export default function MapCanvas() {
   const { data: routeSegmentsData, isLoading: isSegmentsLoading } = useRouteSegmentsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
   const { data: routeByDateData, isLoading: isRouteByDateLoading } = useRouteByDateData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
   const { data: routeByDayData, isLoading: isRouteByDayLoading } = useRouteByDayData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
+
+  // Fetch route-specific comparison data (Date-time 2)
+  const { data: routeData2 } = useRouteData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
+  const { data: routeByDateData2 } = useRouteByDateData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
+  const { data: routeByDayData2 } = useRouteByDayData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
 
   // Fetch all stops data for stops view - only when on stops tab (this query is slow)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1400,6 +1426,37 @@ export default function MapCanvas() {
     });
   }, [routeByDateData, selectedMetric]);
 
+  // Transform route-specific by-date comparison data for charts (Date-time 2)
+  const routeDataByDate2 = useMemo(() => {
+    if (!routeByDateData2?.data) return [];
+    return routeByDateData2.data.map(d => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+        case 'Total boardings':
+        case 'Total daily boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = d.totalAlightings;
+          break;
+        case 'Average daily activity':
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
+        default:
+          value = d.totalBoardings;
+      }
+      return { date: d.date, value };
+    });
+  }, [routeByDateData2, selectedMetric]);
+
   // Transform route-specific by-day data for charts (used in RDV)
   const routeDataByDay = useMemo(() => {
     if (!routeByDayData?.data) return [];
@@ -1440,6 +1497,47 @@ export default function MapCanvas() {
       };
     });
   }, [routeByDayData, selectedMetric]);
+
+  // Transform route-specific by-day comparison data for charts (Date-time 2)
+  const routeDataByDay2 = useMemo(() => {
+    if (!routeByDayData2?.data) return [];
+    return routeByDayData2.data.map(d => {
+      let value: number;
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          value = d.avgDailyBoardings;
+          break;
+        case 'Total boardings':
+          value = d.totalBoardings;
+          break;
+        case 'Average daily alightings':
+          value = Math.round(d.totalAlightings / (d.dayCount || 1));
+          break;
+        case 'Average daily activity':
+          value = Math.round((d.totalBoardings + d.totalAlightings) / (d.dayCount || 1));
+          break;
+        case 'Total activity':
+          value = d.totalBoardings + d.totalAlightings;
+          break;
+        case 'Average load':
+          value = d.avgLoad;
+          break;
+        case 'Maxload':
+          value = d.maxLoad;
+          break;
+        default:
+          value = d.avgDailyBoardings;
+      }
+      return {
+        day: d.dayName,
+        value,
+        dayOfWeek: d.dayOfWeek,
+        dayCount: d.dayCount,
+        totalBoardings: d.totalBoardings,
+        totalAlightings: d.totalAlightings,
+      };
+    });
+  }, [routeByDayData2, selectedMetric]);
 
   // Transform route data for ByPatternChart
   // Uses routePatterns for all patterns and distributes direction ridership proportionally
@@ -1619,6 +1717,10 @@ export default function MapCanvas() {
   const activeDataByPeriod = selectedStopId ? stopDataByPeriod : (selectedRouteId ? routeDataByPeriod : dataByPeriod);
   const activeDataByDay = selectedStopId ? stopDataByDay : (selectedRouteId ? routeDataByDay : dataByDay);
   const activeDataByDate = selectedStopId ? stopDataByDate : (selectedRouteId ? routeDataByDate : dataByDate);
+
+  // Comparison chart data - use route-specific data when route is selected
+  const activeComparisonDataByDate = selectedRouteId ? routeDataByDate2 : comparisonChartDataByDate;
+  const activeComparisonDataByDay = selectedRouteId ? routeDataByDay2 : comparisonDataByDay;
 
   // Active loading states based on context
   const isActiveByDateLoading = selectedStopId ? isStopByDateLoading : (selectedRouteId ? isRouteByDateLoading : isByDateLoading);
@@ -2111,25 +2213,29 @@ export default function MapCanvas() {
     return map;
   }, [tripStopRidershipValues]);
 
+  // Create a map of route comparison values (Date-time 2 values) for routes list display
+  const routeComparisonValueMap = React.useMemo(() => {
+    if (!comparisonMode) return new Map<string, number>();
+    const map = new Map<string, number>();
+    if (systemData2?.byRoute) {
+      systemData2.byRoute.forEach(r => {
+        const value = getMetricValue(r.metrics, selectedMetric);
+        map.set(r.routeId, value);
+      });
+    }
+    return map;
+  }, [comparisonMode, systemData2, selectedMetric, getMetricValue]);
+
   // Create comparison value maps (percent change from Date-time 2 to Date-time 1)
   // Uses real API data when available
   const routeComparisonMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
     const map = new Map<string, number>();
 
-    // Build a lookup for Date-time 2 route values
-    const routeValues2 = new Map<string, number>();
-    if (systemData2?.byRoute) {
-      systemData2.byRoute.forEach(r => {
-        const value = getMetricValue(r.metrics, selectedMetric);
-        routeValues2.set(r.routeId, value);
-      });
-    }
-
     // Calculate percent change: ((value1 - value2) / value2) * 100
     routesList.forEach(route => {
       const value1 = route.value;
-      const value2 = routeValues2.get(route.id);
+      const value2 = routeComparisonValueMap.get(route.id);
 
       if (value2 !== undefined && value2 !== 0) {
         const percentChange = Math.round(((value1 - value2) / value2) * 100);
@@ -2141,14 +2247,12 @@ export default function MapCanvas() {
       }
     });
     return map;
-  }, [routesList, comparisonMode, comparisonSwapped, systemData2, selectedMetric, getMetricValue]);
+  }, [routesList, comparisonMode, comparisonSwapped, routeComparisonValueMap]);
 
-  const stopComparisonMap = React.useMemo(() => {
+  // Create a map of stop comparison values (Date-time 2 values) for stops list display
+  const stopComparisonValueMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
     const map = new Map<string, number>();
-
-    // Build a lookup for Date-time 2 stop values
-    const stopValues2 = new Map<string, number>();
     if (allStopsData2?.stops) {
       const daysInRange2 = systemData2?.metrics?.daysInRange || 1;
       allStopsData2.stops.forEach(s => {
@@ -2172,14 +2276,20 @@ export default function MapCanvas() {
           default:
             value = s.avgDailyActivity;
         }
-        stopValues2.set(s.stopId, value);
+        map.set(s.stopId, value);
       });
     }
+    return map;
+  }, [comparisonMode, allStopsData2, systemData2, selectedMetric]);
+
+  const stopComparisonMap = React.useMemo(() => {
+    if (!comparisonMode) return new Map<string, number>();
+    const map = new Map<string, number>();
 
     // Calculate percent change: ((value1 - value2) / value2) * 100
     stopsList.forEach(stop => {
       const value1 = stop.value;
-      const value2 = stopValues2.get(stop.id);
+      const value2 = stopComparisonValueMap.get(stop.id);
 
       if (value2 !== undefined && value2 !== 0) {
         const percentChange = Math.round(((value1 - value2) / value2) * 100);
@@ -2191,7 +2301,7 @@ export default function MapCanvas() {
       }
     });
     return map;
-  }, [stopsList, comparisonMode, comparisonSwapped, allStopsData2, systemData2, selectedMetric]);
+  }, [stopsList, comparisonMode, comparisonSwapped, stopComparisonValueMap]);
 
   // Get the range of comparison values for color scaling
   const comparisonValueRange = React.useMemo(() => {
@@ -2215,20 +2325,18 @@ export default function MapCanvas() {
 
     const allDiffs: number[] = [];
 
-    // Calculate absolute differences for stops
+    // Calculate absolute differences for stops using actual values
     stopsList.forEach(stop => {
-      const percentChange = stopComparisonMap.get(stop.id) || 0;
       const value1 = stop.value;
-      const value2 = percentChange === 0 ? value1 : Math.round(value1 / (1 + percentChange / 100));
+      const value2 = stopComparisonValueMap.get(stop.id) || value1;
       const diff = value1 - value2;
       allDiffs.push(diff);
     });
 
-    // Calculate absolute differences for routes
+    // Calculate absolute differences for routes using actual values
     routesList.forEach(route => {
-      const percentChange = routeComparisonMap.get(route.id) || 0;
       const value1 = route.value;
-      const value2 = percentChange === 0 ? value1 : Math.round(value1 / (1 + percentChange / 100));
+      const value2 = routeComparisonValueMap.get(route.id) || value1;
       const diff = value1 - value2;
       allDiffs.push(diff);
     });
@@ -2243,7 +2351,7 @@ export default function MapCanvas() {
       min: Number.isFinite(minVal) ? minVal : 0,
       max: Number.isFinite(maxVal) ? maxVal : 0
     };
-  }, [comparisonMode, stopsList, routesList, stopComparisonMap, routeComparisonMap]);
+  }, [comparisonMode, stopsList, routesList, stopComparisonValueMap, routeComparisonValueMap]);
 
   // Flatten LineString & MultiLineString into plain paths for PathLayer
   const pathGeoms = React.useMemo(() => {
@@ -2827,58 +2935,9 @@ export default function MapCanvas() {
     setComparisonSwapped(false);
   };
 
-  // Swap Date-time 1 and Date-time 2 values
+  // Swap Date-time 1 and Date-time 2 display order
+  // This doesn't refetch data - it just toggles which period is shown as "primary" vs "comparison"
   const swapDateRanges = () => {
-    // Save current Date-time 1 values
-    const temp1Season = appliedSeason;
-    const temp1QuickPick = appliedQuickPick;
-    const temp1DaysMode = appliedDaysMode;
-    const temp1CustomDays = appliedCustomDays;
-    const temp1TimeMode = appliedTimeMode;
-    const temp1TimePeriods = appliedTimePeriods;
-
-    // Save current Date-time 2 values
-    const temp2Season = stagedSeason2;
-    const temp2QuickPick = stagedQuickPick2;
-    const temp2DaysMode = appliedDaysMode2;
-    const temp2CustomDays = appliedCustomDays2;
-    const temp2TimeMode = appliedTimeMode2;
-    const temp2TimePeriods = appliedTimePeriods2;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const temp2DateRange = comparisonDateRange;
-
-    // Set Date-time 1 to former Date-time 2 values
-    setAppliedSeason(temp2Season);
-    setAppliedQuickPick(temp2QuickPick);
-    setAppliedDaysMode(temp2DaysMode);
-    setAppliedCustomDays(temp2CustomDays);
-    setAppliedTimeMode(temp2TimeMode);
-    setAppliedTimePeriods(temp2TimePeriods);
-
-    // Set Date-time 2 to former Date-time 1 values
-    setStagedSeason2(temp1Season);
-    setStagedQuickPick2(temp1QuickPick);
-    setAppliedDaysMode2(temp1DaysMode);
-    setAppliedCustomDays2(temp1CustomDays);
-    setAppliedTimeMode2(temp1TimeMode);
-    setAppliedTimePeriods2(temp1TimePeriods);
-
-    // Swap the comparison date range with the primary date range
-    // Calculate primary date range from season/quickpick
-    if (temp1Season) {
-      const dates = getSeasonDates(temp1Season.season, temp1Season.year);
-      setComparisonDateRange({ start: dates.start, end: dates.end });
-    } else if (temp1QuickPick) {
-      const dates = getQuickPickDates(temp1QuickPick);
-      if (dates) {
-        setComparisonDateRange({ start: dates.start, end: dates.end });
-      }
-    }
-
-    // Clear preset since we're doing a custom swap
-    setComparisonPreset('custom');
-
-    // Toggle the swapped state to reverse data order in visualizations
     setComparisonSwapped(prev => !prev);
   };
 
@@ -4450,7 +4509,7 @@ export default function MapCanvas() {
               <>
                 {/* Comparison Mode - Dual Date-time Display */}
 
-                {/* Date-time 1 (Primary Range) */}
+                {/* Date-time 1 (Primary Range) - colors stay fixed, dates swap when comparisonSwapped */}
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4522,14 +4581,14 @@ export default function MapCanvas() {
                         ref={dateTextRef}
                         className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
                       >
-                        {getDateFilterText()}
+                        {comparisonSwapped ? getDate2FilterText() : getDateFilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
                     {showDateTooltip && (
-                      <Tooltip text={getDateFilterText()} containerRef={dateRef as React.RefObject<HTMLElement>}>
+                      <Tooltip text={comparisonSwapped ? getDate2FilterText() : getDateFilterText()} containerRef={dateRef as React.RefObject<HTMLElement>}>
                         {null}
                       </Tooltip>
                     )}
@@ -4553,21 +4612,21 @@ export default function MapCanvas() {
                         ref={daysTextRef}
                         className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
                       >
-                        {getDaysFilterText()}
+                        {comparisonSwapped ? getDays2FilterText() : getDaysFilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
                     {showDaysTooltip && openFilter !== 'days' && (
-                      <Tooltip text={getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
+                      <Tooltip text={comparisonSwapped ? getDays2FilterText() : getDaysFilterText()} containerRef={daysRef as React.RefObject<HTMLElement>}>
                         {null}
                       </Tooltip>
                     )}
                   </div>
                 </div>
 
-                {/* Date-time 2 (Comparison Range) */}
+                {/* Date-time 2 (Comparison Range) - colors stay fixed, dates swap when comparisonSwapped */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4638,14 +4697,14 @@ export default function MapCanvas() {
                         ref={date2TextRef}
                         className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
                       >
-                        {getDate2FilterText()}
+                        {comparisonSwapped ? getDateFilterText() : getDate2FilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
                     {showDate2Tooltip && (
-                      <Tooltip text={getDate2FilterText()} containerRef={date2Ref as React.RefObject<HTMLElement>}>
+                      <Tooltip text={comparisonSwapped ? getDateFilterText() : getDate2FilterText()} containerRef={date2Ref as React.RefObject<HTMLElement>}>
                         {null}
                       </Tooltip>
                     )}
@@ -4669,14 +4728,14 @@ export default function MapCanvas() {
                         ref={days2TextRef}
                         className="flex-grow overflow-hidden text-ellipsis whitespace-nowrap mr-2"
                       >
-                        {getDays2FilterText()}
+                        {comparisonSwapped ? getDaysFilterText() : getDays2FilterText()}
                       </span>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
                         <path d="M1.3252 5.87686C0.891707 5.44966 0.891515 4.75706 1.3252 4.32998C1.75895 3.90299 2.46275 3.90296 2.89648 4.32998L7.99609 9.35342L13.1045 4.32217C13.5382 3.89551 14.2411 3.8955 14.6748 4.32217C15.1085 4.74929 15.1084 5.44186 14.6748 5.86904L8.87695 11.58C8.8496 11.6143 8.82019 11.648 8.78809 11.6796C8.57123 11.8931 8.28713 11.9999 8.00293 11.9999C7.7139 12.0036 7.42367 11.8977 7.20313 11.6806C7.1676 11.6456 7.13517 11.6085 7.10547 11.5702L1.3252 5.87686Z" fill="currentColor"/>
                       </svg>
                     </div>
                     {showDays2Tooltip && openFilter !== 'days2' && (
-                      <Tooltip text={getDays2FilterText()} containerRef={days2Ref as React.RefObject<HTMLElement>}>
+                      <Tooltip text={comparisonSwapped ? getDaysFilterText() : getDays2FilterText()} containerRef={days2Ref as React.RefObject<HTMLElement>}>
                         {null}
                       </Tooltip>
                     )}
@@ -6987,14 +7046,17 @@ export default function MapCanvas() {
               {comparisonMode ? (
                 (() => {
                   const value1 = tripRidershipValue;
-                  // Use the route's comparison percentage for the trip
-                  const percentChange = routeComparisonMap.get(selectedTrip.route_id) || 0;
-                  const value2 = Math.round(value1 / (1 + percentChange / 100));
+                  // Use the route's actual comparison values and scale proportionally for the trip
+                  const routeValue1 = routesList.find(r => r.id === selectedTrip.route_id)?.value || 1;
+                  const routeValue2 = routeComparisonValueMap.get(selectedTrip.route_id) || 0;
+                  // Scale trip value2 based on route's ratio
+                  const value2 = routeValue1 > 0 ? Math.round(value1 * (routeValue2 / routeValue1)) : 0;
                   return (
                     <ComparisonMetricCard
                       title={selectedMetric}
                       value1={value1}
                       value2={value2}
+                      swapped={comparisonSwapped}
                     />
                   );
                 })()
@@ -7547,13 +7609,13 @@ export default function MapCanvas() {
                     {comparisonMode ? (
                       (() => {
                         const value1 = stopsList.find((s) => s.id === selectedStopId)?.value || 0;
-                        const percentChange = stopComparisonMap.get(selectedStopId || '') || 0;
-                        const value2 = Math.round(value1 / (1 + percentChange / 100));
+                        const value2 = stopComparisonValueMap.get(selectedStopId || '') || 0;
                         return (
                           <ComparisonMetricCard
                             title={selectedMetric}
                             value1={value1}
                             value2={value2}
+                            swapped={comparisonSwapped}
                           />
                         );
                       })()
@@ -7576,7 +7638,7 @@ export default function MapCanvas() {
                     />
                     <ByDateChart
                       data={activeDataByDate}
-                      comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+                      comparisonData={comparisonMode ? activeComparisonDataByDate : undefined}
                       gradientId="colorValueStop"
                       metric={selectedMetric}
                       startDate={effectiveDateRange.start}
@@ -7588,7 +7650,7 @@ export default function MapCanvas() {
                     />
                     <ByDayChart
                       data={activeDataByDay}
-                      comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+                      comparisonData={comparisonMode ? activeComparisonDataByDay : undefined}
                       metric={selectedMetric}
                       selectedDays={effectiveSelectedDays}
                       swapped={comparisonSwapped}
@@ -8146,13 +8208,13 @@ export default function MapCanvas() {
                 {comparisonMode ? (
                   (() => {
                     const value1 = routeData?.metrics ? getMetricValue(routeData.metrics, selectedMetric) : routesList.find((r) => r.id === selectedRouteId)?.value || 0;
-                    const percentChange = routeComparisonMap.get(selectedRouteId || '') || 0;
-                    const value2 = Math.round(value1 / (1 + percentChange / 100));
+                    const value2 = routeData2?.metrics ? getMetricValue(routeData2.metrics, selectedMetric) : 0;
                     return (
                       <ComparisonMetricCard
                         title={selectedMetric}
                         value1={value1}
                         value2={value2}
+                        swapped={comparisonSwapped}
                       />
                     );
                   })()
@@ -8175,7 +8237,7 @@ export default function MapCanvas() {
                 )}
                 <ByDateChart
                   data={activeDataByDate}
-                  comparisonData={comparisonMode ? comparisonChartDataByDate : undefined}
+                  comparisonData={comparisonMode ? activeComparisonDataByDate : undefined}
                   gradientId="colorValue"
                   metric={selectedMetric}
                   startDate={effectiveDateRange.start}
@@ -8187,7 +8249,7 @@ export default function MapCanvas() {
                 />
                 <ByDayChart
                   data={activeDataByDay}
-                  comparisonData={comparisonMode ? comparisonDataByDay : undefined}
+                  comparisonData={comparisonMode ? activeComparisonDataByDay : undefined}
                   metric={selectedMetric}
                   selectedDays={effectiveSelectedDays}
                   swapped={comparisonSwapped}
@@ -8517,10 +8579,11 @@ export default function MapCanvas() {
                         </div>
                       ) : (
                         filteredAndSortedRouteTrips.map((patternGroup, groupIndex) => {
-                      // In comparison mode, calculate max ridership including comparison values
+                      // In comparison mode, calculate max ridership including comparison values using actual values
                       const getComparisonRidership = (ridership: number) => {
-                        const percentChange = routeComparisonMap.get(selectedRouteId || '') || 0;
-                        return Math.round(ridership / (1 + percentChange / 100));
+                        const routeValue1 = routesList.find(r => r.id === selectedRouteId)?.value || 1;
+                        const routeValue2 = routeComparisonValueMap.get(selectedRouteId || '') || 0;
+                        return routeValue1 > 0 ? Math.round(ridership * (routeValue2 / routeValue1)) : 0;
                       };
                       const maxRidership = comparisonMode
                         ? Math.max(
@@ -8639,8 +8702,11 @@ export default function MapCanvas() {
                             {/* Trips */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: comparisonMode ? '8px' : '4px', position: 'relative', zIndex: 1, paddingTop: '8px' }}>
                               {patternGroup.trips.map((trip, tripIndex) => {
-                                const value1 = trip.ridership;
-                                const value2 = getComparisonRidership(trip.ridership);
+                                const rawValue1 = trip.ridership;
+                                const rawValue2 = getComparisonRidership(trip.ridership);
+                                // Swap values and colors when comparisonSwapped is true
+                                const value1 = comparisonSwapped ? rawValue2 : rawValue1;
+                                const value2 = comparisonSwapped ? rawValue1 : rawValue2;
                                 // Handle division by zero when maxRidership is 0
                                 const barWidth1 = maxRidership > 0 ? (value1 / maxRidership) * 100 : 0;
                                 const barWidth2 = maxRidership > 0 ? (value2 / maxRidership) * 100 : 0;
@@ -9165,11 +9231,14 @@ export default function MapCanvas() {
                                           ? (tripStopData?.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0)
                                           : 0;
                                         const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
-                                        // Calculate value2 for comparison mode
-                                        const value2ForCell = stopPercentChange === 0 ? stopValue : Math.round(stopValue / (1 + stopPercentChange / 100));
+                                        // Get actual value2 from comparison data instead of back-calculating
+                                        const rawValue2ForCell = stopComparisonValueMap.get(stop.id) || 0;
+                                        // Apply swapped display order
+                                        const displayValue1 = comparisonSwapped ? rawValue2ForCell : stopValue;
+                                        const displayValue2 = comparisonSwapped ? stopValue : rawValue2ForCell;
                                         // If both values are 0, use pre-computed neutral color
                                         const cellColor = comparisonMode
-                                          ? (stopValue === 0 && value2ForCell === 0 ? neutralColor : getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max))
+                                          ? (stopValue === 0 && rawValue2ForCell === 0 ? neutralColor : getComparisonColorRGB(stopPercentChange, comparisonValueRange.min, comparisonValueRange.max))
                                           : valueToColor(stopValue, gridValueRange.min, gridValueRange.max);
 
                                         return (
@@ -9266,11 +9335,11 @@ export default function MapCanvas() {
                                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: 1 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                                                   <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: DATETIME_1_COLOR, flexShrink: 0 }} />
-                                                  <span style={{ fontSize: `${config.dataFont - 2}px` }}>{stopValue}</span>
+                                                  <span style={{ fontSize: `${config.dataFont - 2}px` }}>{displayValue1}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                                                   <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: DATETIME_2_COLOR, flexShrink: 0 }} />
-                                                  <span style={{ fontSize: `${config.dataFont - 2}px` }}>{value2ForCell}</span>
+                                                  <span style={{ fontSize: `${config.dataFont - 2}px` }}>{displayValue2}</span>
                                                 </div>
                                               </div>
                                             ) : stopValue}
@@ -9304,21 +9373,16 @@ export default function MapCanvas() {
                 const value1 = isAverageMetric
                   ? (systemData?.metrics ? getMetricValue(systemData.metrics, selectedMetric) : 0)
                   : routesList.reduce((sum, r) => sum + r.value, 0);
-                // Calculate value2 from comparison data
+                // Calculate value2 from comparison data - use actual values instead of back-calculation
                 const value2 = isAverageMetric
                   ? (systemData2?.metrics ? getMetricValue(systemData2.metrics, selectedMetric) : 0)
-                  : (() => {
-                      const allPercentChanges = routesList.map(r => routeComparisonMap.get(r.id) || 0);
-                      const avgPercentChange = allPercentChanges.length > 0
-                        ? allPercentChanges.reduce((sum, p) => sum + p, 0) / allPercentChanges.length
-                        : 0;
-                      return Math.round(value1 / (1 + avgPercentChange / 100));
-                    })();
+                  : routesList.reduce((sum, r) => sum + (routeComparisonValueMap.get(r.id) || 0), 0);
                 return (
                   <ComparisonMetricCard
                     title={selectedMetric}
                     value1={value1}
                     value2={value2}
+                    swapped={comparisonSwapped}
                   />
                 );
               })()
@@ -9602,10 +9666,8 @@ export default function MapCanvas() {
                   }}
                 >
                   {filteredAndSortedStopsList.map((item) => {
-                    // Get percent change from the map (same data used for map coloring)
-                    const percentChange = stopComparisonMap.get(item.id) || 0;
-                    // Calculate value2 from value1 and percent change
-                    const value2 = Math.round(item.value / (1 + percentChange / 100));
+                    // Get actual value2 from comparison data instead of back-calculating
+                    const value2 = stopComparisonValueMap.get(item.id) || 0;
 
                     return (
                       <div
@@ -9620,7 +9682,7 @@ export default function MapCanvas() {
                           cursor: isAllStopsLoading ? 'default' : 'pointer'
                         }}>
                         {comparisonMode ? (
-                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} />
+                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} />
                         ) : (
                           <MetricCard value={item.value} title={item.name} valueLoading={isAllStopsLoading} />
                         )}
@@ -9641,12 +9703,8 @@ export default function MapCanvas() {
               gap: '0'
             }}>
               {routesList.map((item) => {
-                // Get percent change from the map (same data used for map coloring)
-                const percentChange = routeComparisonMap.get(item.id) || 0;
-                // Calculate value2 from value1 and percent change
-                // percentChange = ((value1 - value2) / value2) * 100
-                // So: value2 = value1 / (1 + percentChange/100)
-                const value2 = Math.round(item.value / (1 + percentChange / 100));
+                // Get actual value2 from the comparison value map (real API data)
+                const value2 = routeComparisonValueMap.get(item.id) || 0;
 
                 return (
                   <div
@@ -9659,7 +9717,7 @@ export default function MapCanvas() {
                       cursor: 'pointer'
                     }}>
                     {comparisonMode ? (
-                      <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} />
+                      <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} />
                     ) : (
                       <MetricCard value={item.value} title={item.name} />
                     )}
