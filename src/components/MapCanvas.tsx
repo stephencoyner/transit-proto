@@ -5571,9 +5571,9 @@ export default function MapCanvas() {
                 {/* Data availability info */}
                 <div style={{
                   fontSize: 'var(--label-size)',
-                  color: 'var(--text-tertiary)'
+                  color: 'var(--text-secondary)'
                 }}>
-                  Data only available for Spring and Summer 2025
+                  Data available: March–August, 2025 (Spring and Summer)
                 </div>
 
                 {/* Action Buttons */}
