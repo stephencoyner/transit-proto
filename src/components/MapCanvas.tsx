@@ -4424,10 +4424,12 @@ export default function MapCanvas() {
     }
 
     // Hovered stop halo (same style as selected stop, render before base layers)
-    // Don't show halo when in segment coloring mode
-    // Also show halo for selected boarding stop
+    // Don't show halo for map hover when in segment coloring mode, but always show for selected boarding stop
     const stopToHalo = hoveredStop || selectedBoardingStop;
-    if (stopToHalo && stopToHalo !== selectedStopId && !showSegmentColoring) {
+    // Show halo if: we have a stop to halo, it's not already selected, AND either:
+    // - we're not in segment coloring mode (allow hover halo), OR
+    // - the stop is the selectedBoardingStop (always show halo for explicitly clicked stops)
+    if (stopToHalo && stopToHalo !== selectedStopId && (!showSegmentColoring || selectedBoardingStop === stopToHalo)) {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
       if (hoveredStopData.length > 0) {
         // Use comparison colors when in comparison mode
