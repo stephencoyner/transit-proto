@@ -3530,11 +3530,11 @@ export default function MapCanvas() {
     const GAP = 8; // 8px gap between filter and panel
     const BOTTOM_MARGIN = 24; // Minimum margin from bottom of viewport
 
-    // For date2, always use compareRef (positioned below Compare button)
+    // For date2, use date2Ref when in comparison mode, otherwise compareRef (positioned below Compare button)
     const trigger =
       openFilter === 'date' ? dateRef.current :
       openFilter === 'days' ? daysRef.current :
-      openFilter === 'date2' ? compareRef.current :
+      openFilter === 'date2' ? (date2Ref.current || compareRef.current) :
       openFilter === 'days2' ? days2Ref.current :
       null;
 
