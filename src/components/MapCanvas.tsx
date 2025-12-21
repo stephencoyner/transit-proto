@@ -3530,11 +3530,11 @@ export default function MapCanvas() {
     const GAP = 8; // 8px gap between filter and panel
     const BOTTOM_MARGIN = 24; // Minimum margin from bottom of viewport
 
-    // For date2, always use compareRef (positioned below Compare button)
+    // For date2, use date2Ref when in comparison mode, otherwise compareRef (positioned below Compare button)
     const trigger =
       openFilter === 'date' ? dateRef.current :
       openFilter === 'days' ? daysRef.current :
-      openFilter === 'date2' ? compareRef.current :
+      openFilter === 'date2' ? (date2Ref.current || compareRef.current) :
       openFilter === 'days2' ? days2Ref.current :
       null;
 
@@ -4424,11 +4424,14 @@ export default function MapCanvas() {
     }
 
     // Hovered stop halo (same style as selected stop, render before base layers)
-    // Don't show halo when in segment coloring mode
-    // Also show halo for selected boarding stop
+    // Don't show halo for map hover when in segment coloring mode, but always show for selected boarding stop
     const stopToHalo = hoveredStop || selectedBoardingStop;
-    if (stopToHalo && stopToHalo !== selectedStopId && !showSegmentColoring) {
-      const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
+    // Show halo if: we have a stop to halo, it's not already selected, AND either:
+    // - we're not in segment coloring mode (allow hover halo), OR
+    // - the stop is the selectedBoardingStop (always show halo for explicitly clicked stops)
+    if (stopToHalo && stopToHalo !== selectedStopId && (!showSegmentColoring || selectedBoardingStop === stopToHalo)) {
+      // Use String() to ensure type-safe comparison between GeoJSON stop_id and selectedBoardingStop
+      const hoveredStopData = filteredStops.filter(stop => String(stop.properties.stop_id) === String(stopToHalo));
       if (hoveredStopData.length > 0) {
         // Use comparison colors when in comparison mode
         // Use trip-specific comparison map when a trip is selected
@@ -4458,6 +4461,9 @@ export default function MapCanvas() {
             getFillColor: hoveredHaloColor,
             radiusMinPixels: 18, // 6px (base min) + 12px = 18px
             radiusMaxPixels: 36, // 24px (base max) + 12px = 36px
+            updateTriggers: {
+              getFillColor: [stopToHalo, comparisonMode, comparisonValueRange.min, comparisonValueRange.max]
+            }
           })
         );
       }
@@ -7520,18 +7526,21 @@ export default function MapCanvas() {
                                       whiteSpace: 'nowrap'
                                     }}>{formatTime12Hour(stop.t)}</span>
                                   </div>
-                                  <div style={{
-                                    fontSize: 'var(--data-medium-size)',
-                                    fontWeight: 'var(--data-medium-weight)',
-                                    color: hoveredSegment !== null && index !== hoveredSegment ? 'var(--text-disabled)' : 'var(--text-primary)',
-                                    marginTop: '4px',
-                                    lineHeight: '1',
-                                    transition: 'color 0.2s'
-                                  }}>
-                                    {comparisonMode
-                                      ? `${segmentPercentChange > 0 ? '+' : ''}${segmentPercentChange}%`
-                                      : segmentLoad}
-                                  </div>
+                                  {/* Hide load for last stop - no segment after it */}
+                                  {!isLastStop && (
+                                    <div style={{
+                                      fontSize: 'var(--data-medium-size)',
+                                      fontWeight: 'var(--data-medium-weight)',
+                                      color: hoveredSegment !== null && index !== hoveredSegment ? 'var(--text-disabled)' : 'var(--text-primary)',
+                                      marginTop: '4px',
+                                      lineHeight: '1',
+                                      transition: 'color 0.2s'
+                                    }}>
+                                      {comparisonMode
+                                        ? `${segmentPercentChange > 0 ? '+' : ''}${segmentPercentChange}%`
+                                        : segmentLoad}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -7637,7 +7646,7 @@ export default function MapCanvas() {
                                   width: '44px',
                                   height: '44px',
                                   borderRadius: '50%',
-                                  backgroundColor: `rgba(${stopColor.join(',')}, 0.5)`,
+                                  backgroundColor: `rgba(${stopColor.slice(0, 3).join(',')}, 0.5)`,
                                   zIndex: 0,
                                   marginTop: '1px'
                                 }} />
