@@ -632,6 +632,24 @@ export default function MapCanvas() {
   const stopFilterButtonRef = useRef<HTMLButtonElement>(null);
   const stopSortButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Route filter/sort state (for Routes tab)
+  const [appliedRouteFilterMin, setAppliedRouteFilterMin] = useState<number | null>(null);
+  const [appliedRouteFilterMax, setAppliedRouteFilterMax] = useState<number | null>(null);
+  const [stagedRouteFilterMin, setStagedRouteFilterMin] = useState<number | null>(null);
+  const [stagedRouteFilterMax, setStagedRouteFilterMax] = useState<number | null>(null);
+  const [originalRouteFilterMin, setOriginalRouteFilterMin] = useState<number | null>(null);
+  const [originalRouteFilterMax, setOriginalRouteFilterMax] = useState<number | null>(null);
+
+  const [routeSortBy, setRouteSortBy] = useState<'name' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange'>('ridership');
+  const [routeSortOrder, setRouteSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isRouteFilterMenuOpen, setIsRouteFilterMenuOpen] = useState(false);
+  const [isRouteSortMenuOpen, setIsRouteSortMenuOpen] = useState(false);
+  const [isRouteFilterButtonHovered, setIsRouteFilterButtonHovered] = useState(false);
+  const [isRouteSortButtonHovered, setIsRouteSortButtonHovered] = useState(false);
+  const [isRoutesListScrolled, setIsRoutesListScrolled] = useState(false);
+  const routeFilterButtonRef = useRef<HTMLButtonElement>(null);
+  const routeSortButtonRef = useRef<HTMLButtonElement>(null);
+
   // Date picker state - Applied state (what's actually being used)
   // Default to Summer 2025 (June 20 - Sept 21)
   const [appliedSeason, setAppliedSeason] = useState<{ season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null>({ season: 'summer', year: 2025 });
@@ -1886,6 +1904,63 @@ export default function MapCanvas() {
 
     return sorted;
   }, [stopsList, appliedStopFilterMin, appliedStopFilterMax, appliedStopAmenityFilters, stopSortBy, stopSortOrder, allStopsData2, systemData2, selectedMetric, comparisonSwapped]);
+
+  // Create filtered and sorted routesList for display
+  const filteredAndSortedRoutesList = React.useMemo(() => {
+    let filtered = routesList;
+
+    // Apply ridership filter
+    if (appliedRouteFilterMin !== null || appliedRouteFilterMax !== null) {
+      filtered = filtered.filter(route => {
+        return (
+          (appliedRouteFilterMin === null || route.value >= appliedRouteFilterMin) &&
+          (appliedRouteFilterMax === null || route.value <= appliedRouteFilterMax)
+        );
+      });
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      if (routeSortBy === 'name') {
+        const comparison = a.name.localeCompare(b.name);
+        return routeSortOrder === 'asc' ? comparison : -comparison;
+      } else if (routeSortBy === 'largestIncrease' || routeSortBy === 'largestDecrease' || routeSortBy === 'largestChange') {
+        // Sort by percent change - calculate inline since routeComparisonValueMap defined later
+        // Get Date-time 2 values from systemData2
+        const getRouteValue2 = (routeId: string) => {
+          if (!systemData2?.byRoute) return 0;
+          const routeData = systemData2.byRoute.find(r => r.routeId === routeId);
+          if (!routeData) return 0;
+          return getMetricValue(routeData.metrics, selectedMetric);
+        };
+        const aValue2 = getRouteValue2(a.id);
+        const bValue2 = getRouteValue2(b.id);
+        const aChange = aValue2 !== 0 ? ((a.value - aValue2) / aValue2) * 100 : 0;
+        const bChange = bValue2 !== 0 ? ((b.value - bValue2) / bValue2) * 100 : 0;
+        // Apply swap if needed
+        const aChangeFinal = comparisonSwapped ? -aChange : aChange;
+        const bChangeFinal = comparisonSwapped ? -bChange : bChange;
+
+        if (routeSortBy === 'largestIncrease') {
+          // Highest positive % first
+          return bChangeFinal - aChangeFinal;
+        } else if (routeSortBy === 'largestDecrease') {
+          // Most negative % first
+          return aChangeFinal - bChangeFinal;
+        } else {
+          // largestChange: biggest absolute swing first
+          return Math.abs(bChangeFinal) - Math.abs(aChangeFinal);
+        }
+      } else {
+        // Sort by ridership
+        return routeSortOrder === 'asc'
+          ? a.value - b.value
+          : b.value - a.value;
+      }
+    });
+
+    return sorted;
+  }, [routesList, appliedRouteFilterMin, appliedRouteFilterMax, routeSortBy, routeSortOrder, systemData2, selectedMetric, getMetricValue, comparisonSwapped]);
 
   // Filter data based on selection
   const filteredShapes = React.useMemo(() => {
@@ -3429,6 +3504,28 @@ export default function MapCanvas() {
   const hasStopFiltersToReset =
     stagedStopFilterMin !== null || stagedStopFilterMax !== null || stagedStopAmenityFilters.size > 0;
 
+  // Route filter handlers
+  const handleApplyRouteFilter = () => {
+    setAppliedRouteFilterMin(stagedRouteFilterMin);
+    setAppliedRouteFilterMax(stagedRouteFilterMax);
+    setIsRouteFilterMenuOpen(false);
+  };
+
+  const handleResetRouteFilter = () => {
+    setStagedRouteFilterMin(null);
+    setStagedRouteFilterMax(null);
+    setAppliedRouteFilterMin(null);
+    setAppliedRouteFilterMax(null);
+    setIsRouteFilterMenuOpen(false);
+  };
+
+  const hasRouteFilterChanges =
+    stagedRouteFilterMin !== originalRouteFilterMin ||
+    stagedRouteFilterMax !== originalRouteFilterMax;
+
+  const hasRouteFiltersToReset =
+    stagedRouteFilterMin !== null || stagedRouteFilterMax !== null;
+
   // Function to update panel position based on which filter is open
   const updatePanelPosition = useCallback(() => {
     const GAP = 8; // 8px gap between filter and panel
@@ -3620,9 +3717,35 @@ export default function MapCanvas() {
         }
       }
 
+      if (isRouteFilterMenuOpen && routeFilterButtonRef.current && !routeFilterButtonRef.current.contains(target)) {
+        const filterMenus = document.querySelectorAll('[data-route-filter-menu]');
+        let clickedInMenu = false;
+        filterMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsRouteFilterMenuOpen(false);
+        }
+      }
+
+      if (isRouteSortMenuOpen && routeSortButtonRef.current && !routeSortButtonRef.current.contains(target)) {
+        const sortMenus = document.querySelectorAll('[data-route-sort-menu]');
+        let clickedInMenu = false;
+        sortMenus.forEach(menu => {
+          if (menu.contains(target)) {
+            clickedInMenu = true;
+          }
+        });
+        if (!clickedInMenu) {
+          setIsRouteSortMenuOpen(false);
+        }
+      }
+
     };
 
-    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen) {
+    if (isTripFilterMenuOpen || isTripSortMenuOpen || isStopFilterMenuOpen || isStopSortMenuOpen || isRouteFilterMenuOpen || isRouteSortMenuOpen) {
       setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 0);
@@ -3631,7 +3754,7 @@ export default function MapCanvas() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen]);
+  }, [isTripFilterMenuOpen, isTripSortMenuOpen, isStopFilterMenuOpen, isStopSortMenuOpen, isRouteFilterMenuOpen, isRouteSortMenuOpen]);
 
   useEffect(() => {
     (async () => {
@@ -9881,38 +10004,190 @@ export default function MapCanvas() {
             );
           })()
         ) : (
-          /* Routes View - Simple List */
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
-            {/* List Items */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0'
-            }}>
-              {routesList.map((item) => {
-                // Get actual value2 from the comparison value map (real API data)
-                const value2 = routeComparisonValueMap.get(item.id) || 0;
+          /* Routes View with Filter/Sort */
+          (() => {
+            const isFiltered = appliedRouteFilterMin !== null || appliedRouteFilterMax !== null;
 
-                return (
+            return (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflowY: 'hidden',
+                position: 'relative',
+                marginRight: '-50px',
+                paddingRight: '50px'
+              }}>
+                {/* Filter Bar */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '14px',
+                  paddingBottom: '8px',
+                  paddingLeft: '0px',
+                  paddingRight: '0px',
+                  flexShrink: 0,
+                  backgroundColor: 'var(--bg-primary)',
+                  zIndex: 20
+                }}>
+                  {/* Route Count */}
                   <div
-                    key={item.id}
-                    onClick={() => {
-                      setSelectedRouteId(item.id);
-                      setSelectedRouteTab('Summary');
-                    }}
+                    className="data-small"
                     style={{
-                      cursor: 'pointer'
-                    }}>
-                    {comparisonMode ? (
-                      <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} />
-                    ) : (
-                      <MetricCard value={item.value} title={item.name} />
-                    )}
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    {isFiltered
+                      ? `${filteredAndSortedRoutesList.length} of ${routesList.length} Routes`
+                      : `${routesList.length} Routes`}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+
+                  {/* Filter and Sort Buttons */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* Filter Button */}
+                    <button
+                      ref={routeFilterButtonRef}
+                      type="button"
+                      onClick={() => {
+                        if (!isRouteFilterMenuOpen) {
+                          // Opening the menu - save current state as original
+                          setOriginalRouteFilterMin(appliedRouteFilterMin);
+                          setOriginalRouteFilterMax(appliedRouteFilterMax);
+                          // Stage current values
+                          setStagedRouteFilterMin(appliedRouteFilterMin);
+                          setStagedRouteFilterMax(appliedRouteFilterMax);
+                        }
+                        setIsRouteFilterMenuOpen(!isRouteFilterMenuOpen);
+                      }}
+                      onMouseEnter={() => setIsRouteFilterButtonHovered(true)}
+                      onMouseLeave={() => setIsRouteFilterButtonHovered(false)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: isRouteFilterMenuOpen
+                          ? '0.5px solid var(--border-focus)'
+                          : isRouteFilterButtonHovered
+                            ? '0.5px solid var(--border-default)'
+                            : '0.5px solid transparent',
+                        backgroundColor: isRouteFilterMenuOpen || isRouteFilterButtonHovered ? 'var(--bg-elevated)' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        padding: 0,
+                        position: 'relative'
+                      }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      {isFiltered && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '1px',
+                          right: '1px',
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--text-secondary)'
+                        }} />
+                      )}
+                    </button>
+
+                    {/* Sort Button */}
+                    <button
+                      ref={routeSortButtonRef}
+                      type="button"
+                      onClick={() => setIsRouteSortMenuOpen(!isRouteSortMenuOpen)}
+                      onMouseEnter={() => setIsRouteSortButtonHovered(true)}
+                      onMouseLeave={() => setIsRouteSortButtonHovered(false)}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        border: isRouteSortMenuOpen
+                          ? '0.5px solid var(--border-focus)'
+                          : isRouteSortButtonHovered
+                            ? '0.5px solid var(--border-default)'
+                            : '0.5px solid transparent',
+                        backgroundColor: isRouteSortMenuOpen || isRouteSortButtonHovered ? 'var(--bg-elevated)' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        padding: 0
+                      }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5.81667 8.76675C5.57222 8.76675 5.36389 8.68064 5.19167 8.50842C5.01944 8.33619 4.93333 8.12786 4.93333 7.88342V4.20008L4.01667 5.11675C3.85 5.28341 3.64444 5.36675 3.4 5.36675C3.15556 5.36675 2.94444 5.28341 2.76667 5.11675C2.58889 4.93897 2.5 4.73064 2.5 4.49175C2.5 4.25286 2.58889 4.04453 2.76667 3.86675L5.18333 1.43341C5.27222 1.34453 5.36944 1.27786 5.475 1.23341C5.58056 1.18897 5.69444 1.16675 5.81667 1.16675C5.93889 1.16675 6.05278 1.18897 6.15833 1.23341C6.26389 1.27786 6.36111 1.34453 6.45 1.43341L8.86667 3.86675C9.04444 4.04453 9.13056 4.25286 9.125 4.49175C9.11944 4.73064 9.02778 4.93897 8.85 5.11675C8.67222 5.28341 8.46667 5.36953 8.23333 5.37508C8 5.38064 7.79444 5.29453 7.61667 5.11675L6.7 4.20008V7.88342C6.7 8.12786 6.61389 8.33619 6.44167 8.50842C6.26944 8.68064 6.06111 8.76675 5.81667 8.76675ZM10.1833 14.8334C10.0611 14.8334 9.94722 14.8112 9.84167 14.7667C9.73611 14.7223 9.63889 14.6556 9.55 14.5667L7.13333 12.1334C6.95556 11.9556 6.86944 11.7473 6.875 11.5084C6.88056 11.2695 6.97222 11.0612 7.15 10.8834C7.32778 10.7167 7.53333 10.6306 7.76667 10.6251C8 10.6195 8.20556 10.7056 8.38333 10.8834L9.3 11.8001V8.11675C9.3 7.8723 9.38611 7.66397 9.55833 7.49175C9.73056 7.31953 9.93889 7.23342 10.1833 7.23342C10.4278 7.23342 10.6361 7.31953 10.8083 7.49175C10.9806 7.66397 11.0667 7.8723 11.0667 8.11675V11.8001L11.9833 10.8834C12.15 10.7167 12.3556 10.6334 12.6 10.6334C12.8444 10.6334 13.0556 10.7167 13.2333 10.8834C13.4111 11.0612 13.5 11.2695 13.5 11.5084C13.5 11.7473 13.4111 11.9556 13.2333 12.1334L10.8167 14.5667C10.7278 14.6556 10.6306 14.7223 10.525 14.7667C10.4194 14.8112 10.3056 14.8334 10.1833 14.8334Z" fill="#3D2817"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Divider - only shown when scrolled */}
+                <div style={{
+                  position: 'relative',
+                  marginLeft: '-16px',
+                  marginRight: '-16px',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    height: '0.5px',
+                    backgroundColor: 'var(--border-default)',
+                    marginLeft: '16px',
+                    marginRight: '16px',
+                    marginTop: '4px',
+                    opacity: isRoutesListScrolled ? 1 : 0,
+                    transition: 'opacity 0.1s ease'
+                  }} />
+                </div>
+
+                {/* List Items */}
+                <div
+                  style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0',
+                    paddingBottom: '24px',
+                    marginRight: '-8px',
+                    paddingRight: '8px'
+                  }}
+                  onScroll={(e) => {
+                    const target = e.target as HTMLDivElement;
+                    setIsRoutesListScrolled(target.scrollTop > 0);
+                  }}
+                >
+                  {filteredAndSortedRoutesList.map((item) => {
+                    // Get actual value2 from the comparison value map (real API data)
+                    const value2 = routeComparisonValueMap.get(item.id) || 0;
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedRouteId(item.id);
+                          setSelectedRouteTab('Summary');
+                        }}
+                        style={{
+                          cursor: 'pointer'
+                        }}>
+                        {comparisonMode ? (
+                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} />
+                        ) : (
+                          <MetricCard value={item.value} title={item.name} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()
         )}
       </div>
 
@@ -10361,6 +10636,193 @@ export default function MapCanvas() {
                     setStopSortBy(option.sortBy);
                     setStopSortOrder(option.order);
                     setIsStopSortMenuOpen(false);
+                  }}
+                  className="button-small"
+                  style={{
+                    padding: '12px 28px 12px 16px',
+                    cursor: 'pointer',
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    transition: 'background-color 0.2s ease',
+                    backgroundColor: 'transparent',
+                    margin: index === sortOptions.length - 1 ? '4px 0 12px 0' : '4px 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, color: 'var(--text-secondary)' }}>
+                      <path d="M6.36682 9.86655L12.0002 4.23322C12.1789 4.05544 12.3875 3.96655 12.626 3.96655C12.8643 3.96655 13.0724 4.05427 13.2502 4.22972C13.4279 4.40516 13.5168 4.6135 13.5168 4.85472C13.5168 5.09594 13.4279 5.30544 13.2502 5.48322L6.98349 11.7499C6.80771 11.9277 6.60266 12.0166 6.36832 12.0166C6.13399 12.0166 5.92793 11.9277 5.75016 11.7499L2.78349 8.78322C2.60571 8.60844 2.5196 8.40083 2.52515 8.16039C2.53071 7.92005 2.62121 7.711 2.79665 7.53322C2.9721 7.35544 3.18043 7.26655 3.42165 7.26655C3.66288 7.26655 3.87238 7.35544 4.05015 7.53322L6.36682 9.86655Z" fill="currentColor"/>
+                    </svg>
+                  )}
+                  <span style={{ marginLeft: isSelected ? '0' : '36px' }}>{option.label}</span>
+                </div>
+              );
+            })}
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* Route Filter Menu */}
+      {isRouteFilterMenuOpen && routeFilterButtonRef.current && (() => {
+        const buttonRect = routeFilterButtonRef.current.getBoundingClientRect();
+        return createPortal(
+          <div
+            data-route-filter-menu
+            style={{
+              position: 'fixed',
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${buttonRect.left}px`,
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-large)',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 10002,
+              width: 'fit-content',
+              maxHeight: '480px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Scrollable content area */}
+            <div style={{
+              overflowY: 'auto',
+              padding: '16px',
+              paddingBottom: '0'
+            }}
+            >
+            <span className="button-small" style={{ color: 'var(--text-secondary)', fontWeight: '500', marginBottom: '16px', display: 'block' }}>
+              {selectedMetric}
+            </span>
+            <div style={{ marginBottom: '16px', width: '230px' }}>
+              <Input
+                type="number"
+                label="More Than"
+                value={stagedRouteFilterMin ?? ''}
+                onChange={(e) => setStagedRouteFilterMin(e.target.value ? Number(e.target.value) : null)}
+                placeholder="None"
+                variant="elevated"
+              />
+            </div>
+            <div style={{ marginBottom: '16px', width: '230px' }}>
+              <Input
+                type="number"
+                label="Less Than"
+                value={stagedRouteFilterMax ?? ''}
+                onChange={(e) => setStagedRouteFilterMax(e.target.value ? Number(e.target.value) : null)}
+                placeholder="None"
+                variant="elevated"
+              />
+            </div>
+            </div>
+
+            {/* Sticky footer with buttons */}
+            <div style={{
+              padding: '16px',
+              paddingTop: '16px',
+              borderTop: '0.5px solid var(--border-default)',
+              backgroundColor: 'var(--bg-elevated)',
+              borderBottomLeftRadius: 'var(--radius-large)',
+              borderBottomRightRadius: 'var(--radius-large)'
+            }}>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'flex-end'
+              }}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  onClick={handleResetRouteFilter}
+                  disabled={!hasRouteFiltersToReset}
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasRouteFiltersToReset) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleApplyRouteFilter}
+                  disabled={!hasRouteFilterChanges}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* Route Sort Menu */}
+      {isRouteSortMenuOpen && routeSortButtonRef.current && (() => {
+        const buttonRect = routeSortButtonRef.current.getBoundingClientRect();
+        const sortOptions: { sortBy: 'name' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange'; order: 'asc' | 'desc'; label: string }[] = [
+          { sortBy: 'name', order: 'asc', label: 'Name (A-Z)' },
+          { sortBy: 'name', order: 'desc', label: 'Name (Z-A)' },
+          { sortBy: 'ridership', order: 'desc', label: `${selectedMetric} (highest first)` },
+          { sortBy: 'ridership', order: 'asc', label: `${selectedMetric} (lowest first)` },
+          // Add percent change options only in comparison mode
+          ...(comparisonMode ? [
+            { sortBy: 'largestIncrease' as const, order: 'desc' as const, label: 'Largest increase first' },
+            { sortBy: 'largestDecrease' as const, order: 'desc' as const, label: 'Largest decrease first' },
+            { sortBy: 'largestChange' as const, order: 'desc' as const, label: 'Largest change first' }
+          ] : [])
+        ];
+        return createPortal(
+          <div
+            data-route-sort-menu
+            style={{
+              position: 'fixed',
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${buttonRect.left}px`,
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-large)',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 10002,
+              minWidth: '220px',
+              overflowY: 'auto',
+              paddingTop: '16px'
+            }}
+          >
+            <span
+              className="button-small"
+              style={{
+                padding: '0 16px 8px 16px',
+                color: 'var(--text-secondary)',
+                fontWeight: '500',
+                display: 'block'
+              }}
+            >
+              Sort by
+            </span>
+            {sortOptions.map((option, index) => {
+              const isSelected = routeSortBy === option.sortBy && routeSortOrder === option.order;
+              return (
+                <div
+                  key={`${option.sortBy}-${option.order}`}
+                  onClick={() => {
+                    setRouteSortBy(option.sortBy);
+                    setRouteSortOrder(option.order);
+                    setIsRouteSortMenuOpen(false);
                   }}
                   className="button-small"
                   style={{
