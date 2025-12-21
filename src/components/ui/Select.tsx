@@ -251,8 +251,11 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                   <div
                     key={`divider-${index}`}
                     style={{
-                      borderTop: 'var(--border-width) solid var(--border-default)',
-                      margin: '8px 0'
+                      borderTop: '0.5px solid var(--border-default)',
+                      marginLeft: '48px',
+                      marginRight: '12px',
+                      marginTop: '8px',
+                      marginBottom: '8px'
                     }}
                   />
                 );
