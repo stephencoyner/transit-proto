@@ -900,8 +900,8 @@ export default function MapCanvas() {
         return metrics.totalBoardings || 0;
       case 'Average daily alightings':
         return metrics.avgDailyAlightings || 0;
-      case 'Total daily boardings':
-        return metrics.totalBoardings || 0; // Same as Total boardings
+      case 'Total alightings':
+        return metrics.totalAlightings || 0;
       case 'Average daily activity':
         return metrics.avgDailyActivity || 0;
       case 'Total activity':
@@ -976,10 +976,10 @@ export default function MapCanvas() {
       switch (selectedMetric) {
         case 'Average daily boardings':
         case 'Total boardings':
-        case 'Total daily boardings':
           value = d.totalBoardings;
           break;
         case 'Average daily alightings':
+        case 'Total alightings':
           value = d.totalAlightings;
           break;
         case 'Average daily activity':
@@ -1063,10 +1063,10 @@ export default function MapCanvas() {
       switch (selectedMetric) {
         case 'Average daily boardings':
         case 'Total boardings':
-        case 'Total daily boardings':
           value = d.totalBoardings;
           break;
         case 'Average daily alightings':
+        case 'Total alightings':
           value = d.totalAlightings;
           break;
         case 'Average daily activity':
@@ -1202,7 +1202,6 @@ export default function MapCanvas() {
       case 'Average daily activity':
         return metrics.avgDailyActivity;
       case 'Total boardings':
-      case 'Total daily boardings':
         return metrics.totalBoardings;
       case 'Total alightings':
         return metrics.totalAlightings;
@@ -1424,10 +1423,10 @@ export default function MapCanvas() {
       switch (selectedMetric) {
         case 'Average daily boardings':
         case 'Total boardings':
-        case 'Total daily boardings':
           value = d.totalBoardings;
           break;
         case 'Average daily alightings':
+        case 'Total alightings':
           value = d.totalAlightings;
           break;
         case 'Average daily activity':
@@ -1455,10 +1454,10 @@ export default function MapCanvas() {
       switch (selectedMetric) {
         case 'Average daily boardings':
         case 'Total boardings':
-        case 'Total daily boardings':
           value = d.totalBoardings;
           break;
         case 'Average daily alightings':
+        case 'Total alightings':
           value = d.totalAlightings;
           break;
         case 'Average daily activity':
@@ -1649,10 +1648,10 @@ export default function MapCanvas() {
       switch (selectedMetric) {
         case 'Average daily boardings':
         case 'Total boardings':
-        case 'Total daily boardings':
           value = d.totalBoardings;
           break;
         case 'Average daily alightings':
+        case 'Total alightings':
           value = d.totalAlightings;
           break;
         case 'Average daily activity':
@@ -5058,10 +5057,13 @@ export default function MapCanvas() {
               options={[
                 { value: 'Average daily boardings', label: 'Average daily boardings' },
                 { value: 'Total boardings', label: 'Total boardings' },
+                { value: 'divider-1', label: '', isDivider: true },
                 { value: 'Average daily alightings', label: 'Average daily alightings' },
-                { value: 'Total daily boardings', label: 'Total daily boardings' },
+                { value: 'Total alightings', label: 'Total alightings' },
+                { value: 'divider-2', label: '', isDivider: true },
                 { value: 'Average daily activity', label: 'Average daily activity' },
                 { value: 'Total activity', label: 'Total activity' },
+                { value: 'divider-3', label: '', isDivider: true },
                 { value: 'Average load', label: 'Average load', disabled: isStopLevelView },
                 { value: 'Maxload', label: 'Maxload', disabled: isStopLevelView }
               ]}
