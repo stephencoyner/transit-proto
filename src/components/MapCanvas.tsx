@@ -7520,18 +7520,21 @@ export default function MapCanvas() {
                                       whiteSpace: 'nowrap'
                                     }}>{formatTime12Hour(stop.t)}</span>
                                   </div>
-                                  <div style={{
-                                    fontSize: 'var(--data-medium-size)',
-                                    fontWeight: 'var(--data-medium-weight)',
-                                    color: hoveredSegment !== null && index !== hoveredSegment ? 'var(--text-disabled)' : 'var(--text-primary)',
-                                    marginTop: '4px',
-                                    lineHeight: '1',
-                                    transition: 'color 0.2s'
-                                  }}>
-                                    {comparisonMode
-                                      ? `${segmentPercentChange > 0 ? '+' : ''}${segmentPercentChange}%`
-                                      : segmentLoad}
-                                  </div>
+                                  {/* Hide load for last stop - no segment after it */}
+                                  {!isLastStop && (
+                                    <div style={{
+                                      fontSize: 'var(--data-medium-size)',
+                                      fontWeight: 'var(--data-medium-weight)',
+                                      color: hoveredSegment !== null && index !== hoveredSegment ? 'var(--text-disabled)' : 'var(--text-primary)',
+                                      marginTop: '4px',
+                                      lineHeight: '1',
+                                      transition: 'color 0.2s'
+                                    }}>
+                                      {comparisonMode
+                                        ? `${segmentPercentChange > 0 ? '+' : ''}${segmentPercentChange}%`
+                                        : segmentLoad}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
