@@ -602,7 +602,7 @@ export default function MapCanvas() {
   const [originalTripFilterMin, setOriginalTripFilterMin] = useState<number | null>(null);
   const [originalTripFilterMax, setOriginalTripFilterMax] = useState<number | null>(null);
 
-  const [tripSortBy, setTripSortBy] = useState<'ridership' | 'time'>('time');
+  const [tripSortBy, setTripSortBy] = useState<'ridership' | 'time' | 'largestIncrease' | 'largestDecrease' | 'largestChange'>('time');
   const [tripSortOrder, setTripSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isTripFilterMenuOpen, setIsTripFilterMenuOpen] = useState(false);
   const [isTripSortMenuOpen, setIsTripSortMenuOpen] = useState(false);
@@ -622,7 +622,7 @@ export default function MapCanvas() {
   const [appliedStopAmenityFilters, setAppliedStopAmenityFilters] = useState<Map<string, boolean>>(new Map());
   const [stagedStopAmenityFilters, setStagedStopAmenityFilters] = useState<Map<string, boolean>>(new Map());
 
-  const [stopSortBy, setStopSortBy] = useState<'name' | 'ridership'>('ridership');
+  const [stopSortBy, setStopSortBy] = useState<'name' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange'>('ridership');
   const [stopSortOrder, setStopSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isStopFilterMenuOpen, setIsStopFilterMenuOpen] = useState(false);
   const [isStopSortMenuOpen, setIsStopSortMenuOpen] = useState(false);
@@ -1836,6 +1836,46 @@ export default function MapCanvas() {
       if (stopSortBy === 'name') {
         const comparison = a.name.localeCompare(b.name);
         return stopSortOrder === 'asc' ? comparison : -comparison;
+      } else if (stopSortBy === 'largestIncrease' || stopSortBy === 'largestDecrease' || stopSortBy === 'largestChange') {
+        // Sort by percent change - calculate inline since stopComparisonMap defined later
+        // Get Date-time 2 values from allStopsData2
+        const daysInRange2 = systemData2?.metrics?.daysInRange || 1;
+        const getStopValue2 = (stopId: string) => {
+          const stopData = allStopsData2?.stops?.find(s => s.stopId === stopId);
+          if (!stopData) return 0;
+          switch (selectedMetric) {
+            case 'Average daily boardings':
+              return Math.round(stopData.totalBoardings / daysInRange2);
+            case 'Total boardings':
+              return stopData.totalBoardings;
+            case 'Average daily alightings':
+              return Math.round(stopData.totalAlightings / daysInRange2);
+            case 'Average daily activity':
+              return stopData.avgDailyActivity;
+            case 'Total activity':
+              return stopData.totalBoardings + stopData.totalAlightings;
+            default:
+              return stopData.avgDailyActivity;
+          }
+        };
+        const aValue2 = getStopValue2(a.id);
+        const bValue2 = getStopValue2(b.id);
+        const aChange = aValue2 !== 0 ? ((a.value - aValue2) / aValue2) * 100 : 0;
+        const bChange = bValue2 !== 0 ? ((b.value - bValue2) / bValue2) * 100 : 0;
+        // Apply swap if needed
+        const aChangeFinal = comparisonSwapped ? -aChange : aChange;
+        const bChangeFinal = comparisonSwapped ? -bChange : bChange;
+
+        if (stopSortBy === 'largestIncrease') {
+          // Highest positive % first
+          return bChangeFinal - aChangeFinal;
+        } else if (stopSortBy === 'largestDecrease') {
+          // Most negative % first
+          return aChangeFinal - bChangeFinal;
+        } else {
+          // largestChange: biggest absolute swing first
+          return Math.abs(bChangeFinal) - Math.abs(aChangeFinal);
+        }
       } else {
         // Sort by ridership
         return stopSortOrder === 'asc'
@@ -1845,7 +1885,7 @@ export default function MapCanvas() {
     });
 
     return sorted;
-  }, [stopsList, appliedStopFilterMin, appliedStopFilterMax, appliedStopAmenityFilters, stopSortBy, stopSortOrder]);
+  }, [stopsList, appliedStopFilterMin, appliedStopFilterMax, appliedStopAmenityFilters, stopSortBy, stopSortOrder, allStopsData2, systemData2, selectedMetric, comparisonSwapped]);
 
   // Filter data based on selection
   const filteredShapes = React.useMemo(() => {
@@ -8414,6 +8454,31 @@ export default function MapCanvas() {
                         return tripSortOrder === 'asc'
                           ? a.ridership - b.ridership
                           : b.ridership - a.ridership;
+                      } else if (tripSortBy === 'largestIncrease' || tripSortBy === 'largestDecrease' || tripSortBy === 'largestChange') {
+                        // Sort by percent change (comparison mode)
+                        const routeValue1 = routesList.find(r => r.id === selectedRouteId)?.value || 1;
+                        const routeValue2 = routeComparisonValueMap.get(selectedRouteId || '') || 0;
+                        const getComparisonValue = (ridership: number) =>
+                          routeValue1 > 0 ? Math.round(ridership * (routeValue2 / routeValue1)) : 0;
+
+                        const aValue2 = getComparisonValue(a.ridership);
+                        const bValue2 = getComparisonValue(b.ridership);
+                        const aChange = aValue2 !== 0 ? ((a.ridership - aValue2) / aValue2) * 100 : 0;
+                        const bChange = bValue2 !== 0 ? ((b.ridership - bValue2) / bValue2) * 100 : 0;
+                        // Apply swap if needed
+                        const aChangeFinal = comparisonSwapped ? -aChange : aChange;
+                        const bChangeFinal = comparisonSwapped ? -bChange : bChange;
+
+                        if (tripSortBy === 'largestIncrease') {
+                          // Highest positive % first
+                          return bChangeFinal - aChangeFinal;
+                        } else if (tripSortBy === 'largestDecrease') {
+                          // Most negative % first
+                          return aChangeFinal - bChangeFinal;
+                        } else {
+                          // largestChange: biggest absolute swing first
+                          return Math.abs(bChangeFinal) - Math.abs(aChangeFinal);
+                        }
                       } else {
                         // Sort by time
                         return tripSortOrder === 'asc'
@@ -9959,11 +10024,17 @@ export default function MapCanvas() {
       {/* Trip Sort Menu */}
       {isTripSortMenuOpen && tripSortButtonRef.current && (() => {
         const buttonRect = tripSortButtonRef.current.getBoundingClientRect();
-        const sortOptions = [
-          { sortBy: 'time' as const, order: 'asc' as const, label: 'Time (earliest first)' },
-          { sortBy: 'time' as const, order: 'desc' as const, label: 'Time (latest first)' },
-          { sortBy: 'ridership' as const, order: 'desc' as const, label: `${selectedMetric} (highest first)` },
-          { sortBy: 'ridership' as const, order: 'asc' as const, label: `${selectedMetric} (lowest first)` }
+        const sortOptions: { sortBy: 'time' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange'; order: 'asc' | 'desc'; label: string }[] = [
+          { sortBy: 'time', order: 'asc', label: 'Time (earliest first)' },
+          { sortBy: 'time', order: 'desc', label: 'Time (latest first)' },
+          { sortBy: 'ridership', order: 'desc', label: `${selectedMetric} (highest first)` },
+          { sortBy: 'ridership', order: 'asc', label: `${selectedMetric} (lowest first)` },
+          // Add percent change options only in comparison mode
+          ...(comparisonMode ? [
+            { sortBy: 'largestIncrease' as const, order: 'desc' as const, label: 'Largest increase first' },
+            { sortBy: 'largestDecrease' as const, order: 'desc' as const, label: 'Largest decrease first' },
+            { sortBy: 'largestChange' as const, order: 'desc' as const, label: 'Largest change first' }
+          ] : [])
         ];
         return createPortal(
           <div
@@ -10241,11 +10312,17 @@ export default function MapCanvas() {
       {/* Stop Sort Menu */}
       {isStopSortMenuOpen && stopSortButtonRef.current && (() => {
         const buttonRect = stopSortButtonRef.current.getBoundingClientRect();
-        const sortOptions = [
-          { sortBy: 'name' as const, order: 'asc' as const, label: 'Name (A-Z)' },
-          { sortBy: 'name' as const, order: 'desc' as const, label: 'Name (Z-A)' },
-          { sortBy: 'ridership' as const, order: 'desc' as const, label: `${selectedMetric} (highest first)` },
-          { sortBy: 'ridership' as const, order: 'asc' as const, label: `${selectedMetric} (lowest first)` }
+        const sortOptions: { sortBy: 'name' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange'; order: 'asc' | 'desc'; label: string }[] = [
+          { sortBy: 'name', order: 'asc', label: 'Name (A-Z)' },
+          { sortBy: 'name', order: 'desc', label: 'Name (Z-A)' },
+          { sortBy: 'ridership', order: 'desc', label: `${selectedMetric} (highest first)` },
+          { sortBy: 'ridership', order: 'asc', label: `${selectedMetric} (lowest first)` },
+          // Add percent change options only in comparison mode
+          ...(comparisonMode ? [
+            { sortBy: 'largestIncrease' as const, order: 'desc' as const, label: 'Largest increase first' },
+            { sortBy: 'largestDecrease' as const, order: 'desc' as const, label: 'Largest decrease first' },
+            { sortBy: 'largestChange' as const, order: 'desc' as const, label: 'Largest change first' }
+          ] : [])
         ];
         return createPortal(
           <div
