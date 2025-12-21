@@ -4430,7 +4430,8 @@ export default function MapCanvas() {
     // - we're not in segment coloring mode (allow hover halo), OR
     // - the stop is the selectedBoardingStop (always show halo for explicitly clicked stops)
     if (stopToHalo && stopToHalo !== selectedStopId && (!showSegmentColoring || selectedBoardingStop === stopToHalo)) {
-      const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
+      // Use String() to ensure type-safe comparison between GeoJSON stop_id and selectedBoardingStop
+      const hoveredStopData = filteredStops.filter(stop => String(stop.properties.stop_id) === String(stopToHalo));
       if (hoveredStopData.length > 0) {
         // Use comparison colors when in comparison mode
         // Use trip-specific comparison map when a trip is selected
@@ -4460,6 +4461,9 @@ export default function MapCanvas() {
             getFillColor: hoveredHaloColor,
             radiusMinPixels: 18, // 6px (base min) + 12px = 18px
             radiusMaxPixels: 36, // 24px (base max) + 12px = 36px
+            updateTriggers: {
+              getFillColor: [stopToHalo, comparisonMode, comparisonValueRange.min, comparisonValueRange.max]
+            }
           })
         );
       }
