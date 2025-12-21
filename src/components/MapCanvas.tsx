@@ -1852,7 +1852,7 @@ export default function MapCanvas() {
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
       if (stopSortBy === 'name') {
-        const comparison = a.name.localeCompare(b.name);
+        const comparison = a.name.localeCompare(b.name, undefined, { numeric: true });
         return stopSortOrder === 'asc' ? comparison : -comparison;
       } else if (stopSortBy === 'largestIncrease' || stopSortBy === 'largestDecrease' || stopSortBy === 'largestChange') {
         // Sort by percent change - calculate inline since stopComparisonMap defined later
@@ -1922,7 +1922,7 @@ export default function MapCanvas() {
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
       if (routeSortBy === 'name') {
-        const comparison = a.name.localeCompare(b.name);
+        const comparison = a.name.localeCompare(b.name, undefined, { numeric: true });
         return routeSortOrder === 'asc' ? comparison : -comparison;
       } else if (routeSortBy === 'largestIncrease' || routeSortBy === 'largestDecrease' || routeSortBy === 'largestChange') {
         // Sort by percent change - calculate inline since routeComparisonValueMap defined later
