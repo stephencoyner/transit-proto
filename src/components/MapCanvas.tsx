@@ -1104,6 +1104,9 @@ export default function MapCanvas() {
   // Fetch trip-specific data when a trip is selected (for TDV)
   const { data: tripData, isLoading: isTripLoading } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
 
+  // Fetch trip-specific comparison data (Date-time 2) for TDV comparison mode
+  const { data: tripData2 } = useTripData(selectedTrip?.trip_id || null, filterState2, comparisonMode && !!comparisonDateRange.start && !!selectedTrip);
+
   // Check if route data matches the selected route (handles stale cached data during route switch)
   const isRouteDataStale = selectedRouteId && routeData && routeData.metrics.routeId !== selectedRouteId;
   const isSegmentDataStale = selectedRouteId && routeSegmentsData && routeSegmentsData.routeId !== selectedRouteId;
@@ -2303,10 +2306,115 @@ export default function MapCanvas() {
     return map;
   }, [stopsList, comparisonMode, comparisonSwapped, stopComparisonValueMap]);
 
+  // Trip-specific stop comparison map for TDV comparison mode
+  // Uses tripData and tripData2 instead of allStopsData
+  const tripStopComparisonMap = React.useMemo(() => {
+    if (!comparisonMode || !selectedTrip || !tripData?.stops || !tripData2?.stops) {
+      return new Map<string, number>();
+    }
+    const map = new Map<string, number>();
+
+    // Helper to get stop value based on metric
+    const getStopValue = (s: { avgDailyBoardings: number; totalBoardings: number; avgDailyAlightings: number; totalAlightings: number; avgDailyActivity: number; totalActivity: number; avgLoad?: number; maxLoad?: number }) => {
+      switch (selectedMetric) {
+        case 'Average daily boardings':
+          return s.avgDailyBoardings;
+        case 'Total boardings':
+          return s.totalBoardings;
+        case 'Average daily alightings':
+          return s.avgDailyAlightings;
+        case 'Total alightings':
+          return s.totalAlightings;
+        case 'Average daily activity':
+          return s.avgDailyActivity;
+        case 'Total activity':
+          return s.totalActivity;
+        case 'Average load':
+          return s.avgLoad || 0;
+        case 'Maxload':
+          return s.maxLoad || 0;
+        default:
+          return s.avgDailyBoardings;
+      }
+    };
+
+    // Build a map of tripData2 stop values for quick lookup
+    const tripData2ValueMap = new Map<string, number>();
+    tripData2.stops.forEach(s => {
+      tripData2ValueMap.set(s.stopId, getStopValue(s));
+    });
+
+    // Calculate percent change for each stop in tripData
+    tripData.stops.forEach(s => {
+      const value1 = getStopValue(s);
+      const value2 = tripData2ValueMap.get(s.stopId);
+
+      if (value2 !== undefined && value2 !== 0) {
+        const percentChange = Math.round(((value1 - value2) / value2) * 100);
+        map.set(s.stopId, comparisonSwapped ? -percentChange : percentChange);
+      } else {
+        map.set(s.stopId, 0);
+      }
+    });
+
+    return map;
+  }, [comparisonMode, selectedTrip, tripData, tripData2, selectedMetric, comparisonSwapped]);
+
+  // Trip-specific segment comparison map for TDV comparison mode (load metrics)
+  // Uses tripData.segments and tripData2.segments
+  const tripSegmentComparisonMap = React.useMemo(() => {
+    if (!comparisonMode || !selectedTrip || !tripData?.segments || !tripData2?.segments) {
+      return new Map<string, number>();
+    }
+    const map = new Map<string, number>();
+
+    // Helper to get segment load value based on metric
+    const getSegmentValue = (seg: { avgLoad: number; maxLoad: number }) => {
+      return selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
+    };
+
+    // Build a map of tripData2 segment values for quick lookup
+    const tripData2SegmentMap = new Map<string, number>();
+    tripData2.segments.forEach(seg => {
+      const key = `${seg.fromStopId}-${seg.toStopId}`;
+      tripData2SegmentMap.set(key, getSegmentValue(seg));
+    });
+
+    // Calculate percent change for each segment in tripData
+    tripData.segments.forEach(seg => {
+      const key = `${seg.fromStopId}-${seg.toStopId}`;
+      const value1 = getSegmentValue(seg);
+      const value2 = tripData2SegmentMap.get(key);
+
+      if (value2 !== undefined && value2 !== 0) {
+        const percentChange = Math.round(((value1 - value2) / value2) * 100);
+        map.set(key, comparisonSwapped ? -percentChange : percentChange);
+      } else {
+        map.set(key, 0);
+      }
+    });
+
+    return map;
+  }, [comparisonMode, selectedTrip, tripData, tripData2, selectedMetric, comparisonSwapped]);
+
+  // Get the range of trip segment comparison values
+  const tripSegmentComparisonRange = React.useMemo(() => {
+    if (!comparisonMode || tripSegmentComparisonMap.size === 0) return { min: 0, max: 0 };
+    const allValues = [...tripSegmentComparisonMap.values()];
+    return {
+      min: Math.min(...allValues),
+      max: Math.max(...allValues)
+    };
+  }, [tripSegmentComparisonMap, comparisonMode]);
+
   // Get the range of comparison values for color scaling
   const comparisonValueRange = React.useMemo(() => {
     if (!comparisonMode) return { min: 0, max: 0 };
-    const allValues = [...routeComparisonMap.values(), ...stopComparisonMap.values()];
+    // Use trip-specific comparison values when a trip is selected
+    const stopValues = selectedTrip && tripStopComparisonMap.size > 0
+      ? [...tripStopComparisonMap.values()]
+      : [...stopComparisonMap.values()];
+    const allValues = [...routeComparisonMap.values(), ...stopValues];
     if (allValues.length === 0) return { min: 0, max: 0 };
 
     const minVal = Math.min(...allValues);
@@ -2317,7 +2425,7 @@ export default function MapCanvas() {
       min: Number.isFinite(minVal) ? minVal : 0,
       max: Number.isFinite(maxVal) ? maxVal : 0
     };
-  }, [routeComparisonMap, stopComparisonMap, comparisonMode]);
+  }, [routeComparisonMap, stopComparisonMap, tripStopComparisonMap, selectedTrip, comparisonMode]);
 
   // Get the range of absolute difference values for number mode
   const comparisonDiffRange = React.useMemo(() => {
@@ -3765,13 +3873,17 @@ export default function MapCanvas() {
     }
 
     // When showing segment coloring (load metrics) or amenities view, use white border
+    // For load metrics, the comparison colors go on segments, not stops
     if (showSegmentColoring || isAmenitiesView) {
       return [255, 255, 255, 255] as [number, number, number, number];
     }
 
-    // In comparison mode, use comparison colors (percent change)
+    // In comparison mode, use comparison colors (percent change) for non-load metrics
+    // Use trip-specific comparison map when a trip is selected
     if (comparisonMode) {
-      const percentChange = stopComparisonMap.get(stopId) || 0;
+      const percentChange = (selectedTrip && tripStopComparisonMap.size > 0)
+        ? (tripStopComparisonMap.get(stopId) || 0)
+        : (stopComparisonMap.get(stopId) || 0);
       const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
       return [color[0], color[1], color[2], 255] as [number, number, number, number];
     }
@@ -3784,7 +3896,7 @@ export default function MapCanvas() {
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
+  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, tripStopComparisonMap, comparisonValueRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const getStopCenterColor = React.useCallback((_d: any): [number, number, number, number] => {
@@ -3812,11 +3924,17 @@ export default function MapCanvas() {
         const hoveredSeg = segmentsWithIndex[hoveredSegment];
         if (hoveredSeg) {
           // Use comparison colors when in comparison mode
+          // Use trip-specific segment comparison map when a trip is selected
           let segColor: [number, number, number];
           if (comparisonMode) {
             const segmentKey = `${hoveredSeg.fromStopId}-${hoveredSeg.toStopId}`;
-            const percentChange = segmentComparisonMap.get(segmentKey) || 0;
-            const compColor = getComparisonColorRGB(percentChange, segmentComparisonRange.min, segmentComparisonRange.max);
+            const percentChange = (selectedTrip && tripSegmentComparisonMap.size > 0)
+              ? (tripSegmentComparisonMap.get(segmentKey) || 0)
+              : (segmentComparisonMap.get(segmentKey) || 0);
+            const compRange = (selectedTrip && tripSegmentComparisonMap.size > 0)
+              ? tripSegmentComparisonRange
+              : segmentComparisonRange;
+            const compColor = getComparisonColorRGB(percentChange, compRange.min, compRange.max);
             segColor = [compColor[0], compColor[1], compColor[2]];
           } else {
             segColor = valueToColor(hoveredSeg.loadValue, segmentValueRange.min, segmentValueRange.max);
@@ -3844,8 +3962,11 @@ export default function MapCanvas() {
       // When a trip is selected, only check trip loading (not route stale data)
       // When no trip selected, check route loading and stale data
       // Also check if data actually exists - if tripData has segments, we're not loading
+      // In comparison mode with a trip selected, we need BOTH tripData and tripData2 segments
       const isSegmentDataLoading = selectedTrip
-        ? (isTripLoading && !(tripData?.segments && tripData.segments.length > 0))
+        ? (comparisonMode
+            ? (!(tripData?.segments && tripData.segments.length > 0) || !(tripData2?.segments && tripData2.segments.length > 0))
+            : (isTripLoading && !(tripData?.segments && tripData.segments.length > 0)))
         : (isRouteLoading || isRouteDataStale || isSegmentDataStale || isSegmentsLoading);
 
       layers.push(
@@ -3862,8 +3983,14 @@ export default function MapCanvas() {
             // Use comparison colors when in comparison mode
             if (comparisonMode) {
               const segmentKey = `${d.fromStopId}-${d.toStopId}`;
-              const percentChange = segmentComparisonMap.get(segmentKey) || 0;
-              const compColor = getComparisonColorRGB(percentChange, segmentComparisonRange.min, segmentComparisonRange.max);
+              // Use trip-specific comparison data when a trip is selected
+              const percentChange = (selectedTrip && tripSegmentComparisonMap.size > 0)
+                ? (tripSegmentComparisonMap.get(segmentKey) || 0)
+                : (segmentComparisonMap.get(segmentKey) || 0);
+              const compRange = (selectedTrip && tripSegmentComparisonMap.size > 0)
+                ? tripSegmentComparisonRange
+                : segmentComparisonRange;
+              const compColor = getComparisonColorRGB(percentChange, compRange.min, compRange.max);
               const alpha = hoveredSegment !== null && d.index !== hoveredSegment ? 102 : 255;
               return [compColor[0], compColor[1], compColor[2], alpha];
             }
@@ -3873,7 +4000,7 @@ export default function MapCanvas() {
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
@@ -4142,9 +4269,12 @@ export default function MapCanvas() {
       const hoveredStopData = filteredStops.filter(stop => stop.properties.stop_id === stopToHalo);
       if (hoveredStopData.length > 0) {
         // Use comparison colors when in comparison mode
+        // Use trip-specific comparison map when a trip is selected
         let hoveredStopColor: [number, number, number];
         if (comparisonMode) {
-          const percentChange = stopComparisonMap.get(stopToHalo) || 0;
+          const percentChange = (selectedTrip && tripStopComparisonMap.size > 0)
+            ? (tripStopComparisonMap.get(stopToHalo) || 0)
+            : (stopComparisonMap.get(stopToHalo) || 0);
           const compColor = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
           hoveredStopColor = [compColor[0], compColor[1], compColor[2]];
         } else {
@@ -4233,7 +4363,7 @@ export default function MapCanvas() {
             }
           },
           updateTriggers: {
-            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale], // Force recalculation when selection, coloring mode, amenities view, comparison mode, trip, or loading state changes
+            getFillColor: [selectedStopId, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, tripStopComparisonMap, comparisonValueRange, selectedTrip, tripStopValueMap, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale], // Force recalculation when selection, coloring mode, amenities view, comparison mode, trip, or loading state changes
             getRadius: [showSegmentColoring, isAmenitiesView] // Update radius when mode changes
           }
         }),
@@ -7046,11 +7176,8 @@ export default function MapCanvas() {
               {comparisonMode ? (
                 (() => {
                   const value1 = tripRidershipValue;
-                  // Use the route's actual comparison values and scale proportionally for the trip
-                  const routeValue1 = routesList.find(r => r.id === selectedTrip.route_id)?.value || 1;
-                  const routeValue2 = routeComparisonValueMap.get(selectedTrip.route_id) || 0;
-                  // Scale trip value2 based on route's ratio
-                  const value2 = routeValue1 > 0 ? Math.round(value1 * (routeValue2 / routeValue1)) : 0;
+                  // Use actual trip-specific comparison data from tripData2
+                  const value2 = tripData2?.metrics ? getMetricValue(tripData2.metrics, selectedMetric) : 0;
                   return (
                     <ComparisonMetricCard
                       title={selectedMetric}
@@ -7080,27 +7207,17 @@ export default function MapCanvas() {
                   (() => {
                     // Build a map of fromStopId -> loadValue using trip-specific API data when available
                     const segmentLoadMap = new Map<string, number>();
-                    const segmentComparisonDataMap = new Map<string, number>(); // fromStopId -> percentChange
 
                     // Use trip-specific segment data from API if available
                     if (tripData?.segments && tripData.segments.length > 0) {
                       tripData.segments.forEach(seg => {
                         const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
                         segmentLoadMap.set(seg.fromStopId, loadValue);
-                        // For now, use mock percent change for comparison mode (will be updated in Phase 7)
-                        const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
-                        const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                        const percentChange = ((hash % 91) - 40); // Range: -40 to +50
-                        segmentComparisonDataMap.set(seg.fromStopId, percentChange);
                       });
                     } else {
                       // Fall back to route-level segment data
                       segmentGeoms.forEach(seg => {
                         segmentLoadMap.set(seg.fromStopId, seg.loadValue);
-                        const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
-                        const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                        const percentChange = ((hash % 91) - 40); // Range: -40 to +50
-                        segmentComparisonDataMap.set(seg.fromStopId, percentChange);
                       });
                     }
 
@@ -7113,12 +7230,16 @@ export default function MapCanvas() {
                             // Get the segment load value (load for segment starting at this stop)
                             const segmentLoad = segmentLoadMap.get(stop.id) || 0;
 
-                            // Get segment percent change for comparison mode (keyed by fromStopId)
-                            const segmentPercentChange = segmentComparisonDataMap.get(stop.id) || 0;
+                            // Get segment percent change for comparison mode
+                            // Key format is fromStopId-toStopId
+                            const nextStop = !isLastStop ? selectedTripStops[index + 1] : null;
+                            const segmentKey = nextStop ? `${stop.id}-${nextStop.id}` : '';
+                            const segmentPercentChange = segmentKey ? (tripSegmentComparisonMap.get(segmentKey) || 0) : 0;
 
                             // Use comparison colors in comparison mode, otherwise normal colors
+                            // For trip detail view, use tripSegmentComparisonRange for proper color scaling
                             const segmentColor = comparisonMode
-                              ? getComparisonColorRGB(segmentPercentChange, segmentComparisonRange.min, segmentComparisonRange.max)
+                              ? getComparisonColorRGB(segmentPercentChange, tripSegmentComparisonRange.min, tripSegmentComparisonRange.max)
                               : valueToColor(segmentLoad, segmentValueRange.min, segmentValueRange.max);
 
                             const isSelected = hoveredSegment === index;
@@ -7159,7 +7280,7 @@ export default function MapCanvas() {
                                     top: '-2px',
                                     width: '28px',
                                     height: 'calc(100% + 20px + 24px)',
-                                    backgroundColor: `rgba(${segmentColor.join(',')}, 0.31)`,
+                                    backgroundColor: `rgba(${segmentColor.slice(0, 3).join(',')}, 0.31)`,
                                     borderRadius: '14px',
                                     zIndex: 0
                                   }} />
@@ -7172,7 +7293,7 @@ export default function MapCanvas() {
                                     top: '12px',
                                     width: '9px',
                                     height: 'calc(100% + 24px - 12px + 14px)',
-                                    backgroundColor: `rgb(${segmentColor.join(',')})`,
+                                    backgroundColor: `rgb(${segmentColor.slice(0, 3).join(',')})`,
                                     opacity: hoveredSegment !== null && !isSelected ? 0.4 : 1,
                                     transition: 'opacity 0.2s',
                                     zIndex: 1
@@ -7304,7 +7425,8 @@ export default function MapCanvas() {
                             const stopValue = tripStopValueMap.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0;
 
                         // Get comparison percent change for this stop
-                        const stopPercentChange = stopComparisonMap.get(stop.id) || 0;
+                        // Use trip-specific comparison map when available, fall back to general stopComparisonMap
+                        const stopPercentChange = (tripStopComparisonMap.size > 0 ? tripStopComparisonMap.get(stop.id) : stopComparisonMap.get(stop.id)) || 0;
 
                         // Use comparison colors in comparison mode, otherwise normal colors
                         const stopColor = comparisonMode
