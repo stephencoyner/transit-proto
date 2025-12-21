@@ -7280,7 +7280,7 @@ export default function MapCanvas() {
                                     top: '-2px',
                                     width: '28px',
                                     height: 'calc(100% + 20px + 24px)',
-                                    backgroundColor: `rgba(${segmentColor.join(',')}, 0.31)`,
+                                    backgroundColor: `rgba(${segmentColor.slice(0, 3).join(',')}, 0.31)`,
                                     borderRadius: '14px',
                                     zIndex: 0
                                   }} />
@@ -7293,7 +7293,7 @@ export default function MapCanvas() {
                                     top: '12px',
                                     width: '9px',
                                     height: 'calc(100% + 24px - 12px + 14px)',
-                                    backgroundColor: `rgb(${segmentColor.join(',')})`,
+                                    backgroundColor: `rgb(${segmentColor.slice(0, 3).join(',')})`,
                                     opacity: hoveredSegment !== null && !isSelected ? 0.4 : 1,
                                     transition: 'opacity 0.2s',
                                     zIndex: 1
