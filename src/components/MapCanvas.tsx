@@ -7646,7 +7646,7 @@ export default function MapCanvas() {
                                   width: '44px',
                                   height: '44px',
                                   borderRadius: '50%',
-                                  backgroundColor: `rgba(${stopColor.join(',')}, 0.5)`,
+                                  backgroundColor: `rgba(${stopColor.slice(0, 3).join(',')}, 0.5)`,
                                   zIndex: 0,
                                   marginTop: '1px'
                                 }} />
