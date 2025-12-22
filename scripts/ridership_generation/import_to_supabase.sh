@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# Import Ridership Data v3.1 to Supabase
+# Import Ridership Data v4 to Supabase
 # ============================================
 # Usage:
 #   export SUPABASE_DB_URL="postgresql://postgres.xxxxx:password@aws-0-us-west-1.pooler.supabase.com:5432/postgres"
@@ -29,10 +29,10 @@ if [ -z "$SUPABASE_DB_URL" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="$SCRIPT_DIR/../../data/generated_v3_1"
+DATA_DIR="$SCRIPT_DIR/../../data/generated_v4"
 
 echo "============================================"
-echo "Supabase Import - Ridership Data v3.1"
+echo "Supabase Import - Ridership Data v4"
 echo "============================================"
 echo "Data directory: $DATA_DIR"
 echo ""
@@ -149,12 +149,17 @@ SELECT COUNT(*) AS trip_ridership_count FROM trip_ridership;
 EOF
 echo ""
 
-echo "Step 5: Importing stop_ridership (23M rows)..."
-echo "  This may take 10-20 minutes. Go grab a coffee..."
-time psql "$SUPABASE_DB_URL" <<EOF
-\copy stop_ridership(date, trip_id, route_id, shape_id, stop_id, stop_sequence, direction_id, time_period, day_of_week, boardings, alightings, load_after) FROM '$DATA_DIR/stop_ridership.csv' WITH (FORMAT csv, HEADER true);
-SELECT COUNT(*) AS stop_ridership_count FROM stop_ridership;
-EOF
+echo "Step 5: Importing stop_ridership (23M rows) via chunks..."
+echo "  Importing 12 chunks of ~2M rows each..."
+CHUNKS_DIR="$DATA_DIR/stop_ridership_chunks"
+CHUNK_NUM=1
+for chunk_file in "$CHUNKS_DIR"/with_header_chunk_*.csv; do
+    CHUNK_NAME=$(basename "$chunk_file")
+    echo "  [$CHUNK_NUM/12] $CHUNK_NAME..."
+    psql "$SUPABASE_DB_URL" -c "\copy stop_ridership(date, trip_id, route_id, shape_id, stop_id, stop_sequence, direction_id, time_period, day_of_week, boardings, alightings, load_after) FROM '$chunk_file' WITH (FORMAT csv, HEADER true);"
+    CHUNK_NUM=$((CHUNK_NUM + 1))
+done
+psql "$SUPABASE_DB_URL" -c "SELECT COUNT(*) AS stop_ridership_count FROM stop_ridership;"
 echo ""
 
 # ============================================
@@ -217,7 +222,7 @@ echo ""
 echo "============================================"
 echo "IMPORT COMPLETE"
 echo "============================================"
-echo "Your Supabase database is now loaded with ridership data v3.1"
+echo "Your Supabase database is now loaded with ridership data v4"
 echo ""
 echo "Date range: 2025-03-21 to 2025-09-30 (194 days)"
 echo "Routes: 1, 8, 10, 11, 13, 14, 40, 44, 62, 70"

@@ -16,7 +16,7 @@ if [ -z "$SUPABASE_DB_URL" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHUNKS_DIR="$SCRIPT_DIR/../../data/generated_v3_1/stop_ridership_chunks"
+CHUNKS_DIR="$SCRIPT_DIR/../../data/generated_v4/stop_ridership_chunks"
 
 echo "============================================"
 echo "Importing stop_ridership chunks"
