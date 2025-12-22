@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import PortalTooltipContent from './PortalTooltip';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface PatternDataPoint {
   headsign: string;
@@ -10,10 +11,12 @@ interface PatternDataPoint {
 
 interface ByPatternChartProps {
   data: PatternDataPoint[];
+  comparisonData?: PatternDataPoint[];
   metric?: string;
   loading?: boolean;
   onPatternClick?: (headsign: string) => void;
   selectedPattern?: string | null;
+  swapped?: boolean;
 }
 
 // Shimmer animation styles
@@ -228,7 +231,7 @@ const CustomYAxisTick = ({ y, payload, visibleTicksCount }: any) => {
   );
 };
 
-export default function ByPatternChart({ data, metric, loading = false, onPatternClick, selectedPattern }: ByPatternChartProps) {
+export default function ByPatternChart({ data, comparisonData, metric, loading = false, onPatternClick, selectedPattern, swapped = false }: ByPatternChartProps) {
   const [borderDefault, setBorderDefault] = useState('#D4C9BA');
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(300); // Default fallback
@@ -260,7 +263,11 @@ export default function ByPatternChart({ data, metric, loading = false, onPatter
   const isHorizontal = data.length > 2;
 
   // Calculate dynamic height based on number of patterns for horizontal layout
-  const chartHeight = isHorizontal ? Math.max(120, data.length * 36) : 160;
+  // Increase height for comparison mode to accommodate grouped bars
+  const isComparisonMode = !!comparisonData && comparisonData.length > 0;
+  const chartHeight = isHorizontal
+    ? Math.max(120, data.length * (isComparisonMode ? 48 : 36))
+    : (isComparisonMode ? 200 : 160);
 
   // Calculate max label width based on container width and number of patterns
   const maxLabelWidth = useMemo(() => {
@@ -276,13 +283,29 @@ export default function ByPatternChart({ data, metric, loading = false, onPatter
   }, [isHorizontal, containerWidth, data.length]);
 
   // Prepare chart data with truncated labels
+  // Merge with comparison data if in comparison mode
   const chartData = useMemo(() => {
+    if (isComparisonMode) {
+      // Build a map of comparison values by headsign
+      const comparisonMap = new Map<string, number>();
+      comparisonData?.forEach(d => {
+        comparisonMap.set(d.headsign, d.value);
+      });
+
+      return data.map(d => ({
+        ...d,
+        displayName: truncateHeadsign(d.headsign, maxLabelWidth),
+        fullName: d.headsign,
+        value1: swapped ? (comparisonMap.get(d.headsign) ?? 0) : d.value,
+        value2: swapped ? d.value : (comparisonMap.get(d.headsign) ?? 0)
+      }));
+    }
     return data.map(d => ({
       ...d,
       displayName: truncateHeadsign(d.headsign, maxLabelWidth),
       fullName: d.headsign
     }));
-  }, [data, maxLabelWidth]);
+  }, [data, comparisonData, maxLabelWidth, isComparisonMode, swapped]);
 
   // Show skeleton when loading
   if (loading) {
@@ -354,18 +377,41 @@ export default function ByPatternChart({ data, metric, loading = false, onPatter
               allowDuplicatedCategory={false}
             />
             <Tooltip
-              content={<PortalTooltipContent metricLabel={metric} />}
+              content={<PortalTooltipContent metricLabel={metric} isComparisonMode={isComparisonMode} />}
               wrapperStyle={{ visibility: 'hidden' }}
               cursor={{ fill: `url(#barCursorPatternH)` }}
             />
-            <Bar
-              dataKey="value"
-              fill="var(--border-hover)"
-              radius={[0, 4, 4, 0]}
-              isAnimationActive={false}
-              onClick={handleBarClick}
-              cursor={onPatternClick ? 'pointer' : 'default'}
-            />
+            {isComparisonMode ? (
+              <>
+                <Bar
+                  dataKey="value1"
+                  name="Date-time 1"
+                  fill={DATETIME_1_COLOR}
+                  radius={[0, 4, 4, 0]}
+                  isAnimationActive={false}
+                  onClick={handleBarClick}
+                  cursor={onPatternClick ? 'pointer' : 'default'}
+                />
+                <Bar
+                  dataKey="value2"
+                  name="Date-time 2"
+                  fill={DATETIME_2_COLOR}
+                  radius={[0, 4, 4, 0]}
+                  isAnimationActive={false}
+                  onClick={handleBarClick}
+                  cursor={onPatternClick ? 'pointer' : 'default'}
+                />
+              </>
+            ) : (
+              <Bar
+                dataKey="value"
+                fill="var(--border-hover)"
+                radius={[0, 4, 4, 0]}
+                isAnimationActive={false}
+                onClick={handleBarClick}
+                cursor={onPatternClick ? 'pointer' : 'default'}
+              />
+            )}
           </BarChart>
         ) : (
           // Vertical bar chart for 2 patterns
@@ -392,18 +438,41 @@ export default function ByPatternChart({ data, metric, loading = false, onPatter
               width={40}
             />
             <Tooltip
-              content={<PortalTooltipContent metricLabel={metric} />}
+              content={<PortalTooltipContent metricLabel={metric} isComparisonMode={isComparisonMode} />}
               wrapperStyle={{ visibility: 'hidden' }}
               cursor={{ fill: `url(#barCursorPatternV)` }}
             />
-            <Bar
-              dataKey="value"
-              fill="var(--border-hover)"
-              radius={[4, 4, 0, 0]}
-              isAnimationActive={false}
-              onClick={handleBarClick}
-              cursor={onPatternClick ? 'pointer' : 'default'}
-            />
+            {isComparisonMode ? (
+              <>
+                <Bar
+                  dataKey="value1"
+                  name="Date-time 1"
+                  fill={DATETIME_1_COLOR}
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                  onClick={handleBarClick}
+                  cursor={onPatternClick ? 'pointer' : 'default'}
+                />
+                <Bar
+                  dataKey="value2"
+                  name="Date-time 2"
+                  fill={DATETIME_2_COLOR}
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                  onClick={handleBarClick}
+                  cursor={onPatternClick ? 'pointer' : 'default'}
+                />
+              </>
+            ) : (
+              <Bar
+                dataKey="value"
+                fill="var(--border-hover)"
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+                onClick={handleBarClick}
+                cursor={onPatternClick ? 'pointer' : 'default'}
+              />
+            )}
           </BarChart>
         )}
       </ResponsiveContainer>

@@ -1639,6 +1639,61 @@ export default function MapCanvas() {
     }));
   }, [routeData, selectedMetric, getMetricValue, selectedRouteId, routePatterns]);
 
+  // Transform comparison route data for ByPatternChart (same logic as routeDataByPattern but uses routeData2)
+  const comparisonDataByPattern = useMemo(() => {
+    if (!selectedRouteId || !routePatterns[selectedRouteId] || !routeData2) return [];
+
+    const patterns = routePatterns[selectedRouteId].patterns;
+    if (!patterns || patterns.length === 0) return [];
+
+    // If we have byDirection data, use it to distribute ridership to patterns
+    if (routeData2?.byDirection) {
+      // Create a map of direction_id -> ridership value
+      const directionValues = new Map<string, number>();
+      routeData2.byDirection.forEach(d => {
+        directionValues.set(d.directionId, getMetricValue(d.metrics, selectedMetric));
+      });
+
+      // Group patterns by direction and calculate trip counts per direction
+      const tripCountsByDirection = new Map<string, number>();
+      patterns.forEach(p => {
+        const current = tripCountsByDirection.get(p.direction_id) || 0;
+        tripCountsByDirection.set(p.direction_id, current + p.trip_count);
+      });
+
+      // Calculate value for each pattern, then aggregate by headsign
+      const headsignAggregates = new Map<string, { value: number; percentOfRoute: number }>();
+
+      patterns.forEach(p => {
+        const directionValue = directionValues.get(p.direction_id) || 0;
+        const directionTripCount = tripCountsByDirection.get(p.direction_id) || 1;
+        const patternProportion = p.trip_count / directionTripCount;
+        const patternValue = Math.round(directionValue * patternProportion);
+
+        const existing = headsignAggregates.get(p.headsign);
+        if (existing) {
+          headsignAggregates.set(p.headsign, {
+            value: existing.value + patternValue,
+            percentOfRoute: existing.percentOfRoute + p.pct_of_route,
+          });
+        } else {
+          headsignAggregates.set(p.headsign, {
+            value: patternValue,
+            percentOfRoute: p.pct_of_route,
+          });
+        }
+      });
+
+      return Array.from(headsignAggregates.entries()).map(([headsign, data]) => ({
+        headsign,
+        value: data.value,
+        percentOfRoute: data.percentOfRoute,
+      }));
+    }
+
+    return [];
+  }, [routeData2, selectedMetric, getMetricValue, selectedRouteId, routePatterns]);
+
   // Transform stop-specific data for SDV charts
   const stopDataByDate = useMemo(() => {
     if (!stopByDateData?.data) return [];
@@ -8522,13 +8577,15 @@ export default function MapCanvas() {
                   />
                 )}
                 {/* Pattern Chart - only show when not filtering by pattern and there are multiple patterns */}
-                {!selectedPattern && routeDataByPattern.length > 1 && !comparisonMode && (
+                {!selectedPattern && routeDataByPattern.length > 1 && (
                   <ByPatternChart
                     data={routeDataByPattern}
+                    comparisonData={comparisonMode ? comparisonDataByPattern : undefined}
                     metric={selectedMetric}
                     loading={isRouteLoading}
                     onPatternClick={(headsign) => setSelectedPattern(headsign === 'all' ? null : headsign)}
                     selectedPattern={selectedPattern}
+                    swapped={comparisonSwapped}
                   />
                 )}
                 <ByDateChart
