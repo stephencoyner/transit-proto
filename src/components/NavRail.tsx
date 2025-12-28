@@ -4,8 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface NavRailProps {
-  activeTab: 'system' | 'routes' | 'stops' | 'components';
-  onTabChange: (tab: 'system' | 'routes' | 'stops' | 'components') => void;
+  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'reports';
+  onTabChange: (tab: 'system' | 'routes' | 'stops' | 'components' | 'reports') => void;
   userInitial?: string;
   isFiltersPanelOpen: boolean;
   onToggleFiltersPanel: () => void;
@@ -35,6 +35,15 @@ const RoutesIcon = () => (
 const StopsIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
+
+const ReportsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 1C2.44772 1 2 1.44772 2 2V14C2 14.5523 2.44772 15 3 15H13C13.5523 15 14 14.5523 14 14V5L10 1H3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10 1V5H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5 8H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M5 11H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
@@ -122,6 +131,7 @@ const NavRail: React.FC<NavRailProps> = ({
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
     { id: 'routes' as const, label: 'Routes', Icon: RoutesIcon },
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
+    { id: 'reports' as const, label: 'Reports', Icon: ReportsIcon },
   ];
 
   const handleMouseEnter = () => {
