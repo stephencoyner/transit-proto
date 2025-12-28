@@ -8,6 +8,34 @@ import csv
 import json
 from collections import defaultdict
 
+
+def get_time_period(start_time: str) -> str:
+    """
+    Determine the time period based on start time (HH:MM:SS format).
+    Time periods:
+      - early_am: 00:00 - 05:59
+      - am_peak: 06:00 - 08:59
+      - midday: 09:00 - 14:59
+      - pm_peak: 15:00 - 18:59
+      - evening: 19:00 - 21:59
+      - night: 22:00 - 23:59
+    """
+    hour = int(start_time.split(':')[0]) % 24  # Handle GTFS times >= 24
+
+    if hour < 6:
+        return "early_am"
+    elif hour < 9:
+        return "am_peak"
+    elif hour < 15:
+        return "midday"
+    elif hour < 19:
+        return "pm_peak"
+    elif hour < 22:
+        return "evening"
+    else:
+        return "night"
+
+
 def process_gtfs_trips():
     # Read trips.txt
     trips_by_route = defaultdict(list)
@@ -61,6 +89,8 @@ def process_gtfs_trips():
             # Only include trips with start times
             if trip_id in trip_start_times:
                 trip['start_time'] = trip_start_times[trip_id]
+                # Add time_period based on start_time
+                trip['time_period'] = get_time_period(trip_start_times[trip_id])
                 # Add placeholder ridership (will be replaced with real data)
                 trip['ridership'] = 0  # Placeholder
                 route_trips[route_id].append(trip)
