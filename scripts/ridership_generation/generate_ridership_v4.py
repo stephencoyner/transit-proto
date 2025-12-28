@@ -120,10 +120,13 @@ SUMMER_MULTIPLIERS = {
 
 # Route 13 time-period specific summer multipliers
 # These OVERRIDE the base SUMMER_MULTIPLIERS for Route 13
+# AM Peak: Keep trip-level near normal (0.85) so stops BEFORE Mercer stay ~normal
+# The dramatic drop AFTER Mercer is handled entirely by stop-level factors
+# PM Peak is kept high (near spring) since non-student traffic is resilient
 ROUTE13_SUMMER_MULTIPLIERS = {
-    "am_peak": 0.55,   # -45% in AM (students not going to SPU)
+    "am_peak": 0.85,   # Only 15% trip-level drop - stop factors handle after-Mercer drop
     "midday": 0.85,    # -15% midday
-    "pm_peak": 0.92,   # -8% in PM (resilient non-student traffic) - keep close to normal
+    "pm_peak": 1.00,   # No drop - PM resilient, stop factors handle the ~12% difference
     "evening": 0.88,   # -12% evening
     "early_am": 0.92,  # -8% early AM
     "night": 0.92,     # -8% night
@@ -703,27 +706,45 @@ def calculate_stop_factors_route13(
         # Northbound toward SPU
         if time_period == "am_peak":
             if is_summer and is_after_mercer:
-                # Summer AM after Mercer: DRAMATIC drop (50%+)
-                return (0.2, 0.3)
+                # Summer AM after Mercer: DRAMATIC drop - almost no activity
+                # Students aren't going to SPU, so stops after downtown are nearly empty
+                # Target: ~90% drop at these stops vs spring
+                return (0.02, 0.02)  # Near-zero activity
             elif is_summer:
-                # Summer AM before Mercer: modest drop (10-15%)
-                return (1.0, 0.4)
+                # Summer AM before Mercer: stays NEAR NORMAL (only ~5-10% drop)
+                # Non-student commuters still board here
+                return (1.0, 0.50)
             else:
                 # Spring AM: High alighting at SPU (students arriving)
                 if position > 0.7:  # Near SPU terminus
                     return (0.3, 2.5)
                 return (1.2, 0.5)
-        else:
-            # Non-AM Peak toward SPU
+        elif time_period == "pm_peak":
+            # PM Peak toward SPU (northbound) - commuters going home, not students
             if is_summer and is_after_mercer:
-                return (0.4, 0.4)
+                # Even after Mercer, PM commuters still travel - ~10-15% drop
+                return (0.75, 0.75)
+            elif is_summer:
+                # Summer PM before Mercer - ~10% drop
+                return (0.90, 0.72)
+            else:
+                # Spring PM
+                return (1.0, 0.8)
+        else:
+            # Other non-AM/PM Peak toward SPU
+            if is_summer and is_after_mercer:
+                return (0.3, 0.3)
             return (1.0, 0.8)
     else:
         # Southbound from SPU toward downtown
         if time_period == "pm_peak":
             if is_summer and position < 0.3:  # Early in trip (leaving SPU area)
-                # PM Peak summer: Only 10-15% drop (not as dramatic as AM)
-                return (2.2, 0.2)  # Nearly same as spring (2.5 -> 2.2 = ~12% drop)
+                # PM Peak summer: ~12% drop at SPU stops - students gone but commuters remain
+                # (2.2 vs 2.5 = 12% drop)
+                return (2.2, 0.2)
+            elif is_summer:
+                # Summer PM rest of route - ~10% drop
+                return (0.72, 0.90)
             elif position < 0.3:
                 # Spring PM leaving SPU: High boarding
                 return (2.5, 0.2)

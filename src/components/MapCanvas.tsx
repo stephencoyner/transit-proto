@@ -372,6 +372,7 @@ export default function MapCanvas() {
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [hoveredStopCoords, setHoveredStopCoords] = useState<{ x: number; y: number } | null>(null);
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null); // Index of hovered segment
+  const [hoveredSegmentCoords, setHoveredSegmentCoords] = useState<{ x: number; y: number } | null>(null); // Screen coords for segment tooltip
   const [selectedBoardingStop, setSelectedBoardingStop] = useState<string | null>(null); // Selected stop in boardings card
   const [tooltipStopIndex, setTooltipStopIndex] = useState<number | null>(null); // Index of stop showing tooltip
   const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -579,18 +580,8 @@ export default function MapCanvas() {
   const gridContentRef = useRef<HTMLDivElement>(null);
   const gridHeadsignRef = useRef<HTMLDivElement>(null);
 
-  // Compute filtered grid trips for the header (used when Grid tab is selected)
-  const filteredGridTripsForHeader = useMemo(() => {
-    if (selectedRouteTab !== 'Grid') return [];
-    return routeTrips
-      .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
-      .filter(patternGroup => patternGroup.trips.length > 0);
-  }, [selectedRouteTab, routeTrips, selectedPattern]);
-
-  // Get initial headsign for first render
-  const currentGridPatternHeadsign = filteredGridTripsForHeader.length > 0
-    ? filteredGridTripsForHeader[0]?.headsign || ''
-    : '';
+  // NOTE: filteredGridTripsForHeader and currentGridPatternHeadsign are computed
+  // after routeTripsWithRidership (around line 1260) to properly filter trips by time period in Grid view
 
   // Trip filtering and sorting state - Applied state (what's actually being used)
   const [appliedTripFilterMin, setAppliedTripFilterMin] = useState<number | null>(null);
@@ -1217,24 +1208,175 @@ export default function MapCanvas() {
   }, [tripMetricsMap, selectedMetric]);
 
   // Update routeTrips with real ridership data from API (based on selected metric)
-  // When time periods are filtered, only show trips that have ridership data (trips that run during the selected time period)
+  // When time periods are filtered, only show trips that run during the selected time periods
   const routeTripsWithRidership = useMemo(() => {
-    if (tripMetricsMap.size === 0) return routeTrips;
+    // Map display labels to database keys for time period filtering
+    const labelToKey: Record<string, string> = {
+      'Early AM': 'early_am',
+      'AM Peak': 'am_peak',
+      'Midday': 'midday',
+      'PM Peak': 'pm_peak',
+      'Evening': 'evening',
+      'Night': 'night',
+    };
 
     // Check if time period filter is active (not "All day")
     const hasTimePeriodFilter = appliedTimeMode === 'custom' && appliedTimePeriods.length > 0 && appliedTimePeriods.length < 6;
 
+    // Convert applied time period labels to database keys
+    const selectedPeriodKeys = appliedTimePeriods.map(label => labelToKey[label]).filter(Boolean);
+
+    // Debug: Log filtering info
+    if (routeTrips.length > 0 && routeTrips[0].trips.length > 0) {
+      const sampleTrip = routeTrips[0].trips[0];
+      console.log(`[DEBUG] Time period filtering:
+  appliedTimeMode: ${appliedTimeMode}
+  appliedTimePeriods: ${JSON.stringify(appliedTimePeriods)}
+  hasTimePeriodFilter: ${hasTimePeriodFilter}
+  selectedPeriodKeys: ${JSON.stringify(selectedPeriodKeys)}
+  sampleTrip.time_period: ${sampleTrip.time_period}
+  sampleTrip.start_time: ${sampleTrip.start_time}`);
+    }
+
     return routeTrips.map(pattern => ({
       ...pattern,
       trips: pattern.trips
-        // Filter out trips that don't have data when time period filter is active
-        .filter(trip => !hasTimePeriodFilter || tripMetricsMap.has(trip.trip_id))
+        // Filter trips by time period (using trip.time_period from GTFS data)
+        .filter(trip => !hasTimePeriodFilter || selectedPeriodKeys.includes(trip.time_period))
         .map(trip => ({
           ...trip,
-          ridership: getTripMetricValue(trip.trip_id, trip.ridership)
+          ridership: tripMetricsMap.size > 0 ? getTripMetricValue(trip.trip_id, trip.ridership) : trip.ridership
         }))
     })).filter(pattern => pattern.trips.length > 0); // Remove empty patterns
   }, [routeTrips, tripMetricsMap, getTripMetricValue, appliedTimeMode, appliedTimePeriods]);
+
+  // Compute filtered trips based on pattern selection and ridership min/max filter
+  // This is used for both the trips list UI AND for filtering map shapes/segments
+  const filteredTripsData = useMemo(() => {
+    // Apply pattern filter
+    const patternFiltered = routeTripsWithRidership
+      .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern);
+
+    // Apply ridership filter
+    const ridershipFiltered = patternFiltered.map(patternGroup => {
+      let filteredTrips = patternGroup.trips;
+
+      if (appliedTripFilterMin !== null || appliedTripFilterMax !== null) {
+        filteredTrips = filteredTrips.filter(trip => {
+          const passes =
+            (appliedTripFilterMin === null || trip.ridership >= appliedTripFilterMin) &&
+            (appliedTripFilterMax === null || trip.ridership <= appliedTripFilterMax);
+          return passes;
+        });
+      }
+
+      return {
+        ...patternGroup,
+        trips: filteredTrips
+      };
+    }).filter(patternGroup => patternGroup.trips.length > 0);
+
+    // Extract all filtered trips as a flat array
+    const allFilteredTrips = ridershipFiltered.flatMap(pg => pg.trips);
+
+    // Create a Set of filtered trip IDs for quick lookup
+    const filteredTripIds = new Set(allFilteredTrips.map(t => t.trip_id));
+
+    // Create a Set of shape IDs used by filtered trips
+    const filteredShapeIds = new Set(allFilteredTrips.map(t => t.shape_id));
+
+    // Check if any filter is actually active
+    const isFilterActive = appliedTripFilterMin !== null || appliedTripFilterMax !== null;
+
+    return {
+      patterns: ridershipFiltered,
+      trips: allFilteredTrips,
+      tripIds: filteredTripIds,
+      shapeIds: filteredShapeIds,
+      isFilterActive,
+      totalCount: routeTripsWithRidership
+        .filter(pg => !selectedPattern || pg.headsign === selectedPattern)
+        .reduce((sum, pg) => sum + pg.trips.length, 0),
+      filteredCount: allFilteredTrips.length
+    };
+  }, [routeTripsWithRidership, selectedPattern, appliedTripFilterMin, appliedTripFilterMax]);
+
+  // Compute aggregated segment load data from only the filtered trips
+  // Uses routeGridData which has per-trip per-stop metrics
+  const filteredSegmentLoadMap = useMemo(() => {
+    const segmentMap = new Map<string, { avgLoads: number[]; maxLoads: number[] }>();
+
+    // Only compute when we have grid data and a trip filter is active
+    if (!routeGridData?.data || !filteredTripsData.isFilterActive) {
+      return null; // null means "use default route-level segment data"
+    }
+
+    // Get pattern info to know stop order for segments
+    const patterns = selectedRouteId && routePatterns[selectedRouteId]
+      ? routePatterns[selectedRouteId].patterns
+      : [];
+
+    // Filter patterns by selected pattern if any
+    const relevantPatterns = selectedPattern
+      ? patterns.filter(p => p.headsign === selectedPattern)
+      : patterns;
+
+    // For each filtered trip, collect its segment load values
+    for (const tripId of filteredTripsData.tripIds) {
+      const tripStopData = routeGridData.data[tripId];
+      if (!tripStopData) continue;
+
+      // For each pattern, build segments from consecutive stops
+      for (const pattern of relevantPatterns) {
+        if (!pattern.stop_ids || pattern.stop_ids.length < 2) continue;
+
+        for (let i = 0; i < pattern.stop_ids.length - 1; i++) {
+          const fromStopId = pattern.stop_ids[i];
+          const toStopId = pattern.stop_ids[i + 1];
+          const segmentKey = `${fromStopId}-${toStopId}`;
+
+          // Get load at the "from" stop (load leaving that stop toward next)
+          const fromStopMetrics = tripStopData[fromStopId];
+          if (fromStopMetrics) {
+            if (!segmentMap.has(segmentKey)) {
+              segmentMap.set(segmentKey, { avgLoads: [], maxLoads: [] });
+            }
+            const segment = segmentMap.get(segmentKey)!;
+            segment.avgLoads.push(fromStopMetrics.avgLoad);
+            segment.maxLoads.push(fromStopMetrics.maxLoad);
+          }
+        }
+      }
+    }
+
+    // Aggregate: compute average of avgLoads and max of maxLoads for each segment
+    const aggregatedMap = new Map<string, { avgLoad: number; maxLoad: number }>();
+    for (const [key, data] of segmentMap) {
+      const avgLoad = data.avgLoads.length > 0
+        ? Math.round((data.avgLoads.reduce((a, b) => a + b, 0) / data.avgLoads.length) * 10) / 10
+        : 0;
+      const maxLoad = data.maxLoads.length > 0
+        ? Math.max(...data.maxLoads)
+        : 0;
+      aggregatedMap.set(key, { avgLoad, maxLoad });
+    }
+
+    return aggregatedMap;
+  }, [routeGridData, filteredTripsData.isFilterActive, filteredTripsData.tripIds, selectedRouteId, routePatterns, selectedPattern]);
+
+  // Compute filtered grid trips for the header (used when Grid tab is selected)
+  // This uses routeTripsWithRidership to apply time period filtering
+  const filteredGridTripsForHeader = useMemo(() => {
+    if (selectedRouteTab !== 'Grid') return [];
+    return routeTripsWithRidership
+      .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
+      .filter(patternGroup => patternGroup.trips.length > 0);
+  }, [selectedRouteTab, routeTripsWithRidership, selectedPattern]);
+
+  // Get current headsign for grid (uses filtered data)
+  const currentGridPatternHeadsign = filteredGridTripsForHeader.length > 0
+    ? filteredGridTripsForHeader[0]?.headsign || ''
+    : '';
 
   // Get the trip ridership value from API (falls back to mock value from selectedTrip)
   const tripRidershipValue = useMemo(() => {
@@ -1414,6 +1556,23 @@ export default function MapCanvas() {
       value: getMetricValue(p.metrics, selectedMetric),
     }));
   }, [routeData, selectedMetric, getMetricValue]);
+
+  // Transform route-specific comparison data by period (Date-time 2)
+  const routeDataByPeriod2 = useMemo(() => {
+    if (!routeData2?.byTimePeriod) return [];
+    const periodLabels: Record<string, string> = {
+      'early_am': 'Early AM',
+      'am_peak': 'AM Peak',
+      'midday': 'Midday',
+      'pm_peak': 'PM Peak',
+      'evening': 'Evening',
+      'night': 'Night',
+    };
+    return routeData2.byTimePeriod.map(p => ({
+      period: periodLabels[p.timePeriod] || p.timePeriod,
+      value: getMetricValue(p.metrics, selectedMetric),
+    }));
+  }, [routeData2, selectedMetric, getMetricValue]);
 
   // Transform route-specific by-date data for charts (used in RDV)
   const routeDataByDate = useMemo(() => {
@@ -1796,6 +1955,7 @@ export default function MapCanvas() {
   // Comparison chart data - use route-specific data when route is selected
   const activeComparisonDataByDate = selectedRouteId ? routeDataByDate2 : comparisonChartDataByDate;
   const activeComparisonDataByDay = selectedRouteId ? routeDataByDay2 : comparisonDataByDay;
+  const activeComparisonDataByPeriod = selectedRouteId ? routeDataByPeriod2 : comparisonDataByPeriod;
 
   // Active loading states based on context
   const isActiveByDateLoading = selectedStopId ? isStopByDateLoading : (selectedRouteId ? isRouteByDateLoading : isByDateLoading);
@@ -2037,6 +2197,13 @@ export default function MapCanvas() {
         });
       }
 
+      // Apply trip filter - only show shapes used by filtered trips
+      if (filteredTripsData.isFilterActive && filteredTripsData.shapeIds.size > 0) {
+        filtered = filtered.filter(shape =>
+          filteredTripsData.shapeIds.has(shape.properties.shape_id)
+        );
+      }
+
       return filtered;
     }
 
@@ -2070,7 +2237,7 @@ export default function MapCanvas() {
     }
 
     return shapes;
-  }, [shapes, selectedRouteId, selectedPattern, patternLookup, selectedTrip]);
+  }, [shapes, selectedRouteId, selectedPattern, patternLookup, selectedTrip, filteredTripsData.isFilterActive, filteredTripsData.shapeIds]);
 
   const filteredStops = React.useMemo(() => {
     // If a trip is selected, show only stops from that trip
@@ -2085,6 +2252,22 @@ export default function MapCanvas() {
     }
 
     if (selectedRouteId) {
+      // If trip filter is active, only show stops from patterns that have filtered trips
+      if (filteredTripsData.isFilterActive && routePatterns[selectedRouteId]) {
+        // Get headsigns of patterns that have filtered trips
+        const filteredHeadsigns = new Set(filteredTripsData.patterns.map(p => p.headsign));
+
+        // Collect stop IDs from those patterns
+        const filteredStopIds = new Set<string>();
+        for (const pattern of routePatterns[selectedRouteId].patterns) {
+          if (filteredHeadsigns.has(pattern.headsign) && pattern.stop_ids) {
+            pattern.stop_ids.forEach(stopId => filteredStopIds.add(stopId));
+          }
+        }
+
+        return stops.filter(stop => filteredStopIds.has(stop.properties.stop_id));
+      }
+
       // If a pattern is selected, use pattern's stop_ids
       if (selectedPattern && routePatterns[selectedRouteId]) {
         const patternInfo = routePatterns[selectedRouteId].patterns.find(
@@ -2113,7 +2296,7 @@ export default function MapCanvas() {
     }
 
     return [];
-  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, selectedTrip, selectedTripStops, filteredAndSortedStopsList]);
+  }, [stops, selectedStopId, selectedRouteId, selectedPattern, routeStopsMap, routePatterns, activeTab, selectedTrip, selectedTripStops, filteredAndSortedStopsList, filteredTripsData.isFilterActive, filteredTripsData.patterns]);
 
   // Check if we should show segment-based coloring (for load metrics in route detail view)
   const isLoadMetric = selectedMetric === 'Average load' || selectedMetric === 'Maxload';
@@ -2151,17 +2334,23 @@ export default function MapCanvas() {
     }
 
     // Build a lookup map from API segment data: "fromStopId-toStopId" -> load value
-    // Use trip-specific data when a trip is selected, otherwise use route-level data
+    // Priority: 1) trip-specific data, 2) filtered trips aggregated data, 3) route-level data
     const segmentLoadMap = new Map<string, number>();
     if (selectedTrip && tripData?.segments) {
-      // Use trip-specific segment data
+      // Use trip-specific segment data when viewing a single trip
       tripData.segments.forEach(seg => {
         const key = `${seg.fromStopId}-${seg.toStopId}`;
         const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
         segmentLoadMap.set(key, loadValue);
       });
+    } else if (filteredSegmentLoadMap) {
+      // Use aggregated data from only the filtered trips
+      for (const [key, data] of filteredSegmentLoadMap) {
+        const loadValue = selectedMetric === 'Maxload' ? data.maxLoad : data.avgLoad;
+        segmentLoadMap.set(key, loadValue);
+      }
     } else if (routeSegmentsData?.segments) {
-      // Use route-level segment data
+      // Use route-level segment data (all trips)
       routeSegmentsData.segments.forEach(seg => {
         const key = `${seg.fromStopId}-${seg.toStopId}`;
         const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
@@ -2261,7 +2450,7 @@ export default function MapCanvas() {
     });
 
     return segments;
-  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, routeSegmentsData, selectedTrip, tripData, selectedMetric]);
+  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, routeSegmentsData, selectedTrip, tripData, selectedMetric, filteredSegmentLoadMap]);
 
   // Calculate value range for segments
   const segmentValueRange = React.useMemo(() => {
@@ -4180,11 +4369,14 @@ export default function MapCanvas() {
       // When no trip selected, check route loading and stale data
       // Also check if data actually exists - if tripData has segments, we're not loading
       // In comparison mode with a trip selected, we need BOTH tripData and tripData2 segments
+      // Check if we need grid data for filtered segments (trip filter active but no grid data yet)
+      const isFilteredSegmentDataLoading = filteredTripsData.isFilterActive && (isGridDataLoading || isGridDataStale || !routeGridData?.data);
+
       const isSegmentDataLoading = selectedTrip
         ? (comparisonMode
             ? (!(tripData?.segments && tripData.segments.length > 0) || !(tripData2?.segments && tripData2.segments.length > 0))
             : (isTripLoading && !(tripData?.segments && tripData.segments.length > 0)))
-        : (isRouteLoading || isRouteDataStale || isSegmentDataStale || isSegmentsLoading);
+        : (isRouteLoading || isRouteDataStale || isSegmentDataStale || isSegmentsLoading || isFilteredSegmentDataLoading);
 
       layers.push(
         new PathLayer({
@@ -4217,12 +4409,20 @@ export default function MapCanvas() {
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange, filteredTripsData.isFilterActive, isGridDataLoading, isGridDataStale, routeGridData]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
           pickable: !isSegmentDataLoading, // Disable hover while loading
-          onHover: ({ object }) => setHoveredSegment(object ? object.index : null),
+          onHover: ({ object, x, y }) => {
+            setHoveredSegment(object ? object.index : null);
+            setHoveredSegmentCoords(object ? { x, y } : null);
+            // Clear stop hover when hovering a segment
+            if (object) {
+              setHoveredStop(null);
+              setHoveredStopCoords(null);
+            }
+          },
         })
       );
     } else {
@@ -4538,11 +4738,15 @@ export default function MapCanvas() {
           getFillColor: getStopBorderColor,
           radiusMinPixels: useSimplifiedStops ? 5 : 6,
           radiusMaxPixels: useSimplifiedStops ? 20 : 24,
-          pickable: !showSegmentColoring, // Disable hover in segment coloring mode
+          pickable: true, // Always pickable for hover tooltips
           visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
-          onHover: ({ object }) => {
-            if (!showSegmentColoring) {
-              setHoveredStop(object ? (object as StopFeature).properties.stop_id : null);
+          onHover: ({ object, x, y }) => {
+            setHoveredStop(object ? (object as StopFeature).properties.stop_id : null);
+            setHoveredStopCoords(object ? { x, y } : null);
+            // Clear segment hover when hovering a stop
+            if (object) {
+              setHoveredSegment(null);
+              setHoveredSegmentCoords(null);
             }
           },
           onClick: ({ object }) => {
@@ -4599,11 +4803,15 @@ export default function MapCanvas() {
           getFillColor: getStopCenterColor,
           radiusMinPixels: useSimplifiedStops ? 3 : 2,
           radiusMaxPixels: useSimplifiedStops ? 16 : 8,
-          pickable: !showSegmentColoring, // Disable hover in segment coloring mode
+          pickable: true, // Always pickable for hover tooltips
           visible: showSegmentColoring ? viewState.zoom >= 12 : true, // Hide stops when zoomed out in load visualization
-          onHover: ({ object }) => {
-            if (!showSegmentColoring) {
-              setHoveredStop(object ? (object as StopFeature).properties.stop_id : null);
+          onHover: ({ object, x, y }) => {
+            setHoveredStop(object ? (object as StopFeature).properties.stop_id : null);
+            setHoveredStopCoords(object ? { x, y } : null);
+            // Clear segment hover when hovering a stop
+            if (object) {
+              setHoveredSegment(null);
+              setHoveredSegmentCoords(null);
             }
           },
           onClick: ({ object }) => {
@@ -7223,6 +7431,197 @@ export default function MapCanvas() {
         );
       })()}
 
+      {/* Route Detail View Tooltip - shows stop/segment info when hovering on map in route detail view */}
+      {selectedRouteId && !selectedTrip && (() => {
+        // Stop tooltip in route detail view (for any metric)
+        if (hoveredStop && hoveredStopCoords && viewState.zoom >= 12) {
+          const hoveredStopData = stops.find(s => s.properties.stop_id === hoveredStop);
+          if (!hoveredStopData) return null;
+
+          // Get stop ridership from route stops data
+          const stopMetrics = routeStopsRidership?.stops?.find(s => s.stopId === hoveredStop);
+          const ridership = stopMetrics ? (
+            selectedMetric === 'Maxload' ? stopMetrics.maxLoad :
+            selectedMetric === 'Average load' ? stopMetrics.avgLoad :
+            selectedMetric === 'Average daily boardings' ? stopMetrics.avgDailyBoardings :
+            selectedMetric === 'Total boardings' ? stopMetrics.totalBoardings :
+            selectedMetric === 'Average daily alightings' ? stopMetrics.avgDailyAlightings :
+            selectedMetric === 'Average daily activity' ? stopMetrics.avgDailyActivity :
+            selectedMetric === 'Total activity' ? stopMetrics.totalActivity :
+            stopMetrics.avgDailyBoardings
+          ) : 0;
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                left: hoveredStopCoords.x,
+                top: hoveredStopCoords.y - 20,
+                transform: 'translate(-50%, -100%)',
+                backgroundColor: 'white',
+                borderRadius: 'var(--radius-default)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: '12px',
+                zIndex: 10000,
+                pointerEvents: 'none',
+                minWidth: '120px',
+                maxWidth: '200px'
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  marginBottom: '2px',
+                  wordWrap: 'break-word',
+                  lineHeight: '16px'
+                }}
+              >
+                {hoveredStopData.properties.name}
+              </div>
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                {(ridership || 0).toLocaleString()} {selectedMetric.toLowerCase()}
+              </div>
+            </div>
+          );
+        }
+
+        // Segment tooltip in route detail view (only for load metrics since segments only have load data)
+        if (showSegmentColoring && hoveredSegment !== null && hoveredSegmentCoords && segmentGeoms[hoveredSegment]) {
+          const seg = segmentGeoms[hoveredSegment];
+          const fromStop = stops.find(s => s.properties.stop_id === seg.fromStopId);
+          const toStop = stops.find(s => s.properties.stop_id === seg.toStopId);
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                left: hoveredSegmentCoords.x,
+                top: hoveredSegmentCoords.y - 20,
+                transform: 'translate(-50%, -100%)',
+                backgroundColor: 'white',
+                borderRadius: 'var(--radius-default)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: '12px',
+                zIndex: 10000,
+                pointerEvents: 'none',
+                minWidth: '140px',
+                maxWidth: '240px'
+              }}
+            >
+              {/* Stop connection diagram */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* From stop row */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Circle container - height matches lineHeight so circle centers with first line */}
+                  <div style={{
+                    width: '8px',
+                    minHeight: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: 'black',
+                      border: '2px solid white',
+                      boxSizing: 'content-box',
+                      marginTop: '2px'
+                    }} />
+                    {/* Line extends down from first circle */}
+                    <div style={{
+                      width: '2px',
+                      backgroundColor: 'black',
+                      flexGrow: 1
+                    }} />
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      wordWrap: 'break-word',
+                      lineHeight: '16px',
+                      flex: 1
+                    }}
+                  >
+                    {fromStop?.properties.name || seg.fromStopId}
+                  </div>
+                </div>
+                {/* To stop row */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Circle container with line coming from above */}
+                  <div style={{
+                    width: '8px',
+                    minHeight: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    {/* Line from gap connects to circle */}
+                    <div style={{
+                      width: '2px',
+                      height: '12px',
+                      backgroundColor: 'black',
+                      marginTop: '-8px'
+                    }} />
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: 'black',
+                      border: '2px solid white',
+                      boxSizing: 'content-box',
+                      marginTop: '-2px'
+                    }} />
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      wordWrap: 'break-word',
+                      lineHeight: '16px',
+                      flex: 1
+                    }}
+                  >
+                    {toStop?.properties.name || seg.toStopId}
+                  </div>
+                </div>
+              </div>
+              {/* Load value */}
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)',
+                  marginTop: '8px',
+                  paddingLeft: '16px'
+                }}
+              >
+                {seg.loadValue.toLocaleString()} {selectedMetric.toLowerCase()}
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
+
       {/* Map Scale - hide in amenities view since we're not showing map data */}
       {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && (
         <MapScale
@@ -8009,7 +8408,7 @@ export default function MapCanvas() {
                     />
                     <ByPeriodChart
                       data={activeDataByPeriod}
-                      comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
+                      comparisonData={comparisonMode ? activeComparisonDataByPeriod : undefined}
                       colors={PERIOD_COLORS}
                       activePieIndex={activePieIndex}
                       setActivePieIndex={setActivePieIndex}
@@ -8610,7 +9009,7 @@ export default function MapCanvas() {
                 />
                 <ByPeriodChart
                   data={activeDataByPeriod}
-                  comparisonData={comparisonMode ? comparisonDataByPeriod : undefined}
+                  comparisonData={comparisonMode ? activeComparisonDataByPeriod : undefined}
                   colors={PERIOD_COLORS}
                   swapped={comparisonSwapped}
                   activePieIndex={activePieIndex}
@@ -9240,8 +9639,8 @@ export default function MapCanvas() {
             ) : (
               /* Grid View */
               (() => {
-                // Filter trips by pattern (same logic as Trips view)
-                const filteredGridTrips = routeTrips
+                // Filter trips by pattern AND time period (uses routeTripsWithRidership which has time period filtering applied)
+                const filteredGridTrips = routeTripsWithRidership
                   .filter(patternGroup => !selectedPattern || patternGroup.headsign === selectedPattern)
                   .map(patternGroup => ({
                     ...patternGroup,

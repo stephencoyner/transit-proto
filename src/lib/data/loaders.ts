@@ -73,6 +73,7 @@ export interface Trip {
   headsign: string;
   direction_id: string;
   start_time: string; // HH:MM:SS format
+  time_period: string; // early_am, am_peak, midday, pm_peak, evening, night
   ridership: number; // Placeholder for now, will be real data later
 }
 
@@ -84,7 +85,20 @@ export interface TripsByPattern {
 
 // Fetch all route trips from GTFS (using gzipped file for faster loading)
 export async function fetchRouteTrips(): Promise<{ [routeId: string]: Trip[] }> {
-  const data = await fetchGzipped<{ [routeId: string]: Trip[] }>('/data/route_trips.json.gz');
+  // Cache bust to ensure we get the latest data with time_period field
+  const data = await fetchGzipped<{ [routeId: string]: Trip[] }>('/data/route_trips.json.gz?v=3');
+
+  // Debug: Verify time_period is present
+  const firstRouteId = Object.keys(data)[0];
+  if (firstRouteId && data[firstRouteId]?.length > 0) {
+    const sampleTrip = data[firstRouteId][0];
+    console.log('[DEBUG] fetchRouteTrips - sample trip:', {
+      trip_id: sampleTrip.trip_id,
+      start_time: sampleTrip.start_time,
+      time_period: sampleTrip.time_period,
+      hasTimePeriod: 'time_period' in sampleTrip
+    });
+  }
 
   // Add placeholder ridership to each trip (random between 50-500)
   for (const trips of Object.values(data)) {
