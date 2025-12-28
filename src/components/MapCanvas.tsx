@@ -2389,8 +2389,8 @@ export default function MapCanvas() {
     }
   }, [isStopLevelView, isLoadMetric]);
 
-  // Check if we're in Grid view (full screen data panel)
-  const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip);
+  // Check if we're in Grid view (full screen data panel) - includes Reports tab
+  const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip) || activeTab === 'reports';
 
   // Generate segments between consecutive stops with real API load values
   const segmentGeoms = React.useMemo(() => {
@@ -7878,8 +7878,8 @@ export default function MapCanvas() {
         </button>
       )}
 
-      {/* Map Scale - hide in amenities view since we're not showing map data */}
-      {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && (
+      {/* Map Scale - hide in amenities view and reports view since we're not showing map data */}
+      {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && activeTab !== 'reports' && (
         <MapScale
           title={comparisonMode ? `Change in ${scaleTitle.toLowerCase()}` : scaleTitle}
           min={comparisonMode

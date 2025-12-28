@@ -65,23 +65,34 @@ const ReportsPanel: React.FC<ReportsPanelProps> = ({ onViewReport }) => {
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      overflowY: 'auto',
-      paddingTop: '20px',
-      paddingBottom: '24px',
-      marginRight: '-8px',
-      paddingRight: '8px',
+      overflowY: 'hidden',
+      position: 'relative',
+      marginRight: '-50px',
+      paddingRight: '50px',
     }}>
-      {/* Header */}
-      <h2
-        style={{
-          fontSize: '24px',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          marginBottom: '16px',
-        }}
-      >
-        Reports
-      </h2>
+      {/* Header Bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: '14px',
+        paddingBottom: '8px',
+        paddingLeft: '0px',
+        paddingRight: '0px',
+        flexShrink: 0,
+        backgroundColor: 'var(--bg-primary)',
+        zIndex: 20
+      }}>
+        {/* Report Count */}
+        <div
+          className="data-small"
+          style={{
+            color: 'var(--text-secondary)'
+          }}
+        >
+          {reports.length} {reports.length === 1 ? 'Report' : 'Reports'}
+        </div>
+      </div>
 
       {reports.length === 0 ? (
         <div
@@ -139,7 +150,16 @@ const ReportsPanel: React.FC<ReportsPanelProps> = ({ onViewReport }) => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          paddingBottom: '24px',
+          marginRight: '-8px',
+          paddingRight: '8px'
+        }}>
           {reports.map((report) => (
             <ReportCard
               key={report.id}
