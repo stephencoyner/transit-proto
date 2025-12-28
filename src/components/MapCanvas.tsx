@@ -18,6 +18,9 @@ import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
+import { Report, ReportState, saveReport } from '@/lib/reports';
+import ReportsPanel from '@/components/ReportsPanel';
+import SaveReportModal from '@/components/SaveReportModal';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -367,7 +370,7 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components' | 'reports'>('system');
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [hoveredStopCoords, setHoveredStopCoords] = useState<{ x: number; y: number } | null>(null);
@@ -449,6 +452,9 @@ export default function MapCanvas() {
   const [isCompareHovered, setIsCompareHovered] = useState(false);
   const [isDate2Hovered, setIsDate2Hovered] = useState(false);
   const [isDays2Hovered, setIsDays2Hovered] = useState(false);
+
+  // Report capture state
+  const [isSaveReportModalOpen, setIsSaveReportModalOpen] = useState<boolean>(false);
 
   // Comparison mode state
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
@@ -5006,10 +5012,19 @@ export default function MapCanvas() {
             setSelectedRouteTab('Summary');
             // Clear navigation back stack when switching tabs
             setNavigationStack([]);
+            // Close filter panel when switching to Reports tab
+            if (tab === 'reports') {
+              setIsFiltersPanelOpen(false);
+            }
           }}
           userInitial="S"
-          isFiltersPanelOpen={isFiltersPanelOpen}
-          onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
+          isFiltersPanelOpen={isFiltersPanelOpen && activeTab !== 'reports'}
+          onToggleFiltersPanel={() => {
+            // Disable filter toggle when on Reports tab
+            if (activeTab !== 'reports') {
+              setIsFiltersPanelOpen(!isFiltersPanelOpen);
+            }
+          }}
           routeControlsTitleSemibold={routeControlsTitleSemibold}
           onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
           differentiatedPanelBackgrounds={differentiatedPanelBackgrounds}
@@ -5023,12 +5038,12 @@ export default function MapCanvas() {
       <div
         id="filters-panel"
         style={{
-          width: isFiltersPanelOpen ? '256px' : '0px',
+          width: (isFiltersPanelOpen && activeTab !== 'reports') ? '256px' : '0px',
           height: 'calc(100% - 24px)',
           backgroundColor: differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
           borderBottom: '0.5px solid var(--border-default)',
-          borderRight: isFiltersPanelOpen ? '0.5px solid var(--border-default)' : 'none',
+          borderRight: (isFiltersPanelOpen && activeTab !== 'reports') ? '0.5px solid var(--border-default)' : 'none',
           display: 'flex',
           flexDirection: 'column',
           position: 'fixed',
@@ -7822,6 +7837,46 @@ export default function MapCanvas() {
 
         return null;
       })()}
+
+      {/* Capture Report Button */}
+      {activeTab !== 'reports' && (
+        <button
+          onClick={() => setIsSaveReportModalOpen(true)}
+          style={{
+            position: 'absolute',
+            bottom: comparisonMode ? '180px' : '120px',
+            right: '12px',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--bg-elevated)',
+            border: '0.5px solid var(--border-default)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            boxShadow: 'var(--shadow-sm)',
+            transition: 'background-color 0.15s ease, transform 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label="Capture Report"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 4C3.44772 4 3 4.44772 3 5V19C3 19.5523 3.44772 20 4 20H20C20.5523 20 21 19.5523 21 19V8L17 4H4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M17 4V8H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M8 12H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M8 16H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
 
       {/* Map Scale - hide in amenities view since we're not showing map data */}
       {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && (
@@ -10671,6 +10726,72 @@ export default function MapCanvas() {
               </div>
             );
           })()
+        ) : activeTab === 'reports' ? (
+          /* Reports View */
+          <ReportsPanel
+            onViewReport={(report) => {
+              // Restore state from report
+              const state = report.state;
+
+              // Set view state
+              if (state.activeTab !== 'reports') {
+                setActiveTab(state.activeTab);
+              }
+              setSelectedRouteId(state.selectedRouteId);
+              setSelectedStopId(state.selectedStopId);
+              setSelectedTrip(state.selectedTrip ? { trip_id: state.selectedTrip } as Trip : null);
+              setSelectedPattern(state.selectedPattern);
+              setSelectedMetric(state.selectedMetric);
+
+              // Restore date range
+              if (state.dateRange.start && state.dateRange.end) {
+                setAppliedStartDate(new Date(state.dateRange.start));
+                setAppliedEndDate(new Date(state.dateRange.end));
+                setAppliedSeason(null);
+                setAppliedQuickPick(null);
+              }
+
+              // Restore day/period filters
+              const daysToMode = (days: number[]) => {
+                if (days.length === 0 || days.length === 7) return 'all';
+                if (days.length === 5 && [1,2,3,4,5].every(d => days.includes(d))) return 'weekdays';
+                if (days.length === 2 && [0,6].every(d => days.includes(d))) return 'weekends';
+                return 'custom';
+              };
+              const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+              setAppliedDaysMode(daysToMode(state.selectedDays));
+              setAppliedCustomDays(state.selectedDays.map(d => dayNames[d]));
+              setAppliedTimeMode(state.selectedPeriods.length === 0 ? 'all' : 'custom');
+              setAppliedTimePeriods(state.selectedPeriods);
+
+              // Restore comparison mode
+              setComparisonMode(state.comparisonMode);
+              if (state.comparisonMode && state.comparisonDateRange.start && state.comparisonDateRange.end) {
+                setComparisonDateRange({
+                  start: new Date(state.comparisonDateRange.start),
+                  end: new Date(state.comparisonDateRange.end)
+                });
+                setAppliedDaysMode2(daysToMode(state.comparisonDays));
+                setAppliedCustomDays2(state.comparisonDays.map(d => dayNames[d]));
+                setAppliedTimeMode2(state.comparisonPeriods.length === 0 ? 'all' : 'custom');
+                setAppliedTimePeriods2(state.comparisonPeriods);
+                setComparisonSwapped(state.comparisonSwapped);
+              }
+
+              // Restore map view
+              setViewState(prev => ({
+                ...prev,
+                longitude: state.viewState.longitude,
+                latitude: state.viewState.latitude,
+                zoom: state.viewState.zoom
+              }));
+
+              // Open filter panel if not on reports tab
+              if (state.activeTab !== 'reports') {
+                setIsFiltersPanelOpen(true);
+              }
+            }}
+          />
         ) : (
           /* Routes View with Filter/Sort */
           (() => {
@@ -11616,6 +11737,58 @@ export default function MapCanvas() {
           </div>
         )
       )}
+
+      {/* Save Report Modal */}
+      <SaveReportModal
+        isOpen={isSaveReportModalOpen}
+        onClose={() => setIsSaveReportModalOpen(false)}
+        onSave={(name, description) => {
+          // Capture current state
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const getDaysFromMode = (mode: string, customDays: string[]) => {
+            if (mode === 'all') return [0, 1, 2, 3, 4, 5, 6];
+            if (mode === 'weekdays') return [1, 2, 3, 4, 5];
+            if (mode === 'weekends') return [0, 6];
+            return customDays.map(d => dayNames.indexOf(d)).filter(i => i >= 0);
+          };
+
+          const reportState: ReportState = {
+            activeTab,
+            selectedRouteId,
+            selectedStopId,
+            selectedTrip: selectedTrip?.trip_id || null,
+            selectedPattern,
+            selectedMetric,
+            dateRange: {
+              start: effectiveDateRange.start?.toISOString() || null,
+              end: effectiveDateRange.end?.toISOString() || null,
+            },
+            selectedDays: getDaysFromMode(appliedDaysMode, appliedCustomDays),
+            selectedPeriods: appliedTimePeriods,
+            selectedDirection: null, // Direction is derived from pattern
+            comparisonMode,
+            comparisonDateRange: {
+              start: comparisonDateRange.start?.toISOString() || null,
+              end: comparisonDateRange.end?.toISOString() || null,
+            },
+            comparisonDays: getDaysFromMode(appliedDaysMode2, appliedCustomDays2),
+            comparisonPeriods: appliedTimePeriods2,
+            comparisonDirection: null,
+            comparisonSwapped,
+            viewState: {
+              longitude: viewState.longitude,
+              latitude: viewState.latitude,
+              zoom: viewState.zoom,
+            },
+          };
+
+          saveReport({ name, description, state: reportState });
+
+          // Refresh reports panel if it's using window.refreshReports
+          const refreshFn = (window as unknown as { refreshReports?: () => void }).refreshReports;
+          if (refreshFn) refreshFn();
+        }}
+      />
     </div>
   );
 }
