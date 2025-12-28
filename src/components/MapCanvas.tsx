@@ -15,7 +15,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart, ByPatternChart, ByRouteChart } from '@/components/charts';
 import MapScale, { ComparisonDisplayMode } from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
-import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB } from '@/utils/comparisonColors';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 
@@ -1135,6 +1135,8 @@ export default function MapCanvas() {
 
   // Fetch route stops ridership data for map stop coloring when route is selected (uses routeFilterState for pattern/direction filtering)
   const { data: routeStopsRidership } = useRouteStopsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
+  // Fetch comparison data for route stops (Date-time 2)
+  const { data: routeStopsRidership2 } = useRouteStopsData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
 
   // Fetch route grid data for trips grid view (per-trip per-stop ridership)
   // Start fetching when route is selected (not waiting for Grid tab) to preload data in background
@@ -1143,6 +1145,12 @@ export default function MapCanvas() {
     selectedRouteId,
     routeFilterState,
     !!effectiveDateRange.start && !!selectedRouteId
+  );
+  // Fetch comparison grid data (Date-time 2) for segment comparison
+  const { data: routeGridData2 } = useRouteGridData(
+    selectedRouteId,
+    routeFilterState2,
+    comparisonMode && !!comparisonDateRange.start && !!selectedRouteId
   );
 
   // Check if grid data is stale (from a different route than currently selected)
@@ -1301,28 +1309,32 @@ export default function MapCanvas() {
     };
   }, [routeTripsWithRidership, selectedPattern, appliedTripFilterMin, appliedTripFilterMax]);
 
-  // Compute aggregated segment load data from only the filtered trips
-  // Uses routeGridData which has per-trip per-stop metrics
-  const filteredSegmentLoadMap = useMemo(() => {
+  // Compute segment load data from routeGridData (per-trip per-stop metrics)
+  // This correctly builds segment keys based on pattern stop order
+  // When a trip filter is active, only uses filtered trips; otherwise uses all trips
+  const segmentLoadMapFromGrid = useMemo(() => {
     const segmentMap = new Map<string, { avgLoads: number[]; maxLoads: number[] }>();
 
-    // Only compute when we have grid data and a trip filter is active
-    if (!routeGridData?.data || !filteredTripsData.isFilterActive) {
-      return null; // null means "use default route-level segment data"
+    // Need grid data and pattern info
+    if (!routeGridData?.data || !selectedRouteId || !routePatterns[selectedRouteId]) {
+      return null;
     }
 
     // Get pattern info to know stop order for segments
-    const patterns = selectedRouteId && routePatterns[selectedRouteId]
-      ? routePatterns[selectedRouteId].patterns
-      : [];
+    const patterns = routePatterns[selectedRouteId].patterns;
 
     // Filter patterns by selected pattern if any
     const relevantPatterns = selectedPattern
       ? patterns.filter(p => p.headsign === selectedPattern)
       : patterns;
 
-    // For each filtered trip, collect its segment load values
-    for (const tripId of filteredTripsData.tripIds) {
+    // Determine which trips to include
+    const tripIdsToUse = filteredTripsData.isFilterActive
+      ? filteredTripsData.tripIds
+      : new Set(Object.keys(routeGridData.data));
+
+    // For each trip, collect its segment load values
+    for (const tripId of tripIdsToUse) {
       const tripStopData = routeGridData.data[tripId];
       if (!tripStopData) continue;
 
@@ -1363,6 +1375,62 @@ export default function MapCanvas() {
 
     return aggregatedMap;
   }, [routeGridData, filteredTripsData.isFilterActive, filteredTripsData.tripIds, selectedRouteId, routePatterns, selectedPattern]);
+
+  // Compute segment load data from comparison grid data (Date-time 2) for segment comparison
+  const segmentLoadMapFromGrid2 = useMemo(() => {
+    const segmentMap = new Map<string, { avgLoads: number[]; maxLoads: number[] }>();
+
+    // Only compute in comparison mode with grid data
+    if (!comparisonMode || !routeGridData2?.data || !selectedRouteId || !routePatterns[selectedRouteId]) {
+      return null;
+    }
+
+    const patterns = routePatterns[selectedRouteId].patterns;
+    const relevantPatterns = selectedPattern
+      ? patterns.filter(p => p.headsign === selectedPattern)
+      : patterns;
+
+    // Use all trips from comparison grid data (no filtering for comparison)
+    const tripIdsToUse = new Set(Object.keys(routeGridData2.data));
+
+    for (const tripId of tripIdsToUse) {
+      const tripStopData = routeGridData2.data[tripId];
+      if (!tripStopData) continue;
+
+      for (const pattern of relevantPatterns) {
+        if (!pattern.stop_ids || pattern.stop_ids.length < 2) continue;
+
+        for (let i = 0; i < pattern.stop_ids.length - 1; i++) {
+          const fromStopId = pattern.stop_ids[i];
+          const toStopId = pattern.stop_ids[i + 1];
+          const segmentKey = `${fromStopId}-${toStopId}`;
+
+          const fromStopMetrics = tripStopData[fromStopId];
+          if (fromStopMetrics) {
+            if (!segmentMap.has(segmentKey)) {
+              segmentMap.set(segmentKey, { avgLoads: [], maxLoads: [] });
+            }
+            const segment = segmentMap.get(segmentKey)!;
+            segment.avgLoads.push(fromStopMetrics.avgLoad);
+            segment.maxLoads.push(fromStopMetrics.maxLoad);
+          }
+        }
+      }
+    }
+
+    const aggregatedMap = new Map<string, { avgLoad: number; maxLoad: number }>();
+    for (const [key, data] of segmentMap) {
+      const avgLoad = data.avgLoads.length > 0
+        ? Math.round((data.avgLoads.reduce((a, b) => a + b, 0) / data.avgLoads.length) * 10) / 10
+        : 0;
+      const maxLoad = data.maxLoads.length > 0
+        ? Math.max(...data.maxLoads)
+        : 0;
+      aggregatedMap.set(key, { avgLoad, maxLoad });
+    }
+
+    return aggregatedMap;
+  }, [comparisonMode, routeGridData2, selectedRouteId, routePatterns, selectedPattern]);
 
   // Compute filtered grid trips for the header (used when Grid tab is selected)
   // This uses routeTripsWithRidership to apply time period filtering
@@ -2333,8 +2401,8 @@ export default function MapCanvas() {
       return [];
     }
 
-    // Build a lookup map from API segment data: "fromStopId-toStopId" -> load value
-    // Priority: 1) trip-specific data, 2) filtered trips aggregated data, 3) route-level data
+    // Build a lookup map from segment data: "fromStopId-toStopId" -> load value
+    // Priority: 1) trip-specific data, 2) grid-based segment data (works for both filtered and unfiltered)
     const segmentLoadMap = new Map<string, number>();
     if (selectedTrip && tripData?.segments) {
       // Use trip-specific segment data when viewing a single trip
@@ -2343,19 +2411,12 @@ export default function MapCanvas() {
         const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
         segmentLoadMap.set(key, loadValue);
       });
-    } else if (filteredSegmentLoadMap) {
-      // Use aggregated data from only the filtered trips
-      for (const [key, data] of filteredSegmentLoadMap) {
+    } else if (segmentLoadMapFromGrid) {
+      // Use grid-based segment data (correctly keyed by pattern stop order)
+      for (const [key, data] of segmentLoadMapFromGrid) {
         const loadValue = selectedMetric === 'Maxload' ? data.maxLoad : data.avgLoad;
         segmentLoadMap.set(key, loadValue);
       }
-    } else if (routeSegmentsData?.segments) {
-      // Use route-level segment data (all trips)
-      routeSegmentsData.segments.forEach(seg => {
-        const key = `${seg.fromStopId}-${seg.toStopId}`;
-        const loadValue = selectedMetric === 'Maxload' ? seg.maxLoad : seg.avgLoad;
-        segmentLoadMap.set(key, loadValue);
-      });
     }
 
     // Create a map of stop_id -> coordinates
@@ -2450,7 +2511,7 @@ export default function MapCanvas() {
     });
 
     return segments;
-  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, routeSegmentsData, selectedTrip, tripData, selectedMetric, filteredSegmentLoadMap]);
+  }, [showSegmentColoring, selectedPattern, selectedRouteId, routePatterns, filteredStops, filteredShapes, selectedTrip, tripData, selectedMetric, segmentLoadMapFromGrid]);
 
   // Calculate value range for segments
   const segmentValueRange = React.useMemo(() => {
@@ -2459,21 +2520,36 @@ export default function MapCanvas() {
     return getValueRange(values);
   }, [segmentGeoms]);
 
-  // Create comparison data for segments (percent change)
+  // Create comparison data for segments (percent change) using real data
   const segmentComparisonMap = React.useMemo(() => {
     if (!comparisonMode || segmentGeoms.length === 0) return new Map<string, number>();
+    if (!segmentLoadMapFromGrid || !segmentLoadMapFromGrid2) return new Map<string, number>();
+
     const map = new Map<string, number>();
     segmentGeoms.forEach(seg => {
       const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
-      // Generate varied mock comparison data based on segment hash
-      const hash = segmentKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      // Generate percent changes ranging from -40% to +50%
-      const percentChange = ((hash % 91) - 40);
-      // If swapped, negate the percent change to reverse the color
-      map.set(segmentKey, comparisonSwapped ? -percentChange : percentChange);
+      const data1 = segmentLoadMapFromGrid.get(segmentKey);
+      const data2 = segmentLoadMapFromGrid2.get(segmentKey);
+
+      if (data1 && data2) {
+        const value1 = selectedMetric === 'Maxload' ? data1.maxLoad : data1.avgLoad;
+        const value2 = selectedMetric === 'Maxload' ? data2.maxLoad : data2.avgLoad;
+
+        // Calculate percent change: (value1 - value2) / value2 * 100
+        // value1 is Date-time 1 (primary), value2 is Date-time 2 (comparison baseline)
+        let percentChange = 0;
+        if (value2 > 0) {
+          percentChange = Math.round(((value1 - value2) / value2) * 100);
+        } else if (value1 > 0) {
+          percentChange = 100; // Went from 0 to something = 100% increase
+        }
+
+        // If swapped, negate the percent change
+        map.set(segmentKey, comparisonSwapped ? -percentChange : percentChange);
+      }
     });
     return map;
-  }, [segmentGeoms, comparisonMode, comparisonSwapped]);
+  }, [segmentGeoms, comparisonMode, comparisonSwapped, segmentLoadMapFromGrid, segmentLoadMapFromGrid2, selectedMetric]);
 
   // Get the range of segment comparison values
   const segmentComparisonRange = React.useMemo(() => {
@@ -4369,14 +4445,14 @@ export default function MapCanvas() {
       // When no trip selected, check route loading and stale data
       // Also check if data actually exists - if tripData has segments, we're not loading
       // In comparison mode with a trip selected, we need BOTH tripData and tripData2 segments
-      // Check if we need grid data for filtered segments (trip filter active but no grid data yet)
-      const isFilteredSegmentDataLoading = filteredTripsData.isFilterActive && (isGridDataLoading || isGridDataStale || !routeGridData?.data);
+      // Check if grid data is loading (needed for segment coloring)
+      const isGridSegmentDataLoading = isGridDataLoading || isGridDataStale || !routeGridData?.data;
 
       const isSegmentDataLoading = selectedTrip
         ? (comparisonMode
             ? (!(tripData?.segments && tripData.segments.length > 0) || !(tripData2?.segments && tripData2.segments.length > 0))
             : (isTripLoading && !(tripData?.segments && tripData.segments.length > 0)))
-        : (isRouteLoading || isRouteDataStale || isSegmentDataStale || isSegmentsLoading || isFilteredSegmentDataLoading);
+        : (isRouteLoading || isRouteDataStale || isGridSegmentDataLoading);
 
       layers.push(
         new PathLayer({
@@ -4409,7 +4485,7 @@ export default function MapCanvas() {
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isSegmentsLoading, isTripLoading, selectedTrip, isRouteDataStale, isSegmentDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange, filteredTripsData.isFilterActive, isGridDataLoading, isGridDataStale, routeGridData]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isTripLoading, selectedTrip, isRouteDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange, isGridDataLoading, isGridDataStale, routeGridData]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
@@ -7286,7 +7362,8 @@ export default function MapCanvas() {
       </DeckGL>
 
       {/* Loading Spinner Overlay - positioned over the visible map area */}
-      {isRidershipLoading && (
+      {/* Show spinner when loading ridership data OR when loading grid data for segment coloring in route detail view */}
+      {(isRidershipLoading || (selectedRouteId && !selectedTrip && showSegmentColoring && (isGridDataLoading || isGridDataStale))) && (
         <div
           style={{
             position: 'fixed',
@@ -7440,16 +7517,33 @@ export default function MapCanvas() {
 
           // Get stop ridership from route stops data
           const stopMetrics = routeStopsRidership?.stops?.find(s => s.stopId === hoveredStop);
-          const ridership = stopMetrics ? (
-            selectedMetric === 'Maxload' ? stopMetrics.maxLoad :
-            selectedMetric === 'Average load' ? stopMetrics.avgLoad :
-            selectedMetric === 'Average daily boardings' ? stopMetrics.avgDailyBoardings :
-            selectedMetric === 'Total boardings' ? stopMetrics.totalBoardings :
-            selectedMetric === 'Average daily alightings' ? stopMetrics.avgDailyAlightings :
-            selectedMetric === 'Average daily activity' ? stopMetrics.avgDailyActivity :
-            selectedMetric === 'Total activity' ? stopMetrics.totalActivity :
-            stopMetrics.avgDailyBoardings
-          ) : 0;
+          const stopMetrics2 = routeStopsRidership2?.stops?.find(s => s.stopId === hoveredStop);
+
+          const getStopMetricValue = (metrics: typeof stopMetrics): number => {
+            if (!metrics) return 0;
+            const value = selectedMetric === 'Maxload' ? metrics.maxLoad :
+              selectedMetric === 'Average load' ? metrics.avgLoad :
+              selectedMetric === 'Average daily boardings' ? metrics.avgDailyBoardings :
+              selectedMetric === 'Total boardings' ? metrics.totalBoardings :
+              selectedMetric === 'Average daily alightings' ? metrics.avgDailyAlightings :
+              selectedMetric === 'Average daily activity' ? metrics.avgDailyActivity :
+              selectedMetric === 'Total activity' ? metrics.totalActivity :
+              metrics.avgDailyBoardings;
+            return value ?? 0;
+          };
+
+          const ridership = getStopMetricValue(stopMetrics) || 0;
+          const ridership2 = getStopMetricValue(stopMetrics2) || 0;
+
+          // Calculate percent change for comparison mode
+          let percentChange: number | null = null;
+          if (comparisonMode && ridership2 > 0) {
+            percentChange = Math.round(((ridership - ridership2) / ridership2) * 100);
+            if (comparisonSwapped) percentChange = -percentChange;
+          } else if (comparisonMode && ridership > 0) {
+            percentChange = 100;
+            if (comparisonSwapped) percentChange = -percentChange;
+          }
 
           return (
             <div
@@ -7465,7 +7559,7 @@ export default function MapCanvas() {
                 zIndex: 10000,
                 pointerEvents: 'none',
                 minWidth: '120px',
-                maxWidth: '200px'
+                maxWidth: '240px'
               }}
             >
               <div
@@ -7474,22 +7568,67 @@ export default function MapCanvas() {
                   fontSize: '12px',
                   fontWeight: 600,
                   color: 'var(--text-primary)',
-                  marginBottom: '2px',
+                  marginBottom: '4px',
                   wordWrap: 'break-word',
                   lineHeight: '16px'
                 }}
               >
                 {hoveredStopData.properties.name}
               </div>
-              <div
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                {(ridership || 0).toLocaleString()} {selectedMetric.toLowerCase()}
-              </div>
+              {comparisonMode ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* Date-time 1 row with percent change pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_1_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                      {(comparisonSwapped ? ridership2 : ridership).toLocaleString()}
+                    </span>
+                    {percentChange !== null && (
+                      <span style={{
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: percentChange > 0 ? POSITIVE_PILL_TEXT : percentChange < 0 ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
+                        backgroundColor: percentChange > 0 ? POSITIVE_PILL_BG : percentChange < 0 ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        marginLeft: '8px'
+                      }}>
+                        {percentChange > 0 ? '+' : ''}{percentChange}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Date-time 2 row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_2_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                      {(comparisonSwapped ? ridership : ridership2).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  {(ridership || 0).toLocaleString()} {selectedMetric.toLowerCase()}
+                </div>
+              )}
             </div>
           );
         }
@@ -7604,16 +7743,78 @@ export default function MapCanvas() {
                 </div>
               </div>
               {/* Load value */}
-              <div
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  color: 'var(--text-secondary)',
-                  marginTop: '8px',
-                  paddingLeft: '16px'
-                }}
-              >
-                {seg.loadValue.toLocaleString()} {selectedMetric.toLowerCase()}
+              <div style={{ marginTop: '8px', paddingLeft: '16px' }}>
+                {comparisonMode ? (() => {
+                  const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
+                  const data1 = segmentLoadMapFromGrid?.get(segmentKey);
+                  const data2 = segmentLoadMapFromGrid2?.get(segmentKey);
+                  const value1 = data1 ? (selectedMetric === 'Maxload' ? data1.maxLoad : data1.avgLoad) : 0;
+                  const value2 = data2 ? (selectedMetric === 'Maxload' ? data2.maxLoad : data2.avgLoad) : 0;
+
+                  let percentChange: number | null = null;
+                  if (value2 > 0) {
+                    percentChange = Math.round(((value1 - value2) / value2) * 100);
+                    if (comparisonSwapped) percentChange = -percentChange;
+                  } else if (value1 > 0) {
+                    percentChange = 100;
+                    if (comparisonSwapped) percentChange = -percentChange;
+                  }
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {/* Date-time 1 row with percent change pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: DATETIME_1_COLOR,
+                          flexShrink: 0
+                        }} />
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                          {(comparisonSwapped ? value2 : value1).toLocaleString()}
+                        </span>
+                        {percentChange !== null && (
+                          <span style={{
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: percentChange > 0 ? POSITIVE_PILL_TEXT : percentChange < 0 ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
+                            backgroundColor: percentChange > 0 ? POSITIVE_PILL_BG : percentChange < 0 ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            marginLeft: '8px'
+                          }}>
+                            {percentChange > 0 ? '+' : ''}{percentChange}%
+                          </span>
+                        )}
+                      </div>
+                      {/* Date-time 2 row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: DATETIME_2_COLOR,
+                          flexShrink: 0
+                        }} />
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                          {(comparisonSwapped ? value1 : value2).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '12px',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    {seg.loadValue.toLocaleString()} {selectedMetric.toLowerCase()}
+                  </div>
+                )}
               </div>
             </div>
           );
