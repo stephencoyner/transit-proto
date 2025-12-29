@@ -2728,6 +2728,19 @@ export default function MapCanvas() {
     return map;
   }, [routesList, comparisonMode, comparisonSwapped, routeComparisonValueMap]);
 
+  // Get the range of route-specific comparison values for color scaling
+  const routeComparisonRange = React.useMemo(() => {
+    if (!comparisonMode) return { min: 0, max: 0 };
+    const values = [...routeComparisonMap.values()];
+    if (values.length === 0) return { min: 0, max: 0 };
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    return {
+      min: Number.isFinite(minVal) ? minVal : 0,
+      max: Number.isFinite(maxVal) ? maxVal : 0
+    };
+  }, [routeComparisonMap, comparisonMode]);
+
   // Create a map of stop comparison values (Date-time 2 values) for stops list display
   const stopComparisonValueMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
@@ -2782,6 +2795,19 @@ export default function MapCanvas() {
     return map;
   }, [stopsList, comparisonMode, comparisonSwapped, stopComparisonValueMap]);
 
+  // Get the range of stop-specific comparison values for color scaling
+  const stopComparisonRange = React.useMemo(() => {
+    if (!comparisonMode) return { min: 0, max: 0 };
+    const values = [...stopComparisonMap.values()];
+    if (values.length === 0) return { min: 0, max: 0 };
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    return {
+      min: Number.isFinite(minVal) ? minVal : 0,
+      max: Number.isFinite(maxVal) ? maxVal : 0
+    };
+  }, [stopComparisonMap, comparisonMode]);
+
   // Trip-specific stop comparison map for TDV comparison mode
   // Uses tripData and tripData2 instead of allStopsData
   const tripStopComparisonMap = React.useMemo(() => {
@@ -2835,6 +2861,18 @@ export default function MapCanvas() {
 
     return map;
   }, [comparisonMode, selectedTrip, tripData, tripData2, selectedMetric, comparisonSwapped]);
+
+  // Get the range of trip-specific stop comparison values for color scaling in TDV
+  const tripStopComparisonRange = React.useMemo(() => {
+    if (!comparisonMode || tripStopComparisonMap.size === 0) return { min: 0, max: 0 };
+    const values = [...tripStopComparisonMap.values()];
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    return {
+      min: Number.isFinite(minVal) ? minVal : 0,
+      max: Number.isFinite(maxVal) ? maxVal : 0
+    };
+  }, [tripStopComparisonMap, comparisonMode]);
 
   // Trip-specific segment comparison map for TDV comparison mode (load metrics)
   // Uses tripData.segments and tripData2.segments
@@ -3517,6 +3555,13 @@ export default function MapCanvas() {
     setComparisonPreset(null);
     setComparisonDateRange({ start: null, end: null });
     setComparisonSwapped(false);
+
+    // Reset exit tooltip state
+    setShowExitTooltip(false);
+    if (exitTooltipTimerRef.current) {
+      clearTimeout(exitTooltipTimerRef.current);
+      exitTooltipTimerRef.current = null;
+    }
   };
 
   // Swap Date-time 1 and Date-time 2 display order
@@ -7614,8 +7659,8 @@ export default function MapCanvas() {
                 style={{
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
+                  fontWeight: 400,
+                  color: 'var(--text-secondary)',
                   marginBottom: '4px',
                   wordWrap: 'break-word',
                   lineHeight: '16px'
@@ -7634,7 +7679,7 @@ export default function MapCanvas() {
                       backgroundColor: DATETIME_1_COLOR,
                       flexShrink: 0
                     }} />
-                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
                       {(comparisonSwapped ? ridership2 : ridership).toLocaleString()}
                     </span>
                     {percentChange !== null && (
@@ -7661,7 +7706,7 @@ export default function MapCanvas() {
                       backgroundColor: DATETIME_2_COLOR,
                       flexShrink: 0
                     }} />
-                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
                       {(comparisonSwapped ? ridership : ridership2).toLocaleString()}
                     </span>
                   </div>
@@ -7670,8 +7715,9 @@ export default function MapCanvas() {
                 <div
                   style={{
                     fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    color: 'var(--text-secondary)'
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)'
                   }}
                 >
                   {(ridership || 0).toLocaleString()} {selectedMetric.toLowerCase()}
@@ -7707,10 +7753,10 @@ export default function MapCanvas() {
               {/* Stop connection diagram */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {/* From stop row */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
                   {/* Circle container - height matches lineHeight so circle centers with first line */}
                   <div style={{
-                    width: '8px',
+                    width: '6px',
                     minHeight: '16px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -7718,17 +7764,15 @@ export default function MapCanvas() {
                     flexShrink: 0
                   }}>
                     <div style={{
-                      width: '8px',
-                      height: '8px',
+                      width: '6px',
+                      height: '6px',
                       borderRadius: '50%',
                       backgroundColor: 'black',
-                      border: '2px solid white',
-                      boxSizing: 'content-box',
-                      marginTop: '2px'
+                      marginTop: '5px'
                     }} />
                     {/* Line extends down from first circle */}
                     <div style={{
-                      width: '2px',
+                      width: '1px',
                       backgroundColor: 'black',
                       flexGrow: 1
                     }} />
@@ -7737,8 +7781,8 @@ export default function MapCanvas() {
                     style={{
                       fontFamily: 'Inter, sans-serif',
                       fontSize: '12px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
+                      fontWeight: 400,
+                      color: 'var(--text-secondary)',
                       wordWrap: 'break-word',
                       lineHeight: '16px',
                       flex: 1
@@ -7748,10 +7792,10 @@ export default function MapCanvas() {
                   </div>
                 </div>
                 {/* To stop row */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
                   {/* Circle container with line coming from above */}
                   <div style={{
-                    width: '8px',
+                    width: '6px',
                     minHeight: '16px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -7760,27 +7804,25 @@ export default function MapCanvas() {
                   }}>
                     {/* Line from gap connects to circle */}
                     <div style={{
-                      width: '2px',
-                      height: '12px',
+                      width: '1px',
+                      height: '13px',
                       backgroundColor: 'black',
                       marginTop: '-8px'
                     }} />
                     <div style={{
-                      width: '8px',
-                      height: '8px',
+                      width: '6px',
+                      height: '6px',
                       borderRadius: '50%',
                       backgroundColor: 'black',
-                      border: '2px solid white',
-                      boxSizing: 'content-box',
-                      marginTop: '-2px'
+                      marginTop: '0px'
                     }} />
                   </div>
                   <div
                     style={{
                       fontFamily: 'Inter, sans-serif',
                       fontSize: '12px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
+                      fontWeight: 400,
+                      color: 'var(--text-secondary)',
                       wordWrap: 'break-word',
                       lineHeight: '16px',
                       flex: 1
@@ -7791,7 +7833,7 @@ export default function MapCanvas() {
                 </div>
               </div>
               {/* Load value */}
-              <div style={{ marginTop: '8px', paddingLeft: '16px' }}>
+              <div style={{ marginTop: '8px', paddingLeft: '12px' }}>
                 {comparisonMode ? (() => {
                   const segmentKey = `${seg.fromStopId}-${seg.toStopId}`;
                   const data1 = segmentLoadMapFromGrid?.get(segmentKey);
@@ -7819,7 +7861,7 @@ export default function MapCanvas() {
                           backgroundColor: DATETIME_1_COLOR,
                           flexShrink: 0
                         }} />
-                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
                           {(comparisonSwapped ? value2 : value1).toLocaleString()}
                         </span>
                         {percentChange !== null && (
@@ -7846,7 +7888,7 @@ export default function MapCanvas() {
                           backgroundColor: DATETIME_2_COLOR,
                           flexShrink: 0
                         }} />
-                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
                           {(comparisonSwapped ? value1 : value2).toLocaleString()}
                         </span>
                       </div>
@@ -7856,11 +7898,322 @@ export default function MapCanvas() {
                   <div
                     style={{
                       fontFamily: 'Inter, sans-serif',
-                      fontSize: '12px',
-                      color: 'var(--text-secondary)'
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)'
                     }}
                   >
                     {seg.loadValue.toLocaleString()} {selectedMetric.toLowerCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
+
+      {/* Trip Detail View Tooltip - shows stop/segment info when hovering on map in trip detail view */}
+      {selectedTrip && (() => {
+        // Stop tooltip in trip detail view (for boarding metrics)
+        if (!showSegmentColoring && hoveredStop && hoveredStopCoords && viewState.zoom >= 12) {
+          const hoveredStopData = stops.find(s => s.properties.stop_id === hoveredStop);
+          if (!hoveredStopData) return null;
+
+          // Get stop ridership from trip-specific data
+          const stopMetrics = tripData?.stops?.find(s => s.stopId === hoveredStop);
+          const stopMetrics2 = tripData2?.stops?.find(s => s.stopId === hoveredStop);
+
+          const getStopMetricValue = (metrics: typeof stopMetrics): number => {
+            if (!metrics) return 0;
+            const value = selectedMetric === 'Average daily boardings' ? metrics.avgDailyBoardings :
+              selectedMetric === 'Total boardings' ? metrics.totalBoardings :
+              selectedMetric === 'Average daily alightings' ? metrics.avgDailyAlightings :
+              selectedMetric === 'Average daily activity' ? metrics.avgDailyActivity :
+              selectedMetric === 'Total activity' ? metrics.totalActivity :
+              metrics.avgDailyBoardings;
+            return value ?? 0;
+          };
+
+          const ridership = getStopMetricValue(stopMetrics) || 0;
+          const ridership2 = getStopMetricValue(stopMetrics2) || 0;
+
+          // Calculate percent change for comparison mode
+          let percentChange: number | null = null;
+          if (comparisonMode && ridership2 > 0) {
+            percentChange = Math.round(((ridership - ridership2) / ridership2) * 100);
+            if (comparisonSwapped) percentChange = -percentChange;
+          } else if (comparisonMode && ridership > 0) {
+            percentChange = 100;
+            if (comparisonSwapped) percentChange = -percentChange;
+          }
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                left: hoveredStopCoords.x,
+                top: hoveredStopCoords.y - 20,
+                transform: 'translate(-50%, -100%)',
+                backgroundColor: 'white',
+                borderRadius: 'var(--radius-default)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: '12px',
+                zIndex: 10000,
+                pointerEvents: 'none',
+                minWidth: '120px',
+                maxWidth: '240px'
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: 'var(--text-secondary)',
+                  marginBottom: '4px',
+                  wordWrap: 'break-word',
+                  lineHeight: '16px'
+                }}
+              >
+                {hoveredStopData.properties.name}
+              </div>
+              {comparisonMode ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* Date-time 1 row with percent change pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_1_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {(comparisonSwapped ? ridership2 : ridership).toLocaleString()}
+                    </span>
+                    {percentChange !== null && (
+                      <span style={{
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: percentChange > 0 ? POSITIVE_PILL_TEXT : percentChange < 0 ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
+                        backgroundColor: percentChange > 0 ? POSITIVE_PILL_BG : percentChange < 0 ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        marginLeft: '8px'
+                      }}>
+                        {percentChange > 0 ? '+' : ''}{percentChange}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Date-time 2 row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: DATETIME_2_COLOR,
+                      flexShrink: 0
+                    }} />
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {(comparisonSwapped ? ridership : ridership2).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)'
+                  }}
+                >
+                  {(ridership || 0).toLocaleString()} {selectedMetric.toLowerCase()}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Segment tooltip in trip detail view (only for load metrics)
+        if (showSegmentColoring && hoveredSegment !== null && hoveredSegmentCoords && selectedTripStops[hoveredSegment] && selectedTripStops[hoveredSegment + 1]) {
+          const fromStop = selectedTripStops[hoveredSegment];
+          const toStop = selectedTripStops[hoveredSegment + 1];
+
+          // Get segment data from trip-specific API data
+          const tripSegment = tripData?.segments?.find(s => s.fromStopId === fromStop.id && s.toStopId === toStop.id);
+          const tripSegment2 = tripData2?.segments?.find(s => s.fromStopId === fromStop.id && s.toStopId === toStop.id);
+
+          const loadValue = tripSegment ? (selectedMetric === 'Maxload' ? tripSegment.maxLoad : tripSegment.avgLoad) : 0;
+          const loadValue2 = tripSegment2 ? (selectedMetric === 'Maxload' ? tripSegment2.maxLoad : tripSegment2.avgLoad) : 0;
+
+          // Calculate percent change for comparison mode
+          let percentChange: number | null = null;
+          if (comparisonMode && loadValue2 > 0) {
+            percentChange = Math.round(((loadValue - loadValue2) / loadValue2) * 100);
+            if (comparisonSwapped) percentChange = -percentChange;
+          } else if (comparisonMode && loadValue > 0) {
+            percentChange = 100;
+            if (comparisonSwapped) percentChange = -percentChange;
+          }
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                left: hoveredSegmentCoords.x,
+                top: hoveredSegmentCoords.y - 20,
+                transform: 'translate(-50%, -100%)',
+                backgroundColor: 'white',
+                borderRadius: 'var(--radius-default)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: '12px',
+                zIndex: 10000,
+                pointerEvents: 'none',
+                minWidth: '140px',
+                maxWidth: '240px'
+              }}
+            >
+              {/* Stop connection diagram */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* From stop row */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                  {/* Circle container - height matches lineHeight so circle centers with first line */}
+                  <div style={{
+                    width: '6px',
+                    minHeight: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'black',
+                      marginTop: '5px'
+                    }} />
+                    {/* Line extends down from first circle */}
+                    <div style={{
+                      width: '1px',
+                      backgroundColor: 'black',
+                      flexGrow: 1
+                    }} />
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '12px',
+                      fontWeight: 400,
+                      color: 'var(--text-secondary)',
+                      wordWrap: 'break-word',
+                      lineHeight: '16px',
+                      flex: 1
+                    }}
+                  >
+                    {fromStop.n}
+                  </div>
+                </div>
+                {/* To stop row */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                  {/* Circle container with line coming from above */}
+                  <div style={{
+                    width: '6px',
+                    minHeight: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    {/* Line from gap connects to circle */}
+                    <div style={{
+                      width: '1px',
+                      height: '13px',
+                      backgroundColor: 'black',
+                      marginTop: '-8px'
+                    }} />
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'black',
+                      marginTop: '0px'
+                    }} />
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '12px',
+                      fontWeight: 400,
+                      color: 'var(--text-secondary)',
+                      wordWrap: 'break-word',
+                      lineHeight: '16px',
+                      flex: 1
+                    }}
+                  >
+                    {toStop.n}
+                  </div>
+                </div>
+              </div>
+              {/* Load value */}
+              <div style={{ marginTop: '8px', paddingLeft: '12px' }}>
+                {comparisonMode ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {/* Date-time 1 row with percent change pill */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: DATETIME_1_COLOR,
+                        flexShrink: 0
+                      }} />
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                        {(comparisonSwapped ? loadValue2 : loadValue).toLocaleString()}
+                      </span>
+                      {percentChange !== null && (
+                        <span style={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: percentChange > 0 ? POSITIVE_PILL_TEXT : percentChange < 0 ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
+                          backgroundColor: percentChange > 0 ? POSITIVE_PILL_BG : percentChange < 0 ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          marginLeft: '8px'
+                        }}>
+                          {percentChange > 0 ? '+' : ''}{percentChange}%
+                        </span>
+                      )}
+                    </div>
+                    {/* Date-time 2 row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: DATETIME_2_COLOR,
+                        flexShrink: 0
+                      }} />
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                        {(comparisonSwapped ? loadValue : loadValue2).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    {loadValue.toLocaleString()} {selectedMetric.toLowerCase()}
                   </div>
                 )}
               </div>
@@ -7911,10 +8264,18 @@ export default function MapCanvas() {
         <MapScale
           title={comparisonMode ? `Change in ${scaleTitle.toLowerCase()}` : scaleTitle}
           min={comparisonMode
-            ? (showSegmentColoring ? segmentComparisonRange.min : comparisonValueRange.min)
+            ? (showSegmentColoring
+                ? (selectedTrip ? tripSegmentComparisonRange.min : segmentComparisonRange.min)
+                : (selectedTrip
+                    ? tripStopComparisonRange.min
+                    : ((selectedRouteId || activeTab === 'stops') ? stopComparisonRange.min : routeComparisonRange.min)))
             : ((selectedRouteId || activeTab === 'stops') ? stopValueRange.min : routeValueRange.min)}
           max={comparisonMode
-            ? (showSegmentColoring ? segmentComparisonRange.max : comparisonValueRange.max)
+            ? (showSegmentColoring
+                ? (selectedTrip ? tripSegmentComparisonRange.max : segmentComparisonRange.max)
+                : (selectedTrip
+                    ? tripStopComparisonRange.max
+                    : ((selectedRouteId || activeTab === 'stops') ? stopComparisonRange.max : routeComparisonRange.max)))
             : ((selectedRouteId || activeTab === 'stops') ? stopValueRange.max : routeValueRange.max)}
           comparisonMode={comparisonMode}
           comparisonDisplayMode={comparisonDisplayMode}
@@ -11887,6 +12248,12 @@ export default function MapCanvas() {
 
           // Restore comparison mode
           setComparisonMode(state.comparisonMode);
+          // Reset exit tooltip state to prevent stale tooltip from showing
+          setShowExitTooltip(false);
+          if (exitTooltipTimerRef.current) {
+            clearTimeout(exitTooltipTimerRef.current);
+            exitTooltipTimerRef.current = null;
+          }
           if (state.comparisonMode && state.comparisonDateRange.start && state.comparisonDateRange.end) {
             const compStart = new Date(state.comparisonDateRange.start);
             const compEnd = new Date(state.comparisonDateRange.end);
