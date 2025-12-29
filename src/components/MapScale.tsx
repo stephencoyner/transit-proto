@@ -148,53 +148,91 @@ const MapScale: React.FC<MapScaleProps> = ({
           <span>More</span>
         </div>
 
-        {/* Color Blocks */}
-        <div
-          style={{
-            display: 'flex',
-            width: '100%',
-            height: '16px',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            marginBottom: '8px',
-          }}
-        >
-          {COMPARISON_SCALE_COLORS.map((color, index) => {
-            const rgb = hexToRGBA(color);
-            return (
-              <div
-                key={index}
-                style={{
-                  flex: 1,
-                  backgroundColor: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`,
-                }}
-              />
-            );
-          })}
-        </div>
+        {/* Color Blocks - show subset based on data range */}
+        {(() => {
+          // Determine which portion of the scale to show based on the data range
+          // COMPARISON_SCALE_COLORS has 7 colors: indices 0-2 are negative (red to orange),
+          // index 3 is neutral (yellow/amber), indices 4-6 are positive (light green to dark green)
+          const isAllNegative = displayMax <= 0 && displayMin < 0;
+          const isAllPositive = displayMin >= 0 && displayMax > 0;
 
-        {/* Numeric Labels - positioned to align with color segments */}
-        <div
-          className="nav-label text-text-tertiary"
-          style={{
-            display: 'flex',
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {/* Min label - left aligned */}
-          <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(displayMin)}</span>
-          {/* Mid-left label - at 25% + 8px right */}
-          <span style={{ position: 'absolute', left: 'calc(25% + 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMin / 2))}</span>
-          {/* Center "0" label - exactly at 50% (center of amber segment) */}
-          <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>0</span>
-          {/* Mid-right label - at 75% - 8px left */}
-          <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMax / 2))}</span>
-          {/* Max label - right aligned */}
-          <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(displayMax)}</span>
-          {/* Spacer to maintain height */}
-          <span style={{ visibility: 'hidden' }}>0</span>
-        </div>
+          // Create a mutable array from the readonly tuple for slicing
+          const allColors = [...COMPARISON_SCALE_COLORS];
+          let colorsToShow = allColors;
+
+          if (isAllNegative) {
+            // Show only the negative portion (first 4 colors: red through amber, indices 0-3)
+            colorsToShow = allColors.slice(0, 4);
+          } else if (isAllPositive) {
+            // Show only the positive portion (last 4 colors: amber through green, indices 3-6)
+            colorsToShow = allColors.slice(3, 7);
+          }
+
+          return (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  height: '16px',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  marginBottom: '8px',
+                }}
+              >
+                {colorsToShow.map((color, index) => {
+                  const rgb = hexToRGBA(color);
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        flex: 1,
+                        backgroundColor: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Numeric Labels - adjusted based on which portion of scale is shown */}
+              <div
+                className="nav-label text-text-tertiary"
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {isAllNegative ? (
+                  <>
+                    {/* All negative: show min, mid, 0 */}
+                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(displayMin)}</span>
+                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMin / 2))}</span>
+                    <span style={{ position: 'absolute', right: 0 }}>0</span>
+                  </>
+                ) : isAllPositive ? (
+                  <>
+                    {/* All positive: show 0, mid, max */}
+                    <span style={{ position: 'absolute', left: 0 }}>0</span>
+                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMax / 2))}</span>
+                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(displayMax)}</span>
+                  </>
+                ) : (
+                  <>
+                    {/* Mixed: show full range with 5 labels */}
+                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(displayMin)}</span>
+                    <span style={{ position: 'absolute', left: 'calc(25% + 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMin / 2))}</span>
+                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>0</span>
+                    <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMax / 2))}</span>
+                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(displayMax)}</span>
+                  </>
+                )}
+                {/* Spacer to maintain height */}
+                <span style={{ visibility: 'hidden' }}>0</span>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
     );
