@@ -15,13 +15,19 @@ interface SnapshotsModalProps {
 const SnapshotsModal: React.FC<SnapshotsModalProps> = ({ isOpen, onClose, onViewSnapshot }) => {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [editingSnapshot, setEditingSnapshot] = useState<Snapshot | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Load snapshots when modal opens
   useEffect(() => {
     if (isOpen) {
       setSnapshots(getSnapshots());
+      setIsScrolled(false);
     }
   }, [isOpen]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setIsScrolled(e.currentTarget.scrollTop > 0);
+  };
 
   // Refresh snapshots (called after save from capture button)
   const refreshSnapshots = useCallback(() => {
@@ -80,7 +86,8 @@ const SnapshotsModal: React.FC<SnapshotsModalProps> = ({ isOpen, onClose, onView
           borderRadius: '24px',
           width: '800px',
           maxWidth: '90vw',
-          maxHeight: '80vh',
+          height: '420px',
+          maxHeight: '90vh',
           border: '0.5px solid var(--border-default)',
           boxShadow: 'var(--shadow-lg)',
           display: 'flex',
@@ -95,6 +102,7 @@ const SnapshotsModal: React.FC<SnapshotsModalProps> = ({ isOpen, onClose, onView
           justifyContent: 'space-between',
           padding: '20px 24px',
           flexShrink: 0,
+          borderBottom: isScrolled ? '0.5px solid var(--border-default)' : '0.5px solid transparent',
         }}>
           <h2 style={{
             fontSize: '18px',
@@ -132,11 +140,14 @@ const SnapshotsModal: React.FC<SnapshotsModalProps> = ({ isOpen, onClose, onView
         </div>
 
         {/* Content */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '0 24px 24px 24px',
-        }}>
+        <div
+          onScroll={handleScroll}
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '0 24px 24px 24px',
+          }}
+        >
           {snapshots.length === 0 ? (
             <div
               style={{
