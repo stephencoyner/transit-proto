@@ -3555,6 +3555,13 @@ export default function MapCanvas() {
     setComparisonPreset(null);
     setComparisonDateRange({ start: null, end: null });
     setComparisonSwapped(false);
+
+    // Reset exit tooltip state
+    setShowExitTooltip(false);
+    if (exitTooltipTimerRef.current) {
+      clearTimeout(exitTooltipTimerRef.current);
+      exitTooltipTimerRef.current = null;
+    }
   };
 
   // Swap Date-time 1 and Date-time 2 display order
@@ -12241,6 +12248,12 @@ export default function MapCanvas() {
 
           // Restore comparison mode
           setComparisonMode(state.comparisonMode);
+          // Reset exit tooltip state to prevent stale tooltip from showing
+          setShowExitTooltip(false);
+          if (exitTooltipTimerRef.current) {
+            clearTimeout(exitTooltipTimerRef.current);
+            exitTooltipTimerRef.current = null;
+          }
           if (state.comparisonMode && state.comparisonDateRange.start && state.comparisonDateRange.end) {
             const compStart = new Date(state.comparisonDateRange.start);
             const compEnd = new Date(state.comparisonDateRange.end);
