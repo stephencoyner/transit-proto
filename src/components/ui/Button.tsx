@@ -16,7 +16,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const variantClasses = {
       primary: 'bg-btn-primary text-text-on-primary hover:opacity-90',
       secondary: 'bg-btn-secondary text-text-primary',
-      tertiary: 'bg-btn-tertiary text-text-primary hover:bg-bg-elevated',
+      tertiary: 'bg-bg-elevated text-text-primary hover:bg-bg-primary',
     };
 
     const sizeClasses = {
