@@ -4,8 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface NavRailProps {
-  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'reports';
-  onTabChange: (tab: 'system' | 'routes' | 'stops' | 'components' | 'reports') => void;
+  activeTab: 'system' | 'routes' | 'stops' | 'components';
+  onTabChange: (tab: 'system' | 'routes' | 'stops' | 'components') => void;
   userInitial?: string;
   isFiltersPanelOpen: boolean;
   onToggleFiltersPanel: () => void;
@@ -15,6 +15,7 @@ interface NavRailProps {
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
   allowAbsoluteNumberComparisons: boolean;
   onAllowAbsoluteNumberComparisonsChange: (value: boolean) => void;
+  onOpenReports: () => void;
 }
 
 // Inline SVG components for nav icons
@@ -117,12 +118,14 @@ const NavRail: React.FC<NavRailProps> = ({
   differentiatedPanelBackgrounds,
   onDifferentiatedPanelBackgroundsChange,
   allowAbsoluteNumberComparisons,
-  onAllowAbsoluteNumberComparisonsChange
+  onAllowAbsoluteNumberComparisonsChange,
+  onOpenReports
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
   const [hasClicked, setHasClicked] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isExperimentalFeaturesOpen, setIsExperimentalFeaturesOpen] = useState(false);
   const [profileMenuPosition, setProfileMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -131,7 +134,6 @@ const NavRail: React.FC<NavRailProps> = ({
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
     { id: 'routes' as const, label: 'Routes', Icon: RoutesIcon },
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
-    { id: 'reports' as const, label: 'Reports', Icon: ReportsIcon },
   ];
 
   const handleMouseEnter = () => {
@@ -164,15 +166,13 @@ const NavRail: React.FC<NavRailProps> = ({
   const handleProfileClick = () => {
     if (profileButtonRef.current) {
       const rect = profileButtonRef.current.getBoundingClientRect();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const menuWidth = 280;
-      const menuHeight = 130; // Approximate height of the menu with 2 toggles
       setProfileMenuPosition({
-        top: rect.top + window.scrollY - menuHeight - 32, // Position 32px above the button
+        top: rect.top - 8 + window.scrollY, // 8px gap above button, transform will move menu up by its height
         left: rect.left + window.scrollX // Left-aligned with the button
       });
     }
     setIsProfileMenuOpen(!isProfileMenuOpen);
+    setIsExperimentalFeaturesOpen(false); // Close submenu when reopening main menu
   };
 
   // Click outside to close profile menu
@@ -272,114 +272,172 @@ const NavRail: React.FC<NavRailProps> = ({
             position: 'fixed',
             top: `${profileMenuPosition.top}px`,
             left: `${profileMenuPosition.left}px`,
-            width: '280px',
-            backgroundColor: 'var(--bg-elevated)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--radius-large)',
-            boxShadow: 'var(--shadow-lg)',
-            padding: '12px',
+            transform: 'translateY(-100%)',
             zIndex: 9999
           }}
         >
-          {/* Toggle Item - Route Controls Title Semibold */}
+          {/* Main Menu */}
           <div
-            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-            onClick={() => onRouteControlsTitleSemiboldChange(!routeControlsTitleSemibold)}
+            style={{
+              width: '240px',
+              backgroundColor: 'var(--bg-elevated)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--radius-large)',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '8px',
+            }}
           >
-            <span className="button-small text-text-primary">
-              Route Controls Title Semibold
-            </span>
+            {/* Reports */}
             <div
-              style={{
-                width: '40px',
-                height: '20px',
-                borderRadius: '10px',
-                backgroundColor: routeControlsTitleSemibold ? 'var(--text-primary)' : 'var(--bg-secondary)',
-                border: '1px solid var(--border-default)',
-                position: 'relative',
-                transition: 'background-color 0.2s ease'
+              className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+              onClick={() => {
+                setIsProfileMenuOpen(false);
+                onOpenReports();
               }}
             >
-              <div
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--bg-elevated)',
-                  position: 'absolute',
-                  top: '1px',
-                  left: routeControlsTitleSemibold ? '21px' : '1px',
-                  transition: 'left 0.2s ease'
-                }}
-              />
+              <ReportsIcon />
+              <span className="button-small text-text-primary">
+                Reports
+              </span>
+            </div>
+
+            {/* Experimental Features */}
+            <div
+              className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+              style={{
+                backgroundColor: isExperimentalFeaturesOpen ? 'var(--bg-primary)' : 'transparent'
+              }}
+              onClick={() => setIsExperimentalFeaturesOpen(!isExperimentalFeaturesOpen)}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 2V6L4 9V14H12V9L10 6V2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 2H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span className="button-small text-text-primary">
+                Experimental Features
+              </span>
             </div>
           </div>
-          {/* Toggle Item - Differentiated Panel Backgrounds */}
-          <div
-            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-            onClick={() => onDifferentiatedPanelBackgroundsChange(!differentiatedPanelBackgrounds)}
-          >
-            <span className="button-small text-text-primary">
-              Differentiated Panel Backgrounds
-            </span>
+
+          {/* Experimental Features Submenu */}
+          {isExperimentalFeaturesOpen && (
             <div
               style={{
-                width: '40px',
-                height: '20px',
-                borderRadius: '10px',
-                backgroundColor: differentiatedPanelBackgrounds ? 'var(--text-primary)' : 'var(--bg-secondary)',
-                border: '1px solid var(--border-default)',
-                position: 'relative',
-                transition: 'background-color 0.2s ease'
+                position: 'absolute',
+                left: '248px', // 240px menu width + 8px gap
+                bottom: 0,
+                width: '280px',
+                backgroundColor: 'var(--bg-elevated)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--radius-large)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: '8px',
               }}
             >
+              {/* Toggle Item - Route Controls Title Semibold */}
               <div
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--bg-elevated)',
-                  position: 'absolute',
-                  top: '1px',
-                  left: differentiatedPanelBackgrounds ? '21px' : '1px',
-                  transition: 'left 0.2s ease'
-                }}
-              />
-            </div>
-          </div>
-          {/* Toggle Item - Allow Absolute Number Comparisons */}
-          <div
-            className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-            onClick={() => onAllowAbsoluteNumberComparisonsChange(!allowAbsoluteNumberComparisons)}
-          >
-            <span className="button-small text-text-primary">
-              Absolute Number Comparisons (In Progress)
-            </span>
-            <div
-              style={{
-                width: '40px',
-                height: '20px',
-                borderRadius: '10px',
-                backgroundColor: allowAbsoluteNumberComparisons ? 'var(--text-primary)' : 'var(--bg-secondary)',
-                border: '1px solid var(--border-default)',
-                position: 'relative',
-                transition: 'background-color 0.2s ease'
-              }}
-            >
+                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+                onClick={() => onRouteControlsTitleSemiboldChange(!routeControlsTitleSemibold)}
+              >
+                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
+                  Route Controls Title Semibold
+                </span>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: routeControlsTitleSemibold ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-elevated)',
+                      position: 'absolute',
+                      top: '1px',
+                      left: routeControlsTitleSemibold ? '19px' : '1px',
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Toggle Item - Differentiated Panel Backgrounds */}
               <div
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--bg-elevated)',
-                  position: 'absolute',
-                  top: '1px',
-                  left: allowAbsoluteNumberComparisons ? '21px' : '1px',
-                  transition: 'left 0.2s ease'
-                }}
-              />
+                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+                onClick={() => onDifferentiatedPanelBackgroundsChange(!differentiatedPanelBackgrounds)}
+              >
+                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
+                  Differentiated Panel Backgrounds
+                </span>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: differentiatedPanelBackgrounds ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-elevated)',
+                      position: 'absolute',
+                      top: '1px',
+                      left: differentiatedPanelBackgrounds ? '19px' : '1px',
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Toggle Item - Allow Absolute Number Comparisons */}
+              <div
+                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+                onClick={() => onAllowAbsoluteNumberComparisonsChange(!allowAbsoluteNumberComparisons)}
+              >
+                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
+                  Absolute Number Comparisons
+                </span>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: allowAbsoluteNumberComparisons ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-elevated)',
+                      position: 'absolute',
+                      top: '1px',
+                      left: allowAbsoluteNumberComparisons ? '19px' : '1px',
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>,
         document.body
       )}

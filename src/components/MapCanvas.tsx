@@ -19,7 +19,7 @@ import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PIL
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 import { Report, ReportState, saveReport } from '@/lib/reports';
-import ReportsPanel from '@/components/ReportsPanel';
+import ReportsModal from '@/components/ReportsModal';
 import SaveReportModal from '@/components/SaveReportModal';
 
 // Type for bounds
@@ -148,6 +148,38 @@ function isYearInDataRange(year: number): boolean {
          isSeasonInDataRange('spring', year) ||
          isSeasonInDataRange('summer', year) ||
          isSeasonInDataRange('fall', year);
+}
+
+// Helper to match date range to a service season
+function matchDatesToSeason(start: Date, end: Date): { season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null {
+  const startMonth = start.getMonth();
+  const startDay = start.getDate();
+  const endMonth = end.getMonth();
+  const endDay = end.getDate();
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+
+  // Spring: Mar 21 to Jun 21 (same year)
+  if (startMonth === 2 && startDay === 21 && endMonth === 5 && endDay === 21 && startYear === endYear) {
+    return { season: 'spring', year: startYear };
+  }
+
+  // Summer: Jun 22 to Sep 18 (same year)
+  if (startMonth === 5 && startDay === 22 && endMonth === 8 && endDay === 18 && startYear === endYear) {
+    return { season: 'summer', year: startYear };
+  }
+
+  // Winter: Sep 21 of prev year to Mar 20 of year
+  if (startMonth === 8 && startDay === 21 && endMonth === 2 && endDay === 20 && endYear === startYear + 1) {
+    return { season: 'winter', year: endYear };
+  }
+
+  // Fall: Sep 19 of year to Mar 19 of next year
+  if (startMonth === 8 && startDay === 19 && endMonth === 2 && endDay === 19 && endYear === startYear + 1) {
+    return { season: 'fall', year: startYear };
+  }
+
+  return null;
 }
 
 // Helper to check if a date range overlaps with the valid data range
@@ -370,7 +402,8 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components' | 'reports'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
+  const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [hoveredStopCoords, setHoveredStopCoords] = useState<{ x: number; y: number } | null>(null);
@@ -383,6 +416,8 @@ export default function MapCanvas() {
   const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const mapRef = useRef<MapRef>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'compare' | 'date2' | 'days2' | null>(null);
+  // Track when restoring a report to skip auto-reset effects
+  const isRestoringReportRef = useRef(false);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
@@ -2390,7 +2425,7 @@ export default function MapCanvas() {
   }, [isStopLevelView, isLoadMetric]);
 
   // Check if we're in Grid view (full screen data panel) - includes Reports tab
-  const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip) || activeTab === 'reports';
+  const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip);
 
   // Generate segments between consecutive stops with real API load values
   const segmentGeoms = React.useMemo(() => {
@@ -4133,7 +4168,11 @@ export default function MapCanvas() {
   }, [fitToBounds]);
 
   // Reset pattern filter, trip filters, and sort when route changes
+  // Skip this when restoring a report (filters are restored separately)
   useEffect(() => {
+    if (isRestoringReportRef.current) {
+      return;
+    }
     setSelectedPattern(null);
     // Reset trip filters
     setAppliedTripFilterMin(null);
@@ -5012,25 +5051,17 @@ export default function MapCanvas() {
             setSelectedRouteTab('Summary');
             // Clear navigation back stack when switching tabs
             setNavigationStack([]);
-            // Close filter panel when switching to Reports tab
-            if (tab === 'reports') {
-              setIsFiltersPanelOpen(false);
-            }
           }}
           userInitial="S"
-          isFiltersPanelOpen={isFiltersPanelOpen && activeTab !== 'reports'}
-          onToggleFiltersPanel={() => {
-            // Disable filter toggle when on Reports tab
-            if (activeTab !== 'reports') {
-              setIsFiltersPanelOpen(!isFiltersPanelOpen);
-            }
-          }}
+          isFiltersPanelOpen={isFiltersPanelOpen}
+          onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
           routeControlsTitleSemibold={routeControlsTitleSemibold}
           onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
           differentiatedPanelBackgrounds={differentiatedPanelBackgrounds}
           onDifferentiatedPanelBackgroundsChange={setDifferentiatedPanelBackgrounds}
           allowAbsoluteNumberComparisons={allowAbsoluteNumberComparisons}
           onAllowAbsoluteNumberComparisonsChange={setAllowAbsoluteNumberComparisons}
+          onOpenReports={() => setIsReportsModalOpen(true)}
         />
       </div>
 
@@ -5038,12 +5069,12 @@ export default function MapCanvas() {
       <div
         id="filters-panel"
         style={{
-          width: (isFiltersPanelOpen && activeTab !== 'reports') ? '256px' : '0px',
+          width: isFiltersPanelOpen ? '256px' : '0px',
           height: 'calc(100% - 24px)',
           backgroundColor: differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
           borderBottom: '0.5px solid var(--border-default)',
-          borderRight: (isFiltersPanelOpen && activeTab !== 'reports') ? '0.5px solid var(--border-default)' : 'none',
+          borderRight: isFiltersPanelOpen ? '0.5px solid var(--border-default)' : 'none',
           display: 'flex',
           flexDirection: 'column',
           position: 'fixed',
@@ -7839,8 +7870,7 @@ export default function MapCanvas() {
       })()}
 
       {/* Capture Report Button */}
-      {activeTab !== 'reports' && (
-        <button
+      <button
           onClick={() => setIsSaveReportModalOpen(true)}
           style={{
             position: 'absolute',
@@ -7875,11 +7905,10 @@ export default function MapCanvas() {
             <path d="M8 12H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             <path d="M8 16H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-        </button>
-      )}
+      </button>
 
-      {/* Map Scale - hide in amenities view and reports view since we're not showing map data */}
-      {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && activeTab !== 'reports' && (
+      {/* Map Scale - hide in amenities view since we're not showing map data */}
+      {(routeValueRange.max > 0 || stopValueRange.max > 0) && !isAmenitiesView && (
         <MapScale
           title={comparisonMode ? `Change in ${scaleTitle.toLowerCase()}` : scaleTitle}
           min={comparisonMode
@@ -8989,6 +9018,10 @@ export default function MapCanvas() {
                   color: 'var(--text-secondary)'
                 }}
                 onClick={() => {
+                  // Open filter panel when leaving grid view
+                  if (selectedRouteTab === 'Grid') {
+                    setIsFiltersPanelOpen(true);
+                  }
                   setSelectedRouteId(null);
                 }}
               >
@@ -9151,6 +9184,11 @@ export default function MapCanvas() {
 
                         // Update tab immediately for instant panel expansion
                         setSelectedRouteTab(tab);
+
+                        // Open filter panel when leaving grid view
+                        if (wasGrid && !willBeGrid) {
+                          setIsFiltersPanelOpen(true);
+                        }
 
                         // Then handle transition state
                         if (wasGrid !== willBeGrid) {
@@ -10726,72 +10764,6 @@ export default function MapCanvas() {
               </div>
             );
           })()
-        ) : activeTab === 'reports' ? (
-          /* Reports View */
-          <ReportsPanel
-            onViewReport={(report) => {
-              // Restore state from report
-              const state = report.state;
-
-              // Set view state
-              if (state.activeTab !== 'reports') {
-                setActiveTab(state.activeTab);
-              }
-              setSelectedRouteId(state.selectedRouteId);
-              setSelectedStopId(state.selectedStopId);
-              setSelectedTrip(state.selectedTrip ? { trip_id: state.selectedTrip } as Trip : null);
-              setSelectedPattern(state.selectedPattern);
-              setSelectedMetric(state.selectedMetric);
-
-              // Restore date range
-              if (state.dateRange.start && state.dateRange.end) {
-                setAppliedStartDate(new Date(state.dateRange.start));
-                setAppliedEndDate(new Date(state.dateRange.end));
-                setAppliedSeason(null);
-                setAppliedQuickPick(null);
-              }
-
-              // Restore day/period filters
-              const daysToMode = (days: number[]) => {
-                if (days.length === 0 || days.length === 7) return 'all';
-                if (days.length === 5 && [1,2,3,4,5].every(d => days.includes(d))) return 'weekdays';
-                if (days.length === 2 && [0,6].every(d => days.includes(d))) return 'weekends';
-                return 'custom';
-              };
-              const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-              setAppliedDaysMode(daysToMode(state.selectedDays));
-              setAppliedCustomDays(state.selectedDays.map(d => dayNames[d]));
-              setAppliedTimeMode(state.selectedPeriods.length === 0 ? 'all' : 'custom');
-              setAppliedTimePeriods(state.selectedPeriods);
-
-              // Restore comparison mode
-              setComparisonMode(state.comparisonMode);
-              if (state.comparisonMode && state.comparisonDateRange.start && state.comparisonDateRange.end) {
-                setComparisonDateRange({
-                  start: new Date(state.comparisonDateRange.start),
-                  end: new Date(state.comparisonDateRange.end)
-                });
-                setAppliedDaysMode2(daysToMode(state.comparisonDays));
-                setAppliedCustomDays2(state.comparisonDays.map(d => dayNames[d]));
-                setAppliedTimeMode2(state.comparisonPeriods.length === 0 ? 'all' : 'custom');
-                setAppliedTimePeriods2(state.comparisonPeriods);
-                setComparisonSwapped(state.comparisonSwapped);
-              }
-
-              // Restore map view
-              setViewState(prev => ({
-                ...prev,
-                longitude: state.viewState.longitude,
-                latitude: state.viewState.latitude,
-                zoom: state.viewState.zoom
-              }));
-
-              // Open filter panel if not on reports tab
-              if (state.activeTab !== 'reports') {
-                setIsFiltersPanelOpen(true);
-              }
-            }}
-          />
         ) : (
           /* Routes View with Filter/Sort */
           (() => {
@@ -11756,9 +11728,32 @@ export default function MapCanvas() {
             activeTab,
             selectedRouteId,
             selectedStopId,
-            selectedTrip: selectedTrip?.trip_id || null,
+            selectedTrip: selectedTrip ? {
+              trip_id: selectedTrip.trip_id,
+              route_id: selectedTrip.route_id,
+              shape_id: selectedTrip.shape_id,
+              headsign: selectedTrip.headsign,
+              direction_id: selectedTrip.direction_id,
+              start_time: selectedTrip.start_time,
+              time_period: selectedTrip.time_period,
+              ridership: selectedTrip.ridership,
+            } : null,
             selectedPattern,
             selectedMetric,
+            selectedRouteTab,
+            tripFilterMin: appliedTripFilterMin,
+            tripFilterMax: appliedTripFilterMax,
+            tripSortBy,
+            tripSortOrder,
+            stopFilterMin: appliedStopFilterMin,
+            stopFilterMax: appliedStopFilterMax,
+            stopSortBy,
+            stopSortOrder,
+            stopAmenityFilters: Object.fromEntries(appliedStopAmenityFilters),
+            routeFilterMin: appliedRouteFilterMin,
+            routeFilterMax: appliedRouteFilterMax,
+            routeSortBy,
+            routeSortOrder,
             dateRange: {
               start: effectiveDateRange.start?.toISOString() || null,
               end: effectiveDateRange.end?.toISOString() || null,
@@ -11784,9 +11779,148 @@ export default function MapCanvas() {
 
           saveReport({ name, description, state: reportState });
 
-          // Refresh reports panel if it's using window.refreshReports
+          // Refresh reports modal if it's using window.refreshReports
           const refreshFn = (window as unknown as { refreshReports?: () => void }).refreshReports;
           if (refreshFn) refreshFn();
+        }}
+      />
+
+      {/* Reports Modal */}
+      <ReportsModal
+        isOpen={isReportsModalOpen}
+        onClose={() => setIsReportsModalOpen(false)}
+        onViewReport={(report) => {
+          // Restore state from report
+          const state = report.state;
+
+          // Mark that we're restoring a report to skip auto-reset effects
+          isRestoringReportRef.current = true;
+
+          // Set view state
+          setActiveTab(state.activeTab as 'system' | 'routes' | 'stops' | 'components');
+          setSelectedRouteId(state.selectedRouteId);
+          setSelectedStopId(state.selectedStopId);
+          // Restore route tab (with backwards compatibility for older reports)
+          setSelectedRouteTab(state.selectedRouteTab || 'Summary');
+          // Restore trip - we now store the full trip object in reports
+          // Handle backwards compatibility: older reports may have just trip_id as string
+          if (state.selectedTrip && typeof state.selectedTrip === 'object') {
+            setSelectedTrip(state.selectedTrip as Trip);
+            // Load the trip stop times (async)
+            getTripStopTimes(state.selectedTrip.trip_id).then(stopTimes => {
+              if (stopTimes) {
+                setSelectedTripStops(stopTimes);
+              }
+            });
+          } else {
+            setSelectedTrip(null);
+          }
+          setSelectedPattern(state.selectedPattern);
+          setSelectedMetric(state.selectedMetric);
+
+          // Restore trip tab filters (with backwards compatibility)
+          setAppliedTripFilterMin(state.tripFilterMin ?? null);
+          setAppliedTripFilterMax(state.tripFilterMax ?? null);
+          setStagedTripFilterMin(state.tripFilterMin ?? null);
+          setStagedTripFilterMax(state.tripFilterMax ?? null);
+          setTripSortBy(state.tripSortBy || 'time');
+          setTripSortOrder(state.tripSortOrder || 'asc');
+
+          // Restore stops tab filters (with backwards compatibility)
+          setAppliedStopFilterMin(state.stopFilterMin ?? null);
+          setAppliedStopFilterMax(state.stopFilterMax ?? null);
+          setStagedStopFilterMin(state.stopFilterMin ?? null);
+          setStagedStopFilterMax(state.stopFilterMax ?? null);
+          setStopSortBy(state.stopSortBy || 'ridership');
+          setStopSortOrder(state.stopSortOrder || 'desc');
+          if (state.stopAmenityFilters) {
+            setAppliedStopAmenityFilters(new Map(Object.entries(state.stopAmenityFilters)));
+            setStagedStopAmenityFilters(new Map(Object.entries(state.stopAmenityFilters)));
+          } else {
+            setAppliedStopAmenityFilters(new Map());
+            setStagedStopAmenityFilters(new Map());
+          }
+
+          // Restore routes tab filters (with backwards compatibility)
+          setAppliedRouteFilterMin(state.routeFilterMin ?? null);
+          setAppliedRouteFilterMax(state.routeFilterMax ?? null);
+          setStagedRouteFilterMin(state.routeFilterMin ?? null);
+          setStagedRouteFilterMax(state.routeFilterMax ?? null);
+          setRouteSortBy(state.routeSortBy || 'ridership');
+          setRouteSortOrder(state.routeSortOrder || 'desc');
+
+          // Restore date range - check if it matches a season first
+          if (state.dateRange.start && state.dateRange.end) {
+            const startDate = new Date(state.dateRange.start);
+            const endDate = new Date(state.dateRange.end);
+
+            // Check if dates match a service season
+            const matchedSeason = matchDatesToSeason(startDate, endDate);
+            if (matchedSeason) {
+              setAppliedSeason(matchedSeason);
+              setAppliedStartDate(null);
+              setAppliedEndDate(null);
+              setAppliedQuickPick(null);
+            } else {
+              setAppliedStartDate(startDate);
+              setAppliedEndDate(endDate);
+              setAppliedSeason(null);
+              setAppliedQuickPick(null);
+            }
+          }
+
+          // Restore day/period filters
+          const daysToMode = (days: number[]) => {
+            if (days.length === 0 || days.length === 7) return 'all';
+            if (days.length === 5 && [1,2,3,4,5].every(d => days.includes(d))) return 'weekdays';
+            if (days.length === 2 && [0,6].every(d => days.includes(d))) return 'weekends';
+            return 'custom';
+          };
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          setAppliedDaysMode(daysToMode(state.selectedDays));
+          setAppliedCustomDays(state.selectedDays.map(d => dayNames[d]));
+          setAppliedTimeMode(state.selectedPeriods.length === 0 ? 'all' : 'custom');
+          setAppliedTimePeriods(state.selectedPeriods);
+
+          // Restore comparison mode
+          setComparisonMode(state.comparisonMode);
+          if (state.comparisonMode && state.comparisonDateRange.start && state.comparisonDateRange.end) {
+            const compStart = new Date(state.comparisonDateRange.start);
+            const compEnd = new Date(state.comparisonDateRange.end);
+
+            // Check if comparison dates match a service season
+            const matchedCompSeason = matchDatesToSeason(compStart, compEnd);
+            if (matchedCompSeason) {
+              setStagedSeason2(matchedCompSeason);
+              setComparisonDateRange({ start: compStart, end: compEnd });
+            } else {
+              setStagedSeason2(null);
+              setComparisonDateRange({ start: compStart, end: compEnd });
+            }
+
+            setAppliedDaysMode2(daysToMode(state.comparisonDays));
+            setAppliedCustomDays2(state.comparisonDays.map(d => dayNames[d]));
+            setAppliedTimeMode2(state.comparisonPeriods.length === 0 ? 'all' : 'custom');
+            setAppliedTimePeriods2(state.comparisonPeriods);
+            setComparisonSwapped(state.comparisonSwapped);
+          }
+
+          // Restore map view
+          setViewState(prev => ({
+            ...prev,
+            longitude: state.viewState.longitude,
+            latitude: state.viewState.latitude,
+            zoom: state.viewState.zoom
+          }));
+
+          // Open filter panel
+          setIsFiltersPanelOpen(true);
+
+          // Clear the restoring flag after all state updates are scheduled
+          // Use setTimeout to ensure effects have run
+          setTimeout(() => {
+            isRestoringReportRef.current = false;
+          }, 0);
         }}
       />
     </div>

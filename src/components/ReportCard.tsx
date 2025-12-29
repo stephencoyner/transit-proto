@@ -93,22 +93,22 @@ const ReportCard: React.FC<ReportCardProps> = ({
     <div
       onClick={() => onView(report)}
       style={{
-        backgroundColor: 'var(--bg-secondary)',
+        backgroundColor: 'var(--bg-elevated)',
         borderRadius: '16px',
         padding: '16px',
         cursor: 'pointer',
         border: '0.5px solid var(--border-default)',
-        transition: 'background-color 0.15s ease',
+        transition: 'border-color 0.15s ease',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+        e.currentTarget.style.borderColor = 'var(--border-focus)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+        e.currentTarget.style.borderColor = 'var(--border-default)';
       }}
     >
       {/* Header with name and menu */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3
           style={{
             fontSize: '15px',

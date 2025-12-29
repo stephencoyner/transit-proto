@@ -1,13 +1,46 @@
 // Report Types and localStorage utilities
 
+// Minimal trip data stored in reports - just enough for UI display
+// The rest is fetched via normal API queries when report is loaded
+export interface ReportTrip {
+  trip_id: string;
+  start_time: string;  // For header display (e.g., "7:05 AM")
+  headsign: string;    // For header display (e.g., "Downtown Seattle")
+  route_id: string;    // Needed to set selectedRouteId
+  shape_id: string;    // Needed for map display
+  direction_id: string;
+  time_period: string;
+  ridership: number;
+}
+
 export interface ReportState {
   // View state
   activeTab: 'system' | 'routes' | 'stops' | 'components' | 'reports';
   selectedRouteId: string | null;
   selectedStopId: string | null;
-  selectedTrip: string | null;
+  selectedTrip: ReportTrip | null;
   selectedPattern: string | null;
   selectedMetric: string;
+  selectedRouteTab: 'Summary' | 'Trips' | 'Grid';
+
+  // Trip tab filters
+  tripFilterMin: number | null;
+  tripFilterMax: number | null;
+  tripSortBy: 'ridership' | 'time' | 'largestIncrease' | 'largestDecrease' | 'largestChange';
+  tripSortOrder: 'asc' | 'desc';
+
+  // Stops tab filters
+  stopFilterMin: number | null;
+  stopFilterMax: number | null;
+  stopSortBy: 'name' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange';
+  stopSortOrder: 'asc' | 'desc';
+  stopAmenityFilters: Record<string, boolean>;
+
+  // Routes tab filters
+  routeFilterMin: number | null;
+  routeFilterMax: number | null;
+  routeSortBy: 'name' | 'ridership' | 'largestIncrease' | 'largestDecrease' | 'largestChange';
+  routeSortOrder: 'asc' | 'desc';
 
   // Date filters
   dateRange: {
@@ -119,12 +152,61 @@ function generateId(): string {
   return `report_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+// Season date ranges (based on MapCanvas definitions)
+// Winter: Sep 21 of (year-1) to Mar 20 of year
+// Spring: Mar 21 to Jun 21 of year
+// Summer: Jun 22 to Sep 18 of year
+// Fall: Sep 19 of year to Mar 19 of (year+1)
+
+interface SeasonMatch {
+  season: 'Winter' | 'Spring' | 'Summer' | 'Fall';
+  year: number;
+}
+
+// Check if a date range matches a service season
+function matchServiceSeason(start: Date, end: Date): SeasonMatch | null {
+  const startMonth = start.getMonth();
+  const startDay = start.getDate();
+  const endMonth = end.getMonth();
+  const endDay = end.getDate();
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+
+  // Spring: Mar 21 to Jun 21 (same year)
+  if (startMonth === 2 && startDay === 21 && endMonth === 5 && endDay === 21 && startYear === endYear) {
+    return { season: 'Spring', year: startYear };
+  }
+
+  // Summer: Jun 22 to Sep 18 (same year)
+  if (startMonth === 5 && startDay === 22 && endMonth === 8 && endDay === 18 && startYear === endYear) {
+    return { season: 'Summer', year: startYear };
+  }
+
+  // Winter: Sep 21 of prev year to Mar 20 of year
+  if (startMonth === 8 && startDay === 21 && endMonth === 2 && endDay === 20 && endYear === startYear + 1) {
+    return { season: 'Winter', year: endYear };
+  }
+
+  // Fall: Sep 19 of year to Mar 19 of next year
+  if (startMonth === 8 && startDay === 19 && endMonth === 2 && endDay === 19 && endYear === startYear + 1) {
+    return { season: 'Fall', year: startYear };
+  }
+
+  return null;
+}
+
 // Format date range for display
 export function formatDateRange(start: string | null, end: string | null): string {
   if (!start || !end) return 'No date range';
 
   const startDate = new Date(start);
   const endDate = new Date(end);
+
+  // Check if this matches a service season
+  const seasonMatch = matchServiceSeason(startDate, endDate);
+  if (seasonMatch) {
+    return `${seasonMatch.season} ${seasonMatch.year}`;
+  }
 
   const formatDate = (d: Date) => {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
