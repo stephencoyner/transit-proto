@@ -15,7 +15,8 @@ interface NavRailProps {
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
   allowAbsoluteNumberComparisons: boolean;
   onAllowAbsoluteNumberComparisonsChange: (value: boolean) => void;
-  onOpenReports: () => void;
+  onOpenSnapshots: () => void;
+  showSnapshotSavedToast?: boolean;
 }
 
 // Inline SVG components for nav icons
@@ -39,12 +40,21 @@ const StopsIcon = () => (
   </svg>
 );
 
-const ReportsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 1C2.44772 1 2 1.44772 2 2V14C2 14.5523 2.44772 15 3 15H13C13.5523 15 14 14.5523 14 14V5L10 1H3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M10 1V5H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 8H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M5 11H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+const SnapshotsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12.0001 18.2211L7.97337 19.9434C7.21504 20.2625 6.49604 20.1992 5.81637 19.7534C5.13671 19.3077 4.79688 18.677 4.79688 17.8614V5.07163C4.79688 4.44196 5.01863 3.90538 5.46213 3.46188C5.90563 3.01838 6.44221 2.79663 7.07188 2.79663H16.9284C17.558 2.79663 18.0946 3.01838 18.5381 3.46188C18.9816 3.90538 19.2034 4.44196 19.2034 5.07163V17.8614C19.2034 18.677 18.8635 19.3077 18.1839 19.7534C17.5042 20.1992 16.7852 20.2625 16.0269 19.9434L12.0001 18.2211ZM12.0001 15.7281L16.9284 17.8424V5.07163H7.07188V17.8424L12.0001 15.7281ZM12.0001 5.07163H7.07188H16.9284H12.0001Z" fill="currentColor"/>
+  </svg>
+);
+
+const ExperimentsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3.33346 14.1356C2.71102 14.1356 2.26774 13.8569 2.00363 13.2996C1.73941 12.7422 1.80369 12.2256 2.19646 11.7498L5.86463 7.28561V3.42511H5.32146C5.10869 3.42511 4.92913 3.35195 4.7828 3.20561C4.63635 3.05917 4.56313 2.87956 4.56313 2.66678C4.56313 2.454 4.63635 2.27439 4.7828 2.12795C4.92913 1.98161 5.10869 1.90845 5.32146 1.90845H10.6788C10.8916 1.90845 11.0711 1.98161 11.2175 2.12795C11.3639 2.27439 11.4371 2.454 11.4371 2.66678C11.4371 2.87956 11.3639 3.05917 11.2175 3.20561C11.0711 3.35195 10.8916 3.42511 10.6788 3.42511H10.1356V7.28561L13.8038 11.7498C14.1966 12.2256 14.2609 12.7422 13.9966 13.2996C13.7325 13.8569 13.2892 14.1356 12.6668 14.1356H3.33346ZM4.77046 11.9523H11.2298L9.04296 9.38128H6.9573L4.77046 11.9523ZM3.43713 12.6189H12.5631L8.61896 7.82011V3.42511H7.3813V7.82011L3.43713 12.6189Z" fill="currentColor"/>
+  </svg>
+);
+
+const SettingsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.14109 14.8021C6.82776 14.8021 6.55809 14.6988 6.33209 14.4921C6.1062 14.2854 5.97104 14.031 5.92659 13.7289L5.77659 12.6249C5.65337 12.5774 5.53648 12.52 5.42593 12.4528C5.31548 12.3856 5.20709 12.3143 5.10076 12.2388L4.07143 12.6721C3.78309 12.797 3.49337 12.8088 3.20226 12.7074C2.91115 12.6061 2.6852 12.421 2.52443 12.1521L1.66526 10.6459C1.50437 10.3797 1.45793 10.0962 1.52593 9.79542C1.59393 9.49453 1.74993 9.24698 1.99393 9.05275L2.87326 8.38609C2.86481 8.31898 2.86059 8.25464 2.86059 8.19309V7.80675C2.86059 7.7452 2.86481 7.68087 2.87326 7.61375L1.99393 6.95109C1.74726 6.75687 1.59059 6.50931 1.52393 6.20842C1.45726 5.90753 1.50437 5.6227 1.66526 5.35392L2.52443 3.85175C2.6852 3.58553 2.91048 3.40109 3.20026 3.29842C3.49004 3.19575 3.77909 3.20686 4.06743 3.33175L5.10876 3.76509C5.21509 3.68953 5.32426 3.61881 5.43626 3.55292C5.54837 3.48714 5.66181 3.43048 5.77659 3.38292L5.92659 2.27492C5.97104 1.97014 6.1062 1.71442 6.33209 1.50775C6.55809 1.30109 6.82776 1.19775 7.14109 1.19775H8.85909C9.17243 1.19775 9.44209 1.30109 9.66809 1.50775C9.89398 1.71442 10.0291 1.97014 10.0736 2.27492L10.2236 3.38292C10.3468 3.43048 10.4637 3.48714 10.5743 3.55292C10.6847 3.61881 10.7931 3.68953 10.8994 3.76509L11.9288 3.33175C12.2171 3.20686 12.5068 3.19575 12.7979 3.29842C13.089 3.40109 13.315 3.58553 13.4758 3.85175L14.3349 5.35392C14.4958 5.6227 14.5429 5.90753 14.4763 6.20842C14.4096 6.50931 14.2529 6.75687 14.0063 6.95109L13.1229 7.61375C13.1314 7.68087 13.1356 7.7452 13.1356 7.80675V7.99992C13.1356 8.06703 13.1349 8.13142 13.1336 8.19309C13.1323 8.25464 13.1231 8.31898 13.1063 8.38609L13.9896 9.04875C14.2363 9.24298 14.3929 9.49053 14.4596 9.79142C14.5263 10.0923 14.4791 10.3771 14.3183 10.6459L13.4424 12.1521C13.2816 12.4183 13.0564 12.6028 12.7666 12.7054C12.4768 12.8081 12.1878 12.797 11.8994 12.6721L10.8914 12.2388C10.7851 12.3143 10.6759 12.3856 10.5639 12.4528C10.4518 12.52 10.3384 12.5774 10.2236 12.6249L10.0736 13.7289C10.0291 14.031 9.89398 14.2854 9.66809 14.4921C9.44209 14.6988 9.17243 14.8021 8.85909 14.8021H7.14109ZM7.37726 13.2854H8.60226L8.83959 11.5268C9.1867 11.4379 9.51082 11.3066 9.81193 11.1331C10.1129 10.9595 10.3856 10.7452 10.6301 10.4901L12.2763 11.1734L12.8784 10.1119L11.4569 9.03659C11.5125 8.8757 11.5527 8.70781 11.5776 8.53292C11.6025 8.35803 11.6149 8.18037 11.6149 7.99992C11.6149 7.81948 11.6025 7.64181 11.5776 7.46692C11.5527 7.29203 11.5125 7.12414 11.4569 6.96325L12.8863 5.88792L12.2763 4.82642L10.6341 5.52642C10.3896 5.26287 10.1169 5.04298 9.81593 4.86675C9.51482 4.69053 9.18937 4.55931 8.83959 4.47309L8.62293 2.71442H7.38993L7.16459 4.46909C6.81215 4.55531 6.4847 4.68653 6.18226 4.86275C5.87993 5.03898 5.6052 5.25464 5.35809 5.50975L3.72009 4.82642L3.11393 5.88792L4.53126 6.94275C4.4757 7.11464 4.43548 7.28592 4.41059 7.45659C4.3857 7.62725 4.37326 7.80837 4.37326 7.99992C4.37326 8.18037 4.3857 8.35659 4.41059 8.52859C4.43548 8.70059 4.4757 8.87253 4.53126 9.04442L3.11393 10.1119L3.72009 11.1734L5.35809 10.4774C5.6052 10.7383 5.88059 10.9569 6.18426 11.1331C6.48804 11.3093 6.81482 11.4419 7.16459 11.5308L7.37726 13.2854ZM8.02143 10.3333C8.66587 10.3333 9.21587 10.1055 9.67143 9.64992C10.127 9.19437 10.3548 8.64437 10.3548 7.99992C10.3548 7.35548 10.127 6.80548 9.67143 6.34992C9.21587 5.89437 8.66587 5.66659 8.02143 5.66659C7.36854 5.66659 6.81643 5.89437 6.36509 6.34992C5.91376 6.80548 5.68809 7.35548 5.68809 7.99992C5.68809 8.64437 5.91376 9.19437 6.36509 9.64992C6.81643 10.1055 7.36854 10.3333 8.02143 10.3333Z" fill="currentColor"/>
   </svg>
 );
 
@@ -119,7 +129,8 @@ const NavRail: React.FC<NavRailProps> = ({
   onDifferentiatedPanelBackgroundsChange,
   allowAbsoluteNumberComparisons,
   onAllowAbsoluteNumberComparisonsChange,
-  onOpenReports
+  onOpenSnapshots,
+  showSnapshotSavedToast = false
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
@@ -251,18 +262,48 @@ const NavRail: React.FC<NavRailProps> = ({
       </nav>
 
       {/* User Profile - At Bottom */}
-      <button
-        ref={profileButtonRef}
-        onClick={handleProfileClick}
-        className="flex items-center justify-center w-10 h-10 rounded-full bg-btn-secondary hover:bg-btn-secondary/80 transition-colors cursor-pointer"
-        style={{ marginBottom: '0' }}
-        aria-label="User profile"
-        aria-expanded={isProfileMenuOpen}
-      >
-        <span className="body-large text-text-primary">
-          {userInitial}
-        </span>
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button
+          ref={profileButtonRef}
+          onClick={handleProfileClick}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-btn-secondary hover:bg-btn-secondary/80 transition-colors cursor-pointer"
+          style={{
+            marginBottom: '0',
+            border: showSnapshotSavedToast ? '2px solid #2D7A4F' : 'none',
+            transition: 'border 0.2s ease',
+          }}
+          aria-label="User profile"
+          aria-expanded={isProfileMenuOpen}
+        >
+          <span className="body-large text-text-primary">
+            {userInitial}
+          </span>
+        </button>
+      </div>
+
+      {/* Snapshot Saved Toast - rendered via portal */}
+      {showSnapshotSavedToast && profileButtonRef.current && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: profileButtonRef.current.getBoundingClientRect().top + profileButtonRef.current.getBoundingClientRect().height / 2,
+            left: profileButtonRef.current.getBoundingClientRect().right + 8,
+            transform: 'translateY(-50%)',
+            backgroundColor: '#2D7A4F',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            boxShadow: 'var(--shadow-md)',
+            zIndex: 10000,
+          }}
+        >
+          Snapshot Saved
+        </div>,
+        document.body
+      )}
 
       {/* Profile Menu Dropdown */}
       {isProfileMenuOpen && profileMenuPosition && createPortal(
@@ -284,37 +325,78 @@ const NavRail: React.FC<NavRailProps> = ({
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--radius-large)',
               boxShadow: 'var(--shadow-lg)',
+              overflow: 'hidden',
               padding: '8px',
             }}
           >
-            {/* Reports */}
+            {/* Profile Header */}
             <div
-              className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-              onClick={() => {
-                setIsProfileMenuOpen(false);
-                onOpenReports();
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '16px 8px',
+                gap: '8px',
+                borderBottom: '0.5px solid var(--border-default)',
+                margin: '0 -8px',
+                paddingLeft: '16px',
+                paddingRight: '16px',
               }}
             >
-              <ReportsIcon />
+              <div
+                className="flex items-center justify-center rounded-full bg-btn-secondary"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                }}
+              >
+                <span className="text-text-primary" style={{ fontSize: '20px', fontWeight: 500 }}>
+                  {userInitial}
+                </span>
+              </div>
               <span className="button-small text-text-primary">
-                Reports
+                Stephencoyner@gmail.com
+              </span>
+            </div>
+
+            {/* Snapshots */}
+            <div
+              className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+              style={{ marginTop: '8px' }}
+              onClick={() => {
+                setIsProfileMenuOpen(false);
+                onOpenSnapshots();
+              }}
+            >
+              <SnapshotsIcon />
+              <span className="button-small text-text-primary">
+                Snapshots
               </span>
             </div>
 
             {/* Experimental Features */}
             <div
               className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-              style={{
-                backgroundColor: isExperimentalFeaturesOpen ? 'var(--bg-primary)' : 'transparent'
-              }}
+              style={isExperimentalFeaturesOpen ? { backgroundColor: 'var(--bg-primary)' } : undefined}
               onClick={() => setIsExperimentalFeaturesOpen(!isExperimentalFeaturesOpen)}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 2V6L4 9V14H12V9L10 6V2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M4 2H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
+              <ExperimentsIcon />
               <span className="button-small text-text-primary">
                 Experimental Features
+              </span>
+            </div>
+
+            {/* Settings */}
+            <div
+              className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+              onClick={() => {
+                setIsProfileMenuOpen(false);
+                // TODO: Open settings modal
+              }}
+            >
+              <SettingsIcon />
+              <span className="button-small text-text-primary">
+                Settings
               </span>
             </div>
           </div>

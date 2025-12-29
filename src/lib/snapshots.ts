@@ -1,8 +1,8 @@
-// Report Types and localStorage utilities
+// Snapshot Types and localStorage utilities
 
-// Minimal trip data stored in reports - just enough for UI display
-// The rest is fetched via normal API queries when report is loaded
-export interface ReportTrip {
+// Minimal trip data stored in snapshots - just enough for UI display
+// The rest is fetched via normal API queries when snapshot is loaded
+export interface SnapshotTrip {
   trip_id: string;
   start_time: string;  // For header display (e.g., "7:05 AM")
   headsign: string;    // For header display (e.g., "Downtown Seattle")
@@ -13,12 +13,12 @@ export interface ReportTrip {
   ridership: number;
 }
 
-export interface ReportState {
+export interface SnapshotState {
   // View state
-  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'reports';
+  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'snapshots';
   selectedRouteId: string | null;
   selectedStopId: string | null;
-  selectedTrip: ReportTrip | null;
+  selectedTrip: SnapshotTrip | null;
   selectedPattern: string | null;
   selectedMetric: string;
   selectedRouteTab: 'Summary' | 'Trips' | 'Grid';
@@ -70,86 +70,86 @@ export interface ReportState {
   };
 }
 
-export interface Report {
+export interface Snapshot {
   id: string;
   name: string;
   description: string;
   createdAt: string;
   updatedAt: string;
-  state: ReportState;
+  state: SnapshotState;
 }
 
-const REPORTS_STORAGE_KEY = 'transit-proto-reports';
+const SNAPSHOTS_STORAGE_KEY = 'transit-proto-snapshots';
 
-// Get all reports from localStorage
-export function getReports(): Report[] {
+// Get all snapshots from localStorage
+export function getSnapshots(): Snapshot[] {
   if (typeof window === 'undefined') return [];
 
   try {
-    const stored = localStorage.getItem(REPORTS_STORAGE_KEY);
+    const stored = localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (e) {
-    console.error('Failed to load reports from localStorage:', e);
+    console.error('Failed to load snapshots from localStorage:', e);
     return [];
   }
 }
 
-// Save a new report
-export function saveReport(report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>): Report {
-  const reports = getReports();
+// Save a new snapshot
+export function saveSnapshot(snapshot: Omit<Snapshot, 'id' | 'createdAt' | 'updatedAt'>): Snapshot {
+  const snapshots = getSnapshots();
   const now = new Date().toISOString();
 
-  const newReport: Report = {
-    ...report,
+  const newSnapshot: Snapshot = {
+    ...snapshot,
     id: generateId(),
     createdAt: now,
     updatedAt: now,
   };
 
-  reports.push(newReport);
-  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
+  snapshots.push(newSnapshot);
+  localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
 
-  return newReport;
+  return newSnapshot;
 }
 
-// Update an existing report
-export function updateReport(id: string, updates: Partial<Pick<Report, 'name' | 'description'>>): Report | null {
-  const reports = getReports();
-  const index = reports.findIndex(r => r.id === id);
+// Update an existing snapshot
+export function updateSnapshot(id: string, updates: Partial<Pick<Snapshot, 'name' | 'description'>>): Snapshot | null {
+  const snapshots = getSnapshots();
+  const index = snapshots.findIndex(s => s.id === id);
 
   if (index === -1) return null;
 
-  reports[index] = {
-    ...reports[index],
+  snapshots[index] = {
+    ...snapshots[index],
     ...updates,
     updatedAt: new Date().toISOString(),
   };
 
-  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
-  return reports[index];
+  localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
+  return snapshots[index];
 }
 
-// Delete a report
-export function deleteReport(id: string): boolean {
-  const reports = getReports();
-  const filtered = reports.filter(r => r.id !== id);
+// Delete a snapshot
+export function deleteSnapshot(id: string): boolean {
+  const snapshots = getSnapshots();
+  const filtered = snapshots.filter(s => s.id !== id);
 
-  if (filtered.length === reports.length) return false;
+  if (filtered.length === snapshots.length) return false;
 
-  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(filtered));
+  localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(filtered));
   return true;
 }
 
-// Get a single report by ID
-export function getReportById(id: string): Report | null {
-  const reports = getReports();
-  return reports.find(r => r.id === id) || null;
+// Get a single snapshot by ID
+export function getSnapshotById(id: string): Snapshot | null {
+  const snapshots = getSnapshots();
+  return snapshots.find(s => s.id === id) || null;
 }
 
 // Generate a unique ID
 function generateId(): string {
-  return `report_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `snapshot_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 // Season date ranges (based on MapCanvas definitions)
