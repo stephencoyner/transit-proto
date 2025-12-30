@@ -138,12 +138,15 @@ const getBookmarkContext = (bookmark: Bookmark) => {
       const ridershipStr = formatRidershipFilter(state.tripFilterMin, state.tripFilterMax);
       if (ridershipStr) filters.push(ridershipStr);
     } else if (!state.selectedStopId) {
-      if (state.activeTab === 'routes') {
-        const ridershipStr = formatRidershipFilter(state.routeFilterMin, state.routeFilterMax);
-        if (ridershipStr) filters.push(ridershipStr);
-      } else if (state.activeTab === 'stops') {
-        const ridershipStr = formatRidershipFilter(state.stopFilterMin, state.stopFilterMax);
-        if (ridershipStr) filters.push(ridershipStr);
+      // Check route filters (routes tab or system tab)
+      if (state.activeTab === 'routes' || state.activeTab === 'system') {
+        const routeRidershipStr = formatRidershipFilter(state.routeFilterMin, state.routeFilterMax);
+        if (routeRidershipStr) filters.push(routeRidershipStr);
+      }
+      // Check stop filters (stops tab or system tab)
+      if (state.activeTab === 'stops' || state.activeTab === 'system') {
+        const stopRidershipStr = formatRidershipFilter(state.stopFilterMin, state.stopFilterMax);
+        if (stopRidershipStr) filters.push(stopRidershipStr);
       }
     }
   }
@@ -392,7 +395,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 <span>{contextSubtitle}</span>
               </div>
             )}
-            {/* Filters with icon (only if present) */}
+            {/* Filters with icon (only if present) - rendered outside the date comparison ternary */}
             {contextFilters && (
               <div
                 style={{
