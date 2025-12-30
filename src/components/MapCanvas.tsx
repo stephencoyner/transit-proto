@@ -7319,7 +7319,6 @@ export default function MapCanvas() {
         onViewStateChange={(params: any) => setViewState(params.viewState)}
         controller={true}
         layers={layers}
-        glOptions={{ preserveDrawingBuffer: true }}
         onHover={({ object, x, y }) => {
           if (object && object.properties) {
             if ('route_id' in object.properties) {
@@ -12255,7 +12254,7 @@ export default function MapCanvas() {
             : activeTab === 'routes' ? 'Routes'
             : activeTab === 'stops' ? 'Stops'
             : 'System',
-          contextType: selectedRouteId ? 'route' : selectedStopId ? 'stop' : activeTab === 'routes' ? 'routes' : activeTab === 'stops' ? 'stops' : 'system' as const,
+          contextType: (selectedRouteId ? 'route' : selectedStopId ? 'stop' : activeTab === 'routes' ? 'routes' : activeTab === 'stops' ? 'stops' : 'system') as 'system' | 'routes' | 'stops' | 'route' | 'stop',
           contextSubtitle: (() => {
             // Use season label if a season is selected, otherwise use date range
             let dateStr: string;
