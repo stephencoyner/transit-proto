@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'elevated';
 export type ButtonSize = 'small' | 'medium';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -17,6 +17,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       primary: 'bg-btn-primary text-text-on-primary hover:opacity-90',
       secondary: 'bg-btn-secondary text-text-primary',
       tertiary: 'bg-bg-elevated text-text-primary hover:bg-bg-primary',
+      elevated: 'bg-bg-elevated text-text-primary hover:bg-bg-primary',
     };
 
     const sizeClasses = {
@@ -28,7 +29,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     // Apply custom border for variants with borders
     const { style: propStyle, ...restProps } = props;
-    const style = (variant === 'secondary' || variant === 'tertiary')
+    const style = (variant === 'secondary' || variant === 'tertiary' || variant === 'elevated')
       ? {
           ...propStyle,
           border: '0.5px solid var(--border-default)'

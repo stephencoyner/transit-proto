@@ -15,8 +15,10 @@ interface NavRailProps {
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
   allowAbsoluteNumberComparisons: boolean;
   onAllowAbsoluteNumberComparisonsChange: (value: boolean) => void;
-  onOpenSnapshots: () => void;
-  showSnapshotSavedToast?: boolean;
+  fullScreenBookmarkModal: boolean;
+  onFullScreenBookmarkModalChange: (value: boolean) => void;
+  onOpenBookmarks: () => void;
+  showBookmarkSavedToast?: boolean;
 }
 
 // Inline SVG components for nav icons
@@ -40,7 +42,7 @@ const StopsIcon = () => (
   </svg>
 );
 
-const SnapshotsIcon = () => (
+const BookmarksIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.0001 18.2211L7.97337 19.9434C7.21504 20.2625 6.49604 20.1992 5.81637 19.7534C5.13671 19.3077 4.79688 18.677 4.79688 17.8614V5.07163C4.79688 4.44196 5.01863 3.90538 5.46213 3.46188C5.90563 3.01838 6.44221 2.79663 7.07188 2.79663H16.9284C17.558 2.79663 18.0946 3.01838 18.5381 3.46188C18.9816 3.90538 19.2034 4.44196 19.2034 5.07163V17.8614C19.2034 18.677 18.8635 19.3077 18.1839 19.7534C17.5042 20.1992 16.7852 20.2625 16.0269 19.9434L12.0001 18.2211ZM12.0001 15.7281L16.9284 17.8424V5.07163H7.07188V17.8424L12.0001 15.7281ZM12.0001 5.07163H7.07188H16.9284H12.0001Z" fill="currentColor"/>
   </svg>
@@ -129,8 +131,10 @@ const NavRail: React.FC<NavRailProps> = ({
   onDifferentiatedPanelBackgroundsChange,
   allowAbsoluteNumberComparisons,
   onAllowAbsoluteNumberComparisonsChange,
-  onOpenSnapshots,
-  showSnapshotSavedToast = false
+  fullScreenBookmarkModal,
+  onFullScreenBookmarkModalChange,
+  onOpenBookmarks,
+  showBookmarkSavedToast = false
 }) => {
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
@@ -269,7 +273,7 @@ const NavRail: React.FC<NavRailProps> = ({
           className="flex items-center justify-center w-10 h-10 rounded-full bg-btn-secondary hover:bg-btn-secondary/80 transition-colors cursor-pointer"
           style={{
             marginBottom: '0',
-            border: showSnapshotSavedToast ? '2px solid #2D7A4F' : 'none',
+            border: showBookmarkSavedToast ? '2px solid #2D7A4F' : 'none',
             transition: 'border 0.2s ease',
           }}
           aria-label="User profile"
@@ -281,8 +285,8 @@ const NavRail: React.FC<NavRailProps> = ({
         </button>
       </div>
 
-      {/* Snapshot Saved Toast - rendered via portal */}
-      {showSnapshotSavedToast && profileButtonRef.current && createPortal(
+      {/* Bookmark Saved Toast - rendered via portal */}
+      {showBookmarkSavedToast && profileButtonRef.current && createPortal(
         <div
           style={{
             position: 'fixed',
@@ -300,7 +304,7 @@ const NavRail: React.FC<NavRailProps> = ({
             zIndex: 10000,
           }}
         >
-          Snapshot Saved
+          Bookmark Saved
         </div>,
         document.body
       )}
@@ -359,18 +363,18 @@ const NavRail: React.FC<NavRailProps> = ({
               </span>
             </div>
 
-            {/* Snapshots */}
+            {/* Bookmarks */}
             <div
               className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
               style={{ marginTop: '8px' }}
               onClick={() => {
                 setIsProfileMenuOpen(false);
-                onOpenSnapshots();
+                onOpenBookmarks();
               }}
             >
-              <SnapshotsIcon />
+              <BookmarksIcon />
               <span className="button-small text-text-primary">
-                Snapshots
+                Bookmarks
               </span>
             </div>
 
@@ -513,6 +517,40 @@ const NavRail: React.FC<NavRailProps> = ({
                       position: 'absolute',
                       top: '1px',
                       left: allowAbsoluteNumberComparisons ? '19px' : '1px',
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Toggle Item - Full Screen Bookmark Modal */}
+              <div
+                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+                onClick={() => onFullScreenBookmarkModalChange(!fullScreenBookmarkModal)}
+              >
+                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
+                  Full Screen Bookmark Modal
+                </span>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: fullScreenBookmarkModal ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-elevated)',
+                      position: 'absolute',
+                      top: '1px',
+                      left: fullScreenBookmarkModal ? '19px' : '1px',
                       transition: 'left 0.2s ease'
                     }}
                   />

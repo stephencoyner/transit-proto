@@ -1,8 +1,8 @@
-// Snapshot Types and localStorage utilities
+// Bookmark Types and localStorage utilities
 
-// Minimal trip data stored in snapshots - just enough for UI display
-// The rest is fetched via normal API queries when snapshot is loaded
-export interface SnapshotTrip {
+// Minimal trip data stored in bookmarks - just enough for UI display
+// The rest is fetched via normal API queries when bookmark is loaded
+export interface BookmarkTrip {
   trip_id: string;
   start_time: string;  // For header display (e.g., "7:05 AM")
   headsign: string;    // For header display (e.g., "Downtown Seattle")
@@ -13,12 +13,14 @@ export interface SnapshotTrip {
   ridership: number;
 }
 
-export interface SnapshotState {
+export interface BookmarkState {
   // View state
-  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'snapshots';
+  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'bookmarks';
   selectedRouteId: string | null;
+  selectedRouteName?: string | null;  // Display name for the route (e.g., "E Line", "Route 44")
   selectedStopId: string | null;
-  selectedTrip: SnapshotTrip | null;
+  selectedStopName?: string | null;   // Display name for the stop
+  selectedTrip: BookmarkTrip | null;
   selectedPattern: string | null;
   selectedMetric: string;
   selectedRouteTab: 'Summary' | 'Trips' | 'Grid';
@@ -70,86 +72,88 @@ export interface SnapshotState {
   };
 }
 
-export interface Snapshot {
+export interface Bookmark {
   id: string;
   name: string;
   description: string;
   createdAt: string;
   updatedAt: string;
-  state: SnapshotState;
+  state: BookmarkState;
+  image?: string; // Base64 encoded map screenshot
 }
 
-const SNAPSHOTS_STORAGE_KEY = 'transit-proto-snapshots';
+// Keep old key for backwards compatibility - will read from old storage
+const BOOKMARKS_STORAGE_KEY = 'transit-proto-snapshots';
 
-// Get all snapshots from localStorage
-export function getSnapshots(): Snapshot[] {
+// Get all bookmarks from localStorage
+export function getBookmarks(): Bookmark[] {
   if (typeof window === 'undefined') return [];
 
   try {
-    const stored = localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
+    const stored = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (e) {
-    console.error('Failed to load snapshots from localStorage:', e);
+    console.error('Failed to load bookmarks from localStorage:', e);
     return [];
   }
 }
 
-// Save a new snapshot
-export function saveSnapshot(snapshot: Omit<Snapshot, 'id' | 'createdAt' | 'updatedAt'>): Snapshot {
-  const snapshots = getSnapshots();
+// Save a new bookmark
+export function saveBookmark(bookmark: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>): Bookmark {
+  const bookmarks = getBookmarks();
   const now = new Date().toISOString();
 
-  const newSnapshot: Snapshot = {
-    ...snapshot,
+  const newBookmark: Bookmark = {
+    ...bookmark,
     id: generateId(),
     createdAt: now,
     updatedAt: now,
   };
 
-  snapshots.push(newSnapshot);
-  localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
+  bookmarks.push(newBookmark);
+  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
 
-  return newSnapshot;
+  return newBookmark;
 }
 
-// Update an existing snapshot
-export function updateSnapshot(id: string, updates: Partial<Pick<Snapshot, 'name' | 'description'>>): Snapshot | null {
-  const snapshots = getSnapshots();
-  const index = snapshots.findIndex(s => s.id === id);
+// Update an existing bookmark
+export function updateBookmark(id: string, updates: Partial<Pick<Bookmark, 'name' | 'description'>>): Bookmark | null {
+  const bookmarks = getBookmarks();
+  const index = bookmarks.findIndex(b => b.id === id);
 
   if (index === -1) return null;
 
-  snapshots[index] = {
-    ...snapshots[index],
+  bookmarks[index] = {
+    ...bookmarks[index],
     ...updates,
     updatedAt: new Date().toISOString(),
   };
 
-  localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
-  return snapshots[index];
+  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+  return bookmarks[index];
 }
 
-// Delete a snapshot
-export function deleteSnapshot(id: string): boolean {
-  const snapshots = getSnapshots();
-  const filtered = snapshots.filter(s => s.id !== id);
+// Delete a bookmark
+export function deleteBookmark(id: string): boolean {
+  const bookmarks = getBookmarks();
+  const filtered = bookmarks.filter(b => b.id !== id);
 
-  if (filtered.length === snapshots.length) return false;
+  if (filtered.length === bookmarks.length) return false;
 
-  localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(filtered));
+  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(filtered));
   return true;
 }
 
-// Get a single snapshot by ID
-export function getSnapshotById(id: string): Snapshot | null {
-  const snapshots = getSnapshots();
-  return snapshots.find(s => s.id === id) || null;
+// Get a single bookmark by ID
+export function getBookmarkById(id: string): Bookmark | null {
+  const bookmarks = getBookmarks();
+  return bookmarks.find(b => b.id === id) || null;
 }
 
 // Generate a unique ID
 function generateId(): string {
-  return `snapshot_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `bookmark_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 // Season date ranges (based on MapCanvas definitions)
@@ -218,3 +222,13 @@ export function formatDateRange(start: string | null, end: string | null): strin
 
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
+
+// Legacy exports for backwards compatibility during migration
+export type Snapshot = Bookmark;
+export type SnapshotState = BookmarkState;
+export type SnapshotTrip = BookmarkTrip;
+export const getSnapshots = getBookmarks;
+export const saveSnapshot = saveBookmark;
+export const updateSnapshot = updateBookmark;
+export const deleteSnapshot = deleteBookmark;
+export const getSnapshotById = getBookmarkById;
