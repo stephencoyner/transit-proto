@@ -57,6 +57,14 @@ const getViewIcon = (contextType: string) => {
   return <SystemIcon />;
 };
 
+// Helper to format time from "HH:MM:SS" to "H:MM AM/PM"
+const formatTime12Hour = (time: string): string => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 // Helper to get day mode from selected days array
 const getDayModeLabel = (selectedDays: number[]): string => {
   if (selectedDays.length === 7 || selectedDays.length === 0) return 'All Days';
@@ -78,7 +86,7 @@ const getBookmarkContext = (bookmark: Bookmark) => {
   if (state.selectedRouteId) {
     const routeName = state.selectedRouteName || `Route ${state.selectedRouteId}`;
     contextTitle = state.selectedTrip
-      ? `${routeName} (${state.selectedTrip.start_time} · ${state.selectedPattern || state.selectedTrip.headsign})`
+      ? `${routeName} (${formatTime12Hour(state.selectedTrip.start_time)} · ${state.selectedPattern || state.selectedTrip.headsign})`
       : routeName;
     contextType = 'route';
   } else if (state.selectedStopId) {

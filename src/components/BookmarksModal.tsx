@@ -18,6 +18,14 @@ const getDayModeLabel = (selectedDays: number[]): string => {
   return selectedDays.map(d => dayNames[d]).join(', ');
 };
 
+// Helper to format time from "HH:MM:SS" to "H:MM AM/PM"
+const formatTime12Hour = (time: string): string => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 // Helper to get context strings from bookmark state
 const getBookmarkContext = (bookmark: Bookmark) => {
   const state = bookmark.state;
@@ -28,7 +36,7 @@ const getBookmarkContext = (bookmark: Bookmark) => {
   if (state.selectedRouteId) {
     const routeName = state.selectedRouteName || `Route ${state.selectedRouteId}`;
     contextTitle = state.selectedTrip
-      ? `${routeName} (${state.selectedTrip.start_time} · ${state.selectedPattern || state.selectedTrip.headsign})`
+      ? `${routeName} (${formatTime12Hour(state.selectedTrip.start_time)} · ${state.selectedPattern || state.selectedTrip.headsign})`
       : routeName;
     contextType = 'route';
   } else if (state.selectedStopId) {
@@ -88,12 +96,15 @@ const getBookmarkContext = (bookmark: Bookmark) => {
       const ridershipStr = formatRidershipFilter(state.tripFilterMin, state.tripFilterMax);
       if (ridershipStr) filters.push(ridershipStr);
     } else if (!state.selectedStopId) {
-      if (state.activeTab === 'routes') {
-        const ridershipStr = formatRidershipFilter(state.routeFilterMin, state.routeFilterMax);
-        if (ridershipStr) filters.push(ridershipStr);
-      } else if (state.activeTab === 'stops') {
-        const ridershipStr = formatRidershipFilter(state.stopFilterMin, state.stopFilterMax);
-        if (ridershipStr) filters.push(ridershipStr);
+      // Check route filters (routes tab or system tab)
+      if (state.activeTab === 'routes' || state.activeTab === 'system') {
+        const routeRidershipStr = formatRidershipFilter(state.routeFilterMin, state.routeFilterMax);
+        if (routeRidershipStr) filters.push(routeRidershipStr);
+      }
+      // Check stop filters (stops tab or system tab)
+      if (state.activeTab === 'stops' || state.activeTab === 'system') {
+        const stopRidershipStr = formatRidershipFilter(state.stopFilterMin, state.stopFilterMax);
+        if (stopRidershipStr) filters.push(stopRidershipStr);
       }
     }
   }
