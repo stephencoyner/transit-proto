@@ -18,9 +18,10 @@ import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import type { FilterState } from '@/lib/utils/filterBuilder';
-import { Snapshot, SnapshotState, saveSnapshot } from '@/lib/snapshots';
-import SnapshotsModal from '@/components/SnapshotsModal';
-import SaveSnapshotModal from '@/components/SaveSnapshotModal';
+import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
+import BookmarksModal from '@/components/BookmarksModal';
+import SaveBookmarkModal from '@/components/SaveBookmarkModal';
+import SaveBookmarkModalFullScreen from '@/components/SaveBookmarkModalFullScreen';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -403,7 +404,7 @@ export default function MapCanvas() {
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
   const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
-  const [isSnapshotsModalOpen, setIsSnapshotsModalOpen] = useState(false);
+  const [isBookmarksModalOpen, setIsBookmarksModalOpen] = useState(false);
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
   const [hoveredStopCoords, setHoveredStopCoords] = useState<{ x: number; y: number } | null>(null);
@@ -416,8 +417,8 @@ export default function MapCanvas() {
   const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const mapRef = useRef<MapRef>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'compare' | 'date2' | 'days2' | null>(null);
-  // Track when restoring a snapshot to skip auto-reset effects
-  const isRestoringSnapshotRef = useRef(false);
+  // Track when restoring a bookmark to skip auto-reset effects
+  const isRestoringBookmarkRef = useRef(false);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [selectedRouteTab, setSelectedRouteTab] = useState<'Summary' | 'Trips' | 'Grid'>('Summary');
@@ -433,6 +434,7 @@ export default function MapCanvas() {
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
   const [allowAbsoluteNumberComparisons, setAllowAbsoluteNumberComparisons] = useState<boolean>(false);
+  const [fullScreenBookmarkModal, setFullScreenBookmarkModal] = useState<boolean>(false);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -488,9 +490,11 @@ export default function MapCanvas() {
   const [isDate2Hovered, setIsDate2Hovered] = useState(false);
   const [isDays2Hovered, setIsDays2Hovered] = useState(false);
 
-  // Snapshot capture state
-  const [isSaveSnapshotModalOpen, setIsSaveSnapshotModalOpen] = useState<boolean>(false);
-  const [showSnapshotSavedToast, setShowSnapshotSavedToast] = useState<boolean>(false);
+  // Bookmark capture state
+  const [isSaveBookmarkModalOpen, setIsSaveBookmarkModalOpen] = useState<boolean>(false);
+  const [showBookmarkSavedToast, setShowBookmarkSavedToast] = useState<boolean>(false);
+  const [pendingBookmarkImage, setPendingBookmarkImage] = useState<string | null>(null);
+  const [isCapturingBookmark, setIsCapturingBookmark] = useState<boolean>(false);
 
   // Comparison mode state
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
@@ -4214,9 +4218,9 @@ export default function MapCanvas() {
   }, [fitToBounds]);
 
   // Reset pattern filter, trip filters, and sort when route changes
-  // Skip this when restoring a snapshot (filters are restored separately)
+  // Skip this when restoring a bookmark (filters are restored separately)
   useEffect(() => {
-    if (isRestoringSnapshotRef.current) {
+    if (isRestoringBookmarkRef.current) {
       return;
     }
     setSelectedPattern(null);
@@ -5107,8 +5111,10 @@ export default function MapCanvas() {
           onDifferentiatedPanelBackgroundsChange={setDifferentiatedPanelBackgrounds}
           allowAbsoluteNumberComparisons={allowAbsoluteNumberComparisons}
           onAllowAbsoluteNumberComparisonsChange={setAllowAbsoluteNumberComparisons}
-          onOpenSnapshots={() => setIsSnapshotsModalOpen(true)}
-          showSnapshotSavedToast={showSnapshotSavedToast}
+          fullScreenBookmarkModal={fullScreenBookmarkModal}
+          onFullScreenBookmarkModalChange={setFullScreenBookmarkModal}
+          onOpenBookmarks={() => setIsBookmarksModalOpen(true)}
+          showBookmarkSavedToast={showBookmarkSavedToast}
         />
       </div>
 
@@ -7313,6 +7319,7 @@ export default function MapCanvas() {
         onViewStateChange={(params: any) => setViewState(params.viewState)}
         controller={true}
         layers={layers}
+        glOptions={{ preserveDrawingBuffer: true }}
         onHover={({ object, x, y }) => {
           if (object && object.properties) {
             if ('route_id' in object.properties) {
@@ -7354,6 +7361,7 @@ export default function MapCanvas() {
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/stephencoynerseattle/cmgifl16g001u01s6699hg7iv"
           style={{ position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' }}
+          preserveDrawingBuffer={true}
           onError={(e) => {
             console.warn('Map error:', e);
           }}
@@ -8224,9 +8232,155 @@ export default function MapCanvas() {
         return null;
       })()}
 
-      {/* Capture Snapshot Button */}
+      {/* Capture Bookmark Button */}
       <button
-          onClick={() => setIsSaveSnapshotModalOpen(true)}
+          onClick={async () => {
+            // Show scrim and modal simultaneously - no delay
+            setIsCapturingBookmark(true);
+            setIsSaveBookmarkModalOpen(true);
+
+            // Allow React to render both scrim and modal before starting capture
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            try {
+              const map = mapRef.current?.getMap();
+              if (!map) throw new Error('No map instance');
+
+              // Save current view state to restore after capture
+              const originalViewState = { ...viewState };
+
+              // Calculate bounds for current selection
+              let bounds: LngLatBoundsLike | null = null;
+              if (selectedRouteId) {
+                const routeShapes = shapes.filter(shape => shape.properties.route_id === selectedRouteId);
+                if (routeShapes.length > 0) {
+                  bounds = calculateBounds(routeShapes);
+                }
+              } else if (selectedStopId) {
+                const stop = stops.find(s => s.properties.stop_id === selectedStopId);
+                if (stop) {
+                  const [lng, lat] = stop.geometry.coordinates;
+                  bounds = [[lng - 0.01, lat - 0.01], [lng + 0.01, lat + 0.01]] as LngLatBoundsLike;
+                }
+              } else {
+                // System view - fit to all shapes
+                if (shapes.length > 0) {
+                  bounds = calculateBounds(shapes);
+                }
+              }
+
+              // If we have bounds, fit to them and wait for render
+              if (bounds) {
+                const el = mapContainerRef.current;
+                const width = el?.clientWidth ?? window.innerWidth;
+                const height = el?.clientHeight ?? window.innerHeight;
+                const fittedView = fitToBounds(bounds, { width, height });
+
+                if (fittedView) {
+                  // Jump to fitted view instantly (no transition)
+                  setViewState({
+                    ...fittedView,
+                    transitionDuration: 0
+                  });
+
+                  // Wait for map to finish rendering
+                  await new Promise<void>((resolve) => {
+                    const onIdle = () => {
+                      map.off('idle', onIdle);
+                      resolve();
+                    };
+                    map.on('idle', onIdle);
+                    // Fallback timeout in case idle doesn't fire
+                    setTimeout(() => {
+                      map.off('idle', onIdle);
+                      resolve();
+                    }, 500);
+                  });
+                }
+              }
+
+              // Now capture the screenshot
+              const mapCanvas = map.getCanvas();
+              const container = mapContainerRef.current;
+              const deckCanvas = container?.querySelector('canvas:not(.mapboxgl-canvas)') as HTMLCanvasElement | null;
+
+              // The data panel takes up the left side of the screen
+              // NavRail: 72px, Filters panel: 256px (when open), Data panel: 376px, gaps: 12px each
+              const dpr = window.devicePixelRatio || 1;
+              const navRailWidth = 72;
+              const filtersPanelWidth = isFiltersPanelOpen ? 256 : 0;
+              const dataPanelWidth = 376;
+              const gaps = 12 + (isFiltersPanelOpen ? 12 : 0); // gap after nav rail + gap after filters if open
+              const totalPanelWidth = (navRailWidth + filtersPanelWidth + dataPanelWidth + gaps) * dpr;
+
+              // Calculate the visible map area (right of the panel)
+              const visibleMapLeft = totalPanelWidth;
+              const visibleMapWidth = mapCanvas.width - totalPanelWidth;
+              const visibleMapHeight = mapCanvas.height;
+
+              // For full-screen modal: capture entire canvas (including area behind panels)
+              // For standard modal: crop a square from the center of visible area
+              let cropX: number, cropY: number, cropWidth: number, cropHeight: number;
+              let outputWidth: number, outputHeight: number;
+
+              if (fullScreenBookmarkModal) {
+                // Capture the entire canvas (the floating panel will cover the left side anyway)
+                cropX = 0;
+                cropY = 0;
+                cropWidth = mapCanvas.width;
+                cropHeight = mapCanvas.height;
+                // Output at same aspect ratio, scaled to reasonable size
+                const maxDimension = 1920;
+                const scale = Math.min(maxDimension / cropWidth, maxDimension / cropHeight, 1);
+                outputWidth = Math.round(cropWidth * scale);
+                outputHeight = Math.round(cropHeight * scale);
+              } else {
+                // Crop a square from the center of the visible map area
+                const cropSize = Math.min(visibleMapWidth, visibleMapHeight);
+                cropX = visibleMapLeft + (visibleMapWidth - cropSize) / 2;
+                cropY = (visibleMapHeight - cropSize) / 2;
+                cropWidth = cropSize;
+                cropHeight = cropSize;
+                // 720px square for high-res display on 360px preview
+                outputWidth = 720;
+                outputHeight = 720;
+              }
+
+              const compositeCanvas = document.createElement('canvas');
+              compositeCanvas.width = outputWidth;
+              compositeCanvas.height = outputHeight;
+              const ctx = compositeCanvas.getContext('2d');
+              if (!ctx) throw new Error('Could not get 2d context');
+
+              // Draw cropped Mapbox canvas first (base map)
+              ctx.drawImage(
+                mapCanvas,
+                cropX, cropY, cropWidth, cropHeight,
+                0, 0, outputWidth, outputHeight
+              );
+
+              // Draw cropped DeckGL canvas on top (routes/stops overlay)
+              if (deckCanvas) {
+                ctx.drawImage(
+                  deckCanvas,
+                  cropX, cropY, cropWidth, cropHeight,
+                  0, 0, outputWidth, outputHeight
+                );
+              }
+
+              const dataUrl = compositeCanvas.toDataURL('image/jpeg', 0.8);
+              setPendingBookmarkImage(dataUrl);
+
+              // Restore original view state
+              setViewState({
+                ...originalViewState,
+                transitionDuration: 0
+              });
+            } catch (err) {
+              console.error('Failed to capture map screenshot:', err);
+              setPendingBookmarkImage(null);
+            }
+          }}
           style={{
             position: 'absolute',
             top: '12px',
@@ -8252,7 +8406,7 @@ export default function MapCanvas() {
             e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
             e.currentTarget.style.transform = 'scale(1)';
           }}
-          aria-label="Capture Snapshot"
+          aria-label="Create Bookmark"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12.0001 18.2211L7.97337 19.9434C7.21504 20.2625 6.49604 20.1992 5.81637 19.7534C5.13671 19.3077 4.79688 18.677 4.79688 17.8614V5.07163C4.79688 4.44196 5.01863 3.90538 5.46213 3.46188C5.90563 3.01838 6.44221 2.79663 7.07188 2.79663H11.8326C12.152 2.79663 12.4214 2.90638 12.6409 3.12588C12.8604 3.34555 12.9701 3.61496 12.9701 3.93413C12.9701 4.2533 12.8604 4.52271 12.6409 4.74238C12.4214 4.96188 12.152 5.07163 11.8326 5.07163H7.07188V17.8424L12.0001 15.7281L16.9284 17.8424V12.1254C16.9284 11.8062 17.0381 11.5369 17.2576 11.3174C17.4773 11.0977 17.7467 10.9879 18.0659 10.9879C18.385 10.9879 18.6545 11.0977 18.8741 11.3174C19.0936 11.5369 19.2034 11.8062 19.2034 12.1254V17.8614C19.2034 18.677 18.8635 19.3077 18.1839 19.7534C17.5042 20.1992 16.7852 20.2625 16.0269 19.9434L12.0001 18.2211ZM12.0001 5.07163H7.07188H12.9701H12.0001ZM16.9701 6.98788H16.0599C15.7512 6.98788 15.4925 6.88213 15.2836 6.67063C15.0746 6.45896 14.9701 6.19955 14.9701 5.89238C14.9701 5.58505 15.076 5.32655 15.2876 5.11688C15.4993 4.90738 15.7587 4.80263 16.0659 4.80263H16.9701V3.89238C16.9701 3.58355 17.076 3.32471 17.2876 3.11588C17.4993 2.90705 17.7587 2.80263 18.0659 2.80263C18.3732 2.80263 18.6316 2.90705 18.8411 3.11588C19.0508 3.32471 19.1556 3.58355 19.1556 3.89238V4.80263H20.0659C20.3745 4.80263 20.6334 4.90705 20.8424 5.11588C21.0512 5.32471 21.1556 5.58355 21.1556 5.89238C21.1556 6.19955 21.0512 6.45896 20.8424 6.67063C20.6334 6.88213 20.3745 6.98788 20.0659 6.98788H19.1556V7.89813C19.1556 8.20696 19.0512 8.4658 18.8424 8.67463C18.6334 8.88346 18.3745 8.98788 18.0659 8.98788C17.7587 8.98788 17.4993 8.88213 17.2876 8.67063C17.076 8.45896 16.9701 8.19955 16.9701 7.89238V6.98788Z" fill="currentColor"/>
@@ -12070,11 +12224,188 @@ export default function MapCanvas() {
         )
       )}
 
-      {/* Save Snapshot Modal */}
-      <SaveSnapshotModal
-        isOpen={isSaveSnapshotModalOpen}
-        onClose={() => setIsSaveSnapshotModalOpen(false)}
-        onSave={(name, description) => {
+      {/* Bookmark Capture Scrim - hides the map while we manipulate it for capture */}
+      {isCapturingBookmark && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'var(--bg-primary)',
+            zIndex: 9998,
+          }}
+        />
+      )}
+
+      {/* Save Bookmark Modal - conditionally render standard or full-screen version */}
+      {(() => {
+        const bookmarkModalProps = {
+          isOpen: isSaveBookmarkModalOpen,
+          onClose: () => {
+            setIsSaveBookmarkModalOpen(false);
+            setIsCapturingBookmark(false);
+            setPendingBookmarkImage(null);
+          },
+          bookmarkImage: pendingBookmarkImage,
+          contextTitle: selectedRouteId
+            ? selectedTrip
+              ? `${routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`} (${formatTime12Hour(selectedTrip.start_time)} · ${selectedPattern || selectedTrip.headsign})`
+              : routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`
+            : selectedStopId
+            ? stops.find(s => s.properties.stop_id === selectedStopId)?.properties.name || `Stop ${selectedStopId}`
+            : activeTab === 'routes' ? 'Routes'
+            : activeTab === 'stops' ? 'Stops'
+            : 'System',
+          contextType: selectedRouteId ? 'route' : selectedStopId ? 'stop' : activeTab === 'routes' ? 'routes' : activeTab === 'stops' ? 'stops' : 'system' as const,
+          contextSubtitle: (() => {
+            // Use season label if a season is selected, otherwise use date range
+            let dateStr: string;
+            if (appliedSeason) {
+              const seasonLabels = { winter: 'Winter', spring: 'Spring', summer: 'Summer', fall: 'Fall' };
+              dateStr = `${seasonLabels[appliedSeason.season]} ${appliedSeason.year}`;
+            } else {
+              const start = effectiveDateRange.start;
+              const end = effectiveDateRange.end;
+              if (!start || !end) return '';
+
+              const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+              dateStr = start.getTime() === end.getTime()
+                ? formatDate(start)
+                : `${formatDate(start)} - ${formatDate(end)}, ${end.getFullYear()}`;
+            }
+
+            const daysStr = appliedDaysMode === 'all' ? 'All Days'
+              : appliedDaysMode === 'weekdays' ? 'Weekdays'
+              : appliedDaysMode === 'weekends' ? 'Weekends'
+              : appliedCustomDays.join(', ');
+
+            const periodsStr = appliedTimePeriods.length === 0 || appliedTimePeriods.length === 5
+              ? 'All Day'
+              : appliedTimePeriods.join(', ');
+
+            return `${dateStr} (${daysStr} · ${periodsStr})`;
+          })(),
+          contextFilters: (() => {
+            const filters: string[] = [];
+
+            // Helper to format ridership filter
+            const formatRidershipFilter = (min: number | null, max: number | null) => {
+              if (min !== null && max !== null) {
+                return `Boardings: ${min.toLocaleString()} - ${max.toLocaleString()}`;
+              } else if (min !== null) {
+                return `Boardings >${min.toLocaleString()}`;
+              } else if (max !== null) {
+                return `Boardings <${max.toLocaleString()}`;
+              }
+              return null;
+            };
+
+            // Check ridership filters based on active tab/selection
+            if (selectedTrip) {
+              // Trip detail view - no ridership filters shown
+            } else if (selectedRouteId) {
+              // Route detail view - trip filters
+              const ridershipStr = formatRidershipFilter(appliedTripFilterMin, appliedTripFilterMax);
+              if (ridershipStr) filters.push(ridershipStr);
+            } else if (selectedStopId) {
+              // Stop detail view - no ridership filters shown
+            } else if (activeTab === 'routes') {
+              // Routes list - route filters
+              const ridershipStr = formatRidershipFilter(appliedRouteFilterMin, appliedRouteFilterMax);
+              if (ridershipStr) filters.push(ridershipStr);
+            } else if (activeTab === 'stops') {
+              // Stops list - stop filters
+              const ridershipStr = formatRidershipFilter(appliedStopFilterMin, appliedStopFilterMax);
+              if (ridershipStr) filters.push(ridershipStr);
+              // Amenity filters - show "Has X" or "No X" based on filter value
+              const amenityFilters = Array.from(appliedStopAmenityFilters.entries())
+                .map(([amenity, required]) => required ? amenity : `No ${amenity.toLowerCase()}`);
+              if (amenityFilters.length > 0) {
+                filters.push(...amenityFilters);
+              }
+            }
+
+            return filters.length > 0 ? filters.join(' · ') : undefined;
+          })(),
+          // Comparison mode date labels
+          comparisonMode,
+          primaryDateLabel: comparisonMode ? (() => {
+            // Build primary date label with days/periods
+            let dateStr: string;
+            if (appliedSeason) {
+              const seasonLabels = { winter: 'Winter', spring: 'Spring', summer: 'Summer', fall: 'Fall' };
+              dateStr = `${seasonLabels[appliedSeason.season]} ${appliedSeason.year}`;
+            } else {
+              const start = effectiveDateRange.start;
+              const end = effectiveDateRange.end;
+              if (!start || !end) return '';
+              const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+              dateStr = start.getTime() === end.getTime()
+                ? formatDate(start)
+                : `${formatDate(start)} - ${formatDate(end)}, ${end.getFullYear()}`;
+            }
+            const daysStr = appliedDaysMode === 'all' ? 'All Days'
+              : appliedDaysMode === 'weekdays' ? 'Weekdays'
+              : appliedDaysMode === 'weekends' ? 'Weekends'
+              : appliedCustomDays.join(', ');
+            const periodsStr = appliedTimePeriods.length === 0 || appliedTimePeriods.length === 5
+              ? 'All Day'
+              : appliedTimePeriods.join(', ');
+            return `${dateStr} (${daysStr} · ${periodsStr})`;
+          })() : undefined,
+          comparisonDateLabel: comparisonMode && comparisonDateRange.start && comparisonDateRange.end ? (() => {
+            // Build comparison date label with days/periods
+            const start = comparisonDateRange.start;
+            const end = comparisonDateRange.end;
+
+            // Check if comparison date range matches a season
+            const matchSeason = (): { season: string; year: number } | null => {
+              const startMonth = start.getMonth();
+              const startDay = start.getDate();
+              const endMonth = end.getMonth();
+              const endDay = end.getDate();
+              const startYear = start.getFullYear();
+              const endYear = end.getFullYear();
+
+              // Winter: Sep 21 prev year - Mar 20 year
+              if (startMonth === 8 && startDay === 21 && endMonth === 2 && endDay === 20 && endYear === startYear + 1) {
+                return { season: 'Winter', year: endYear };
+              }
+              // Spring: Mar 21 - Jun 21 same year
+              if (startMonth === 2 && startDay === 21 && endMonth === 5 && endDay === 21 && startYear === endYear) {
+                return { season: 'Spring', year: startYear };
+              }
+              // Summer: Jun 22 - Sep 18 same year
+              if (startMonth === 5 && startDay === 22 && endMonth === 8 && endDay === 18 && startYear === endYear) {
+                return { season: 'Summer', year: startYear };
+              }
+              // Fall: Sep 19 year - Mar 19 next year
+              if (startMonth === 8 && startDay === 19 && endMonth === 2 && endDay === 19 && endYear === startYear + 1) {
+                return { season: 'Fall', year: startYear };
+              }
+              return null;
+            };
+
+            const seasonMatch = matchSeason();
+            let dateStr: string;
+            if (seasonMatch) {
+              dateStr = `${seasonMatch.season} ${seasonMatch.year}`;
+            } else {
+              const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+              dateStr = start.getTime() === end.getTime()
+                ? formatDate(start)
+                : `${formatDate(start)} - ${formatDate(end)}, ${end.getFullYear()}`;
+            }
+
+            const daysStr = appliedDaysMode2 === 'all' ? 'All Days'
+              : appliedDaysMode2 === 'weekdays' ? 'Weekdays'
+              : appliedDaysMode2 === 'weekends' ? 'Weekends'
+              : appliedCustomDays2.join(', ');
+            const periodsStr = appliedTimePeriods2.length === 0 || appliedTimePeriods2.length === 5
+              ? 'All Day'
+              : appliedTimePeriods2.join(', ');
+            return `${dateStr} (${daysStr} · ${periodsStr})`;
+          })() : undefined,
+          onSave: (name: string, description: string) => {
           // Capture current state
           const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           const getDaysFromMode = (mode: string, customDays: string[]) => {
@@ -12084,10 +12415,12 @@ export default function MapCanvas() {
             return customDays.map(d => dayNames.indexOf(d)).filter(i => i >= 0);
           };
 
-          const snapshotState: SnapshotState = {
+          const bookmarkState: BookmarkState = {
             activeTab,
             selectedRouteId,
+            selectedRouteName: selectedRouteId ? routesList.find(r => r.id === selectedRouteId)?.name || null : null,
             selectedStopId,
+            selectedStopName: selectedStopId ? stops.find(s => s.properties.stop_id === selectedStopId)?.properties.name || null : null,
             selectedTrip: selectedTrip ? {
               trip_id: selectedTrip.trip_id,
               route_id: selectedTrip.route_id,
@@ -12137,37 +12470,54 @@ export default function MapCanvas() {
             },
           };
 
-          saveSnapshot({ name, description, state: snapshotState });
+          saveBookmark({
+            name,
+            description,
+            state: bookmarkState,
+            ...(pendingBookmarkImage && { image: pendingBookmarkImage }),
+          });
 
-          // Show toast notification
-          setShowSnapshotSavedToast(true);
-          setTimeout(() => setShowSnapshotSavedToast(false), 3000);
+          // Clear the pending image and hide scrim
+          setPendingBookmarkImage(null);
+          setIsCapturingBookmark(false);
 
-          // Refresh snapshots modal if it's using window.refreshSnapshots
-          const refreshFn = (window as unknown as { refreshSnapshots?: () => void }).refreshSnapshots;
-          if (refreshFn) refreshFn();
-        }}
-      />
+            // Show toast notification
+            setShowBookmarkSavedToast(true);
+            setTimeout(() => setShowBookmarkSavedToast(false), 3000);
 
-      {/* Snapshots Modal */}
-      <SnapshotsModal
-        isOpen={isSnapshotsModalOpen}
-        onClose={() => setIsSnapshotsModalOpen(false)}
-        onViewSnapshot={(snapshot) => {
-          // Restore state from snapshot
-          const state = snapshot.state;
+            // Refresh bookmarks modal if it's using window.refreshBookmarks
+            const refreshFn = (window as unknown as { refreshBookmarks?: () => void }).refreshBookmarks;
+            if (refreshFn) refreshFn();
+          },
+        };
 
-          // Mark that we're restoring a snapshot to skip auto-reset effects
-          isRestoringSnapshotRef.current = true;
+        return fullScreenBookmarkModal ? (
+          <SaveBookmarkModalFullScreen {...bookmarkModalProps} />
+        ) : (
+          <SaveBookmarkModal {...bookmarkModalProps} />
+        );
+      })()}
+
+      {/* Bookmarks Modal */}
+      <BookmarksModal
+        isOpen={isBookmarksModalOpen}
+        onClose={() => setIsBookmarksModalOpen(false)}
+        fullScreenBookmarkModal={fullScreenBookmarkModal}
+        onViewBookmark={(bookmark) => {
+          // Restore state from bookmark
+          const state = bookmark.state;
+
+          // Mark that we're restoring a bookmark to skip auto-reset effects
+          isRestoringBookmarkRef.current = true;
 
           // Set view state
           setActiveTab(state.activeTab as 'system' | 'routes' | 'stops' | 'components');
           setSelectedRouteId(state.selectedRouteId);
           setSelectedStopId(state.selectedStopId);
-          // Restore route tab (with backwards compatibility for older snapshots)
+          // Restore route tab (with backwards compatibility for older bookmarks)
           setSelectedRouteTab(state.selectedRouteTab || 'Summary');
-          // Restore trip - we now store the full trip object in snapshots
-          // Handle backwards compatibility: older snapshots may have just trip_id as string
+          // Restore trip - we now store the full trip object in bookmarks
+          // Handle backwards compatibility: older bookmarks may have just trip_id as string
           if (state.selectedTrip && typeof state.selectedTrip === 'object') {
             setSelectedTrip(state.selectedTrip as Trip);
             // Load the trip stop times (async)
@@ -12289,7 +12639,7 @@ export default function MapCanvas() {
           // Clear the restoring flag after all state updates are scheduled
           // Use setTimeout to ensure effects have run
           setTimeout(() => {
-            isRestoringSnapshotRef.current = false;
+            isRestoringBookmarkRef.current = false;
           }, 0);
         }}
       />
