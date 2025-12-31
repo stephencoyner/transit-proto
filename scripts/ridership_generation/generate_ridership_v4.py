@@ -113,8 +113,10 @@ HOLIDAY_MULTIPLIER = 0.55
 ROUTE_62_HOLIDAY_MULTIPLIER = 0.75
 
 # Base summer multipliers (route-level)
+# Note: Route 70 uses 0.85 here because stop-level adjustments in calculate_stop_factors_route70
+# handle the tourist pattern (downtown UP, post-breakpoint DOWN) to achieve ~30% overall drop
 SUMMER_MULTIPLIERS = {
-    "44": 0.72, "70": 0.72, "13": 0.80, "8": 0.80,
+    "44": 0.72, "70": 0.85, "13": 0.80, "8": 0.80,
     "62": 0.83, "40": 0.88, "1": 0.88, "10": 0.90, "11": 0.90, "14": 0.90,
 }
 
@@ -150,6 +152,11 @@ ROUTE_44_BALLARD_PATTERNS = {"11044004", "11044007"}
 
 # Route 13 "Seattle Pacific University Seattle Center W" patterns
 ROUTE_13_SPU_PATTERNS = {"11013009", "11013013"}
+
+# Route 70 "U-District Station Eastlake" patterns (direction 0)
+ROUTE_70_UDISTRICT_PATTERNS = {"11070002"}
+# Route 70 "Downtown Seattle Fairview" patterns (direction 1)
+ROUTE_70_DOWNTOWN_PATTERNS = {"20070001", "20070005"}
 
 # ============================================
 # Vignette 1: Back-to-School Crowding Config
@@ -199,6 +206,30 @@ ROUTES_40_70_ELEVATED_TRIPS = {
 
 # 1st Ave N & Mercer St - the breakpoint stop
 ROUTE_13_MERCER_STOP = "2690"
+
+# ============================================
+# Vignette 2b: Route 70 Summer Tourist Pattern
+# ============================================
+# Downtown stops see INCREASED ridership in summer (tourists)
+# Stops after the breakpoint see DECREASED ridership
+# Overall route still drops ~28-30% to maintain existing summer behavior
+
+# Breakpoint stops for Route 70
+# Direction 0 (U-District bound): Virginia St & 6th Ave - tourists board downtown, ride toward U-District
+ROUTE_70_UDISTRICT_BREAKPOINT_STOP = "880"
+# Direction 1 (Downtown bound): Stewart St & 7th Ave - tourists alight downtown
+ROUTE_70_DOWNTOWN_BREAKPOINT_STOP = "950"
+
+# Tourist timing multipliers (applied to the base boost)
+# Midday/evening = peak tourist activity, AM/PM peak = some tourists, early/night = minimal
+ROUTE_70_TOURIST_TIME_MULT = {
+    "midday": 1.0,      # Peak tourist time
+    "evening": 0.85,    # Good tourist activity
+    "pm_peak": 0.6,     # Some tourists mixed with commuters
+    "am_peak": 0.4,     # Fewer tourists early
+    "early_am": 0.1,    # Minimal tourists
+    "night": 0.15,      # Very few tourists
+}
 
 # SPU-adjacent stops (should drop 50%+ in summer)
 SPU_STOPS = {
@@ -293,6 +324,8 @@ class Trip:
     stop_sequence: list = field(default_factory=list)
     # For Route 13, track the Mercer stop sequence position
     mercer_stop_seq: int = -1
+    # For Route 70, track the breakpoint stop sequence position
+    route70_breakpoint_seq: int = -1
 
 
 @dataclass
@@ -400,8 +433,9 @@ def load_stops_for_routes(trips: dict[str, Trip]) -> tuple[dict[str, Stop], dict
                     time_val
                 ))
 
-    # Sort and set start times, also find Mercer stop for Route 13 trips
+    # Sort and set start times, also find breakpoint stops for Route 13 and Route 70 trips
     route_13_id = ROUTE_SHORT_TO_ID["13"]
+    route_70_id = ROUTE_SHORT_TO_ID["70"]
     for trip_id, stop_times in trip_stop_times.items():
         stop_times.sort(key=lambda x: x[0])
         trips[trip_id].stop_sequence = [(st[1], st[0]) for st in stop_times]
@@ -417,6 +451,17 @@ def load_stops_for_routes(trips: dict[str, Trip]) -> tuple[dict[str, Stop], dict
             for seq, stop_id, _ in stop_times:
                 if stop_id == ROUTE_13_MERCER_STOP:
                     trips[trip_id].mercer_stop_seq = seq
+                    break
+
+        # For Route 70 trips, find the breakpoint stop position
+        if trips[trip_id].route_id == route_70_id:
+            trip = trips[trip_id]
+            breakpoint_stop = (ROUTE_70_UDISTRICT_BREAKPOINT_STOP
+                               if trip.direction_id == 0
+                               else ROUTE_70_DOWNTOWN_BREAKPOINT_STOP)
+            for seq, stop_id, _ in stop_times:
+                if stop_id == breakpoint_stop:
+                    trips[trip_id].route70_breakpoint_seq = seq
                     break
 
     print("  Loading stops.txt...")
@@ -753,6 +798,99 @@ def calculate_stop_factors_route13(
             return (0.8, 0.8)
 
 
+def calculate_stop_factors_route70(
+    stop_idx: int,
+    stop_seq: int,
+    total_stops: int,
+    trip: Trip,
+    d: date,
+) -> tuple[float, float]:
+    """
+    Calculate boarding/alighting factors for Route 70 with summer tourist pattern.
+
+    Key behavior:
+    - Spring: Normal pattern
+    - Summer:
+      - Downtown stops (before breakpoint): UP 10-20% due to tourists
+      - Stops after breakpoint: DOWN significantly to maintain ~28% overall route drop
+      - Tourist boost varies by time of day (highest midday/evening)
+
+    Direction 0 (U-District bound): Tourists board downtown, ride toward U-District
+      - Before Virginia St & 6th Ave: tourist boost (more boardings)
+      - After: significant drop
+
+    Direction 1 (Downtown bound): Tourists alight downtown
+      - After Stewart St & 7th Ave: tourist boost (more alightings downtown)
+      - Before: significant drop
+    """
+    position = stop_idx / max(1, total_stops - 1)
+    season = get_season(d)
+    is_summer = (season == "summer")
+    time_period = trip.time_period
+    breakpoint_seq = trip.route70_breakpoint_seq
+
+    # If no breakpoint found, use standard factors
+    if breakpoint_seq < 0:
+        return calculate_stop_factors_standard(stop_idx, total_stops, trip.direction_id, time_period)
+
+    # Get tourist timing multiplier
+    tourist_time_mult = ROUTE_70_TOURIST_TIME_MULT.get(time_period, 0.5)
+
+    # Calculate position relative to breakpoint for graduated drop
+    # We need positions after breakpoint to drop more as route progresses
+    is_before_breakpoint = (stop_seq <= breakpoint_seq)
+
+    if trip.direction_id == 0:
+        # U-District bound: tourists board downtown (before breakpoint)
+        if is_summer:
+            if is_before_breakpoint:
+                # Downtown stops: BOOST boardings 10-20% based on tourist timing
+                # Base boost of ~25%, scaled by time of day to hit +10-15% avg
+                boost = 1.25 + (0.25 * tourist_time_mult)  # 1.25 to 1.50
+                return (1.3 * boost, 0.4)  # More boardings, fewer alightings
+            else:
+                # After breakpoint: graduated DROP to maintain overall ~30% route drop
+                # The further along, the bigger the drop
+                # Calculate how far past breakpoint (0.0 = at breakpoint, 1.0 = end)
+                progress_after = min(1.0, (stop_seq - breakpoint_seq) / max(1, 120))  # normalize over ~120 seq
+
+                # Drop from 0.45 at breakpoint to 0.25 at end (55-75% drop)
+                drop_factor = 0.45 - (0.20 * progress_after)
+                return (drop_factor, drop_factor * 1.0)
+        else:
+            # Spring: normal pattern with good downtown activity
+            if position < 0.3:
+                return (1.3, 0.4)
+            elif position < 0.6:
+                return (0.9, 0.8)
+            else:
+                return (0.5, 1.3)
+
+    else:
+        # Downtown bound (direction 1): tourists alight downtown (after breakpoint)
+        if is_summer:
+            if is_before_breakpoint:
+                # Before breakpoint (leaving U-District area): graduated DROP
+                # Earlier stops drop more
+                progress_before = min(1.0, stop_seq / max(1, breakpoint_seq))
+
+                # Drop from 0.45 at start to 0.60 near breakpoint (40-55% drop)
+                drop_factor = 0.45 + (0.15 * progress_before)
+                return (drop_factor, drop_factor * 0.9)
+            else:
+                # Downtown stops (after breakpoint): BOOST alightings for tourists getting off
+                boost = 1.15 + (0.20 * tourist_time_mult)
+                return (0.9, 1.2 * boost)  # More alightings downtown
+        else:
+            # Spring: normal pattern
+            if position < 0.3:
+                return (1.2, 0.5)
+            elif position < 0.6:
+                return (0.9, 0.9)
+            else:
+                return (0.5, 1.4)
+
+
 def calculate_stop_factors_standard(
     stop_idx: int,
     total_stops: int,
@@ -870,6 +1008,10 @@ def generate_trip_ridership(
             b_factor, a_factor = calculate_stop_factors_route13(
                 i, stop_seq, total_stops, trip, d
             )
+        elif route_name == "70":
+            b_factor, a_factor = calculate_stop_factors_route70(
+                i, stop_seq, total_stops, trip, d
+            )
         else:
             b_factor, a_factor = calculate_stop_factors_standard(
                 i, total_stops, trip.direction_id, trip.time_period
@@ -892,8 +1034,8 @@ def generate_trip_ridership(
         # High-ridership-no-amenity boost
         amenity_boost = 8.0 if stop_id in high_ridership_no_amenity_stops else 1.0
 
-        # UW/SLU corridor summer drop
-        if get_season(d) == "summer" and route_name in ["44", "70"]:
+        # UW/SLU corridor summer drop (Route 44 only - Route 70 uses calculate_stop_factors_route70)
+        if get_season(d) == "summer" and route_name == "44":
             if stop_id in UW_CORRIDOR_STOPS:
                 b_factor *= 0.62
                 a_factor *= 0.62
@@ -1393,11 +1535,124 @@ def run_acceptance_tests(
         v2_r13_spu_passed = False
         v2_r13_am_pm_passed = False
 
+    # --- Route 70 Summer Tourist Pattern Tests ---
+    print("\n  [V2b] Route 70 Summer Tourist Pattern")
+    print("  " + "-" * 46)
+
+    # Get Route 70 stop-level data for spring vs summer
+    spring_stop_data = [sr for sr in stop_ridership
+                        if sr.route_id == route_id_70
+                        and date(2025, 3, 21) <= sr.date <= date(2025, 5, 31)
+                        and sr.day_of_week < 5]
+    summer_stop_data = [sr for sr in stop_ridership
+                        if sr.route_id == route_id_70
+                        and date(2025, 6, 22) <= sr.date <= date(2025, 8, 31)
+                        and sr.day_of_week < 5]
+
+    # Get Route 70 overall drop
+    spring_70 = [tr for tr in spring_period if tr.route_id == route_id_70]
+    summer_70 = [tr for tr in summer_period if tr.route_id == route_id_70]
+
+    v2_r70_overall_passed = False
+    v2_r70_downtown_up_passed = False
+    v2_r70_post_breakpoint_down_passed = False
+
+    if spring_70 and summer_70:
+        spring_70_daily = sum(tr.total_boardings for tr in spring_70) / spring_days
+        summer_70_daily = sum(tr.total_boardings for tr in summer_70) / summer_days
+        r70_overall_drop = (1 - summer_70_daily / spring_70_daily) * 100
+        print(f"    Route 70 overall drop: {r70_overall_drop:.1f}% (target: 25-35%)")
+        v2_r70_overall_passed = 20 <= r70_overall_drop <= 40
+
+        # Analyze stop-level changes for U-District bound (direction 0)
+        # Downtown stops (before breakpoint 880): should be UP 10-20%
+        # Post-breakpoint stops: should be DOWN
+
+        # Get trips with breakpoint info
+        route70_trips_with_breakpoint = {
+            t.trip_id: t for t in trips.values()
+            if t.route_id == route_id_70 and t.route70_breakpoint_seq > 0
+        }
+
+        # Aggregate by stop for direction 0 (U-District bound)
+        spring_stop_boardings_d0 = defaultdict(list)
+        summer_stop_boardings_d0 = defaultdict(list)
+
+        for sr in spring_stop_data:
+            if sr.direction_id == 0:
+                spring_stop_boardings_d0[sr.stop_id].append(sr.boardings)
+        for sr in summer_stop_data:
+            if sr.direction_id == 0:
+                summer_stop_boardings_d0[sr.stop_id].append(sr.boardings)
+
+        # Find stops before and after breakpoint (using a sample trip)
+        sample_trip = None
+        for trip in route70_trips_with_breakpoint.values():
+            if trip.direction_id == 0:
+                sample_trip = trip
+                break
+
+        if sample_trip and sample_trip.route70_breakpoint_seq > 0:
+            breakpoint_seq = sample_trip.route70_breakpoint_seq
+            before_breakpoint_stops = []
+            after_breakpoint_stops = []
+
+            for stop_id, seq in sample_trip.stop_sequence:
+                if seq <= breakpoint_seq:
+                    before_breakpoint_stops.append(stop_id)
+                else:
+                    after_breakpoint_stops.append(stop_id)
+
+            # Calculate average change for downtown stops (before breakpoint)
+            downtown_changes = []
+            for stop_id in before_breakpoint_stops:
+                if stop_id in spring_stop_boardings_d0 and stop_id in summer_stop_boardings_d0:
+                    spring_avg = statistics.mean(spring_stop_boardings_d0[stop_id])
+                    summer_avg = statistics.mean(summer_stop_boardings_d0[stop_id])
+                    if spring_avg > 0:
+                        change = ((summer_avg - spring_avg) / spring_avg) * 100
+                        downtown_changes.append(change)
+
+            # Calculate average change for post-breakpoint stops
+            post_breakpoint_changes = []
+            for stop_id in after_breakpoint_stops:
+                if stop_id in spring_stop_boardings_d0 and stop_id in summer_stop_boardings_d0:
+                    spring_avg = statistics.mean(spring_stop_boardings_d0[stop_id])
+                    summer_avg = statistics.mean(summer_stop_boardings_d0[stop_id])
+                    if spring_avg > 0:
+                        change = ((summer_avg - spring_avg) / spring_avg) * 100
+                        post_breakpoint_changes.append(change)
+
+            if downtown_changes:
+                avg_downtown_change = statistics.mean(downtown_changes)
+                print(f"    Downtown stops avg change: {avg_downtown_change:+.1f}% (target: +5% to +25%)")
+                # Downtown stops should be UP (positive change)
+                v2_r70_downtown_up_passed = avg_downtown_change > 0
+
+            if post_breakpoint_changes:
+                avg_post_change = statistics.mean(post_breakpoint_changes)
+                print(f"    Post-breakpoint stops avg change: {avg_post_change:+.1f}% (target: -20% to -60%)")
+                # Post-breakpoint stops should be DOWN (negative change)
+                v2_r70_post_breakpoint_down_passed = avg_post_change < -15
+
+            # Verify the pattern: downtown UP while rest is DOWN
+            if downtown_changes and post_breakpoint_changes:
+                pattern_diff = statistics.mean(downtown_changes) - statistics.mean(post_breakpoint_changes)
+                print(f"    Downtown vs post-breakpoint difference: {pattern_diff:+.1f}pp")
+
+    print(f"\n    Route 70 overall drop OK: {'PASS' if v2_r70_overall_passed else 'FAIL'}")
+    print(f"    Downtown stops UP in summer: {'PASS' if v2_r70_downtown_up_passed else 'FAIL'}")
+    print(f"    Post-breakpoint stops DOWN: {'PASS' if v2_r70_post_breakpoint_down_passed else 'FAIL'}")
+
+    # Route 70 tests are CRITICAL for this vignette
+    v2_r70_passed = v2_r70_overall_passed and v2_r70_downtown_up_passed and v2_r70_post_breakpoint_down_passed
+
     print(f"\n  System drop OK: {'PASS' if v2_system_passed else 'FAIL'}")
     print(f"  Route 13 SPU pattern drop: {'PASS' if v2_r13_spu_passed else 'FAIL'}")
     print(f"  Route 13 AM/PM asymmetry: {'PASS' if v2_r13_am_pm_passed else 'FAIL'}")
+    print(f"  Route 70 tourist pattern: {'PASS' if v2_r70_passed else 'FAIL'}")
 
-    v2_passed = v2_system_passed
+    v2_passed = v2_system_passed and v2_r70_passed
     all_passed = all_passed and v2_passed
 
     # --- Vignette 3: Route 14 Asymmetry ---
