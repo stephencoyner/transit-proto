@@ -98,18 +98,18 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'var(--bg-primary)',
+        backgroundColor: 'var(--bg-secondary)',
         zIndex: 10000,
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      {/* 24px border frame with content inside */}
+      {/* 12px border frame with content inside */}
       <div
         style={{
           position: 'absolute',
-          inset: '24px',
-          borderRadius: '16px',
+          inset: '12px',
+          borderRadius: '28px',
           overflow: 'hidden',
           display: 'flex',
           border: '0.5px solid var(--border-default)',
@@ -283,6 +283,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
               variant="elevated"
               size="medium"
               onClick={onClose}
+              style={{ width: '100px' }}
             >
               Cancel
             </Button>
@@ -292,6 +293,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
               size="medium"
               disabled={!name.trim()}
               onClick={handleSubmit}
+              style={{ width: '100px' }}
             >
               {mode === 'edit' ? 'Save Changes' : 'Save'}
             </Button>

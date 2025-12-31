@@ -85,9 +85,16 @@ const getBookmarkContext = (bookmark: Bookmark) => {
   let contextType: 'system' | 'routes' | 'stops' | 'route' | 'stop' = 'system';
   if (state.selectedRouteId) {
     const routeName = state.selectedRouteName || `Route ${state.selectedRouteId}`;
-    contextTitle = state.selectedTrip
-      ? `${routeName} (${formatTime12Hour(state.selectedTrip.start_time)} · ${state.selectedPattern || state.selectedTrip.headsign})`
-      : routeName;
+    if (state.selectedTrip) {
+      // Trip selected: show route, time, and pattern/headsign
+      contextTitle = `${routeName} (${formatTime12Hour(state.selectedTrip.start_time)} · ${state.selectedPattern || state.selectedTrip.headsign})`;
+    } else if (state.selectedPattern) {
+      // Pattern selected but no trip: show route and pattern
+      contextTitle = `${routeName} (${state.selectedPattern})`;
+    } else {
+      // Just route selected
+      contextTitle = routeName;
+    }
     contextType = 'route';
   } else if (state.selectedStopId) {
     contextTitle = state.selectedStopName || `Stop ${state.selectedStopId}`;
