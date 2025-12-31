@@ -4454,9 +4454,15 @@ export default function MapCanvas() {
     // In comparison mode, use comparison colors (percent change) for non-load metrics
     // Use trip-specific comparison map when a trip is selected
     if (comparisonMode) {
-      const percentChange = (selectedTrip && tripStopComparisonMap.size > 0)
-        ? (tripStopComparisonMap.get(stopId) || 0)
-        : (stopComparisonMap.get(stopId) || 0);
+      let percentChange: number;
+      if (selectedTrip) {
+        // When a trip is selected, only use trip-specific comparison values
+        // Don't fall back to system-wide stopComparisonMap as it would compare
+        // trip-specific value1 with system-wide value2, causing incorrect colors
+        percentChange = tripStopComparisonMap.get(stopId) ?? 0;
+      } else {
+        percentChange = stopComparisonMap.get(stopId) || 0;
+      }
       const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
       return [color[0], color[1], color[2], 255] as [number, number, number, number];
     }
@@ -8822,8 +8828,9 @@ export default function MapCanvas() {
                             const stopValue = tripStopValueMap.get(stop.id) ?? stopValueMap.get(stop.id) ?? 0;
 
                         // Get comparison percent change for this stop
-                        // Use trip-specific comparison map when available, fall back to general stopComparisonMap
-                        const stopPercentChange = (tripStopComparisonMap.size > 0 ? tripStopComparisonMap.get(stop.id) : stopComparisonMap.get(stop.id)) || 0;
+                        // Use trip-specific comparison map only (don't fall back to stopComparisonMap
+                        // as it would compare trip-specific values with system-wide values)
+                        const stopPercentChange = tripStopComparisonMap.get(stop.id) ?? 0;
 
                         // Use comparison colors in comparison mode, otherwise normal colors
                         const stopColor = comparisonMode
