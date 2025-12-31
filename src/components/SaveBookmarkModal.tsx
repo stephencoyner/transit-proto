@@ -293,7 +293,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
               size="medium"
               disabled={!name.trim()}
               onClick={handleSubmit}
-              style={{ width: '100px' }}
+              style={{ minWidth: '100px', whiteSpace: 'nowrap' }}
             >
               {mode === 'edit' ? 'Save Changes' : 'Save'}
             </Button>
