@@ -104,11 +104,11 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
         flexDirection: 'column',
       }}
     >
-      {/* 24px border frame with content inside */}
+      {/* 12px border frame with content inside */}
       <div
         style={{
           position: 'absolute',
-          inset: '24px',
+          inset: '12px',
           borderRadius: '16px',
           overflow: 'hidden',
           display: 'flex',
