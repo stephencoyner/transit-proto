@@ -12246,9 +12246,16 @@ export default function MapCanvas() {
           },
           bookmarkImage: pendingBookmarkImage,
           contextTitle: selectedRouteId
-            ? selectedTrip
-              ? `${routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`} (${formatTime12Hour(selectedTrip.start_time)} · ${selectedPattern || selectedTrip.headsign})`
-              : routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`
+            ? (() => {
+                const routeName = routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`;
+                if (selectedTrip) {
+                  return `${routeName} (${formatTime12Hour(selectedTrip.start_time)} · ${selectedPattern || selectedTrip.headsign})`;
+                } else if (selectedPattern) {
+                  return `${routeName} (${selectedPattern})`;
+                } else {
+                  return routeName;
+                }
+              })()
             : selectedStopId
             ? stops.find(s => s.properties.stop_id === selectedStopId)?.properties.name || `Stop ${selectedStopId}`
             : activeTab === 'routes' ? 'Routes'
