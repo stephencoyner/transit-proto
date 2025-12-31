@@ -376,7 +376,7 @@ def load_routes() -> dict[str, Route]:
                 routes[row['route_id']] = Route(
                     route_id=row['route_id'],
                     route_short_name=short_name,
-                    route_long_name=row.get('route_long_name', ''),
+                    route_long_name=row.get('route_long_name') or row.get('route_desc', f'Route {short_name}'),
                     route_type=int(row.get('route_type', 3)),
                     tier=tier,
                     bus_type=bus_type,

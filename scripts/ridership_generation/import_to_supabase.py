@@ -56,7 +56,7 @@ except ImportError:
     sys.exit(1)
 
 # Data directory
-DATA_DIR = Path(__file__).parent.parent.parent / "data" / "generated_v3"
+DATA_DIR = Path(__file__).parent.parent.parent / "data" / "generated_v4"
 
 # Import order matters due to foreign key constraints
 IMPORT_ORDER = [
