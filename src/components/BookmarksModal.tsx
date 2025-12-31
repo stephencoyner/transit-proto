@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { Bookmark, getBookmarks, deleteBookmark, updateBookmark, formatDateRange } from '@/lib/bookmarks';
 import BookmarkCard from './BookmarkCard';
 import SaveBookmarkModal from './SaveBookmarkModal';
-import SaveBookmarkModalFullScreen from './SaveBookmarkModalFullScreen';
 
 // Helper to get day mode from selected days array
 const getDayModeLabel = (selectedDays: number[]): string => {
@@ -125,10 +124,9 @@ interface BookmarksModalProps {
   isOpen: boolean;
   onClose: () => void;
   onViewBookmark: (bookmark: Bookmark) => void;
-  fullScreenBookmarkModal?: boolean;
 }
 
-const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onViewBookmark, fullScreenBookmarkModal }) => {
+const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onViewBookmark }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -273,7 +271,7 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
                 justifyContent: 'center',
                 gap: '12px',
                 color: 'var(--border-focus)',
-                padding: '48px 0',
+                height: '100%',
               }}
             >
               <svg
@@ -316,9 +314,8 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
         {/* Edit Modal */}
         {editingBookmark && (() => {
           const { contextTitle, contextType, contextSubtitle, contextFilters, comparisonMode, primaryDateLabel, comparisonDateLabel } = getBookmarkContext(editingBookmark);
-          const EditModal = fullScreenBookmarkModal ? SaveBookmarkModalFullScreen : SaveBookmarkModal;
           return (
-            <EditModal
+            <SaveBookmarkModal
               isOpen={true}
               onClose={() => setEditingBookmark(null)}
               onSave={handleSaveEdit}
