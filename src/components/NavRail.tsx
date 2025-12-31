@@ -370,7 +370,7 @@ const NavRail: React.FC<NavRailProps> = ({
               </span>
             </div>
 
-            {/* Experimental Features */}
+            {/* Experimental */}
             <div
               className="flex items-center gap-3 p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
               style={isExperimentalFeaturesOpen ? { backgroundColor: 'var(--bg-primary)' } : undefined}
@@ -378,7 +378,7 @@ const NavRail: React.FC<NavRailProps> = ({
             >
               <ExperimentsIcon />
               <span className="button-small text-text-primary">
-                Experimental Features
+                Experimental
               </span>
             </div>
 
@@ -397,7 +397,7 @@ const NavRail: React.FC<NavRailProps> = ({
             </div>
           </div>
 
-          {/* Experimental Features Submenu */}
+          {/* Experimental Submenu */}
           {isExperimentalFeaturesOpen && (
             <div
               style={{
