@@ -98,7 +98,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'var(--bg-primary)',
+        backgroundColor: 'var(--bg-secondary)',
         zIndex: 10000,
         display: 'flex',
         flexDirection: 'column',
