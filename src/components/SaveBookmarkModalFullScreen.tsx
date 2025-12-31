@@ -283,6 +283,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
               variant="elevated"
               size="medium"
               onClick={onClose}
+              style={{ width: '100px' }}
             >
               Cancel
             </Button>
@@ -292,6 +293,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
               size="medium"
               disabled={!name.trim()}
               onClick={handleSubmit}
+              style={{ width: '100px' }}
             >
               {mode === 'edit' ? 'Save Changes' : 'Save'}
             </Button>
