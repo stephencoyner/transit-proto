@@ -1173,7 +1173,7 @@ def generate_all_ridership(
 def generate_daily_summaries(
     stop_ridership: list[StopRidership],
     trip_ridership: list[TripRidership],
-) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
     """Generate pre-aggregated summary tables."""
 
     trips_by_date = defaultdict(list)
@@ -1183,6 +1183,12 @@ def generate_daily_summaries(
     stops_by_date_stop = defaultdict(lambda: defaultdict(list))
     for sr in stop_ridership:
         stops_by_date_stop[sr.date][sr.stop_id].append(sr)
+
+    # For daily_route_stop_summary: group by (date, route_id, stop_id, direction_id)
+    route_stop_by_key = defaultdict(list)
+    for sr in stop_ridership:
+        key = (sr.date, sr.route_id, sr.stop_id, sr.direction_id)
+        route_stop_by_key[key].append(sr)
 
     final_seq = {}
     for sr in stop_ridership:
@@ -1204,6 +1210,7 @@ def generate_daily_summaries(
     daily_route = []
     daily_stop = []
     daily_period = []
+    daily_route_stop = []
 
     for d in sorted(trips_by_date.keys()):
         day_trips = trips_by_date[d]
@@ -1278,7 +1285,35 @@ def generate_daily_summaries(
                 "max_load": max(period_max_loads) if period_max_loads else 0,
             })
 
-    return daily_system, daily_route, daily_stop, daily_period
+    # Generate daily_route_stop_summary
+    # This aggregates stop_ridership by (date, route_id, stop_id, direction_id)
+    for key, records in route_stop_by_key.items():
+        d, route_id, stop_id, direction_id = key
+        day_of_week = d.weekday()
+
+        total_boardings = sum(r.boardings for r in records)
+        total_alightings = sum(r.alightings for r in records)
+        loads = [r.load_after for r in records]
+
+        # Use the most common stop_sequence for this stop on this route/direction
+        # (should be consistent across trips)
+        stop_seqs = [r.stop_sequence for r in records]
+        stop_sequence = max(set(stop_seqs), key=stop_seqs.count) if stop_seqs else 0
+
+        daily_route_stop.append({
+            "date": d.isoformat(),
+            "route_id": route_id,
+            "stop_id": stop_id,
+            "direction_id": direction_id,
+            "day_of_week": day_of_week,
+            "stop_sequence": stop_sequence,
+            "total_boardings": total_boardings,
+            "total_alightings": total_alightings,
+            "avg_load": round(statistics.mean(loads), 2) if loads else 0,
+            "max_load": max(loads) if loads else 0,
+        })
+
+    return daily_system, daily_route, daily_stop, daily_period, daily_route_stop
 
 
 # ============================================
@@ -1767,6 +1802,7 @@ def output_all_csv(
     daily_route: list[dict],
     daily_stop: list[dict],
     daily_period: list[dict],
+    daily_route_stop: list[dict],
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -1862,6 +1898,10 @@ def output_all_csv(
     write_csv(output_dir, "daily_period_summary.csv", daily_period, [
         "date", "time_period", "day_of_week", "total_boardings", "total_alightings", "avg_load", "max_load"
     ])
+    write_csv(output_dir, "daily_route_stop_summary.csv", daily_route_stop, [
+        "date", "route_id", "stop_id", "direction_id", "day_of_week", "stop_sequence",
+        "total_boardings", "total_alightings", "avg_load", "max_load"
+    ])
 
 
 # ============================================
@@ -1911,20 +1951,21 @@ def main():
     print(f"  Generated {len(trip_ridership):,} trip ridership records")
 
     print("\nGenerating summary tables...")
-    daily_system, daily_route, daily_stop, daily_period = generate_daily_summaries(
+    daily_system, daily_route, daily_stop, daily_period, daily_route_stop = generate_daily_summaries(
         stop_ridership, trip_ridership
     )
     print(f"  Generated {len(daily_system)} daily system summaries")
     print(f"  Generated {len(daily_route)} daily route summaries")
     print(f"  Generated {len(daily_stop):,} daily stop summaries")
     print(f"  Generated {len(daily_period)} daily period summaries")
+    print(f"  Generated {len(daily_route_stop):,} daily route-stop summaries")
 
     print("\nWriting CSV files...")
     output_all_csv(
         output_dir,
         routes, stops, trips,
         stop_ridership, trip_ridership,
-        daily_system, daily_route, daily_stop, daily_period
+        daily_system, daily_route, daily_stop, daily_period, daily_route_stop
     )
 
     hard_failures, warnings = run_validation(

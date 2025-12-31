@@ -905,12 +905,15 @@ export default function MapCanvas() {
   const { data: systemByDayData, isLoading: isByDayLoading } = useSystemByDayData(filterState, !!effectiveDateRange.start);
 
   // Fetch comparison period data (Date-time 2)
-  const { data: systemData2 } = useSystemData(filterState2, comparisonMode && !!comparisonDateRange.start);
-  const { data: systemByDateData2 } = useSystemByDateData(filterState2, comparisonMode && !!comparisonDateRange.start);
-  const { data: systemByDayData2 } = useSystemByDayData(filterState2, comparisonMode && !!comparisonDateRange.start);
+  const { data: systemData2, isLoading: isSystemData2Loading } = useSystemData(filterState2, comparisonMode && !!comparisonDateRange.start);
+  const { data: systemByDateData2, isLoading: isByDateData2Loading } = useSystemByDateData(filterState2, comparisonMode && !!comparisonDateRange.start);
+  const { data: systemByDayData2, isLoading: isByDayData2Loading } = useSystemByDayData(filterState2, comparisonMode && !!comparisonDateRange.start);
 
   // Fetch all stops data for comparison period
-  const { data: allStopsData2 } = useAllStopsData(filterState2, comparisonMode && !!comparisonDateRange.start);
+  const { data: allStopsData2, isLoading: isAllStopsData2Loading } = useAllStopsData(filterState2, comparisonMode && !!comparisonDateRange.start);
+
+  // Combined loading state for comparison data
+  const isComparisonDataLoading = comparisonMode && (isSystemData2Loading || isByDateData2Loading || isByDayData2Loading || isAllStopsData2Loading);
 
   // Loading state for dimming (basic - without stops loading which is defined later)
   const isBasicRidershipLoading = isSystemLoading || isByDateLoading || isByDayLoading;
@@ -1137,9 +1140,9 @@ export default function MapCanvas() {
   const { data: routeByDayData, isLoading: isRouteByDayLoading } = useRouteByDayData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
 
   // Fetch route-specific comparison data (Date-time 2)
-  const { data: routeData2 } = useRouteData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
-  const { data: routeByDateData2 } = useRouteByDateData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
-  const { data: routeByDayData2 } = useRouteByDayData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
+  const { data: routeData2, isLoading: isRouteData2Loading } = useRouteData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
+  const { data: routeByDateData2, isLoading: isRouteByDateData2Loading } = useRouteByDateData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
+  const { data: routeByDayData2, isLoading: isRouteByDayData2Loading } = useRouteByDayData(selectedRouteId, routeFilterState2, comparisonMode && !!comparisonDateRange.start && !!selectedRouteId);
 
   // Fetch all stops data for stops view - only when on stops tab (this query is slow)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1156,7 +1159,13 @@ export default function MapCanvas() {
   const { data: tripData, isLoading: isTripLoading } = useTripData(selectedTrip?.trip_id || null, filterState, !!effectiveDateRange.start && !!selectedTrip);
 
   // Fetch trip-specific comparison data (Date-time 2) for TDV comparison mode
-  const { data: tripData2 } = useTripData(selectedTrip?.trip_id || null, filterState2, comparisonMode && !!comparisonDateRange.start && !!selectedTrip);
+  const { data: tripData2, isLoading: isTripData2Loading } = useTripData(selectedTrip?.trip_id || null, filterState2, comparisonMode && !!comparisonDateRange.start && !!selectedTrip);
+
+  // Route-specific comparison loading state
+  const isRouteComparisonLoading = comparisonMode && selectedRouteId && (isRouteData2Loading || isRouteByDateData2Loading || isRouteByDayData2Loading);
+
+  // Trip-specific comparison loading state
+  const isTripComparisonLoading = comparisonMode && selectedTrip && isTripData2Loading;
 
   // Check if route data matches the selected route (handles stale cached data during route switch)
   const isRouteDataStale = selectedRouteId && routeData && routeData.metrics.routeId !== selectedRouteId;
@@ -1165,9 +1174,10 @@ export default function MapCanvas() {
   // Full loading state for dimming - includes view-specific loading states
   // Also consider "loading" if data is stale (from previous route)
   // When a trip is selected, only check trip loading (not route stale data)
+  // In comparison mode with trip selected, also check isTripData2Loading for segment coloring
   const isRidershipLoading = isBasicRidershipLoading
     || (activeTab === 'stops' && isAllStopsLoading)
-    || (selectedTrip ? isTripLoading : (selectedRouteId && (isRouteLoading || isSegmentsLoading || isRouteDataStale || isSegmentDataStale)));
+    || (selectedTrip ? (isTripLoading || (comparisonMode && isTripData2Loading)) : (selectedRouteId && (isRouteLoading || isSegmentsLoading || isRouteDataStale || isSegmentDataStale)));
 
   // Fetch route trips ridership data for trips list view (uses routeFilterState for pattern/direction filtering)
   const { data: routeTripsRidership, isLoading: isTripsLoading } = useRouteTripsData(selectedRouteId, routeFilterState, !!effectiveDateRange.start && !!selectedRouteId);
@@ -1189,7 +1199,7 @@ export default function MapCanvas() {
     !!effectiveDateRange.start && !!selectedRouteId
   );
   // Fetch comparison grid data (Date-time 2) for segment comparison
-  const { data: routeGridData2 } = useRouteGridData(
+  const { data: routeGridData2, isLoading: isGridData2Loading } = useRouteGridData(
     selectedRouteId,
     routeFilterState2,
     comparisonMode && !!comparisonDateRange.start && !!selectedRouteId
@@ -1197,6 +1207,7 @@ export default function MapCanvas() {
 
   // Check if grid data is stale (from a different route than currently selected)
   const isGridDataStale = selectedRouteId && routeGridData && routeGridData.routeId !== selectedRouteId;
+  const isGridData2Stale = selectedRouteId && routeGridData2 && routeGridData2.routeId !== selectedRouteId;
 
   // Create a map of trip_id -> all metrics from the API data
   const tripMetricsMap = useMemo(() => {
@@ -2502,9 +2513,14 @@ export default function MapCanvas() {
         return;
       }
 
-      // Get the shape for this pattern (use the first shape_id)
-      const patternShapeId = patternInfo.shape_ids?.[0];
-      const patternShape = filteredShapes.find(s => s.properties.shape_id === patternShapeId);
+      // Get the shape for this pattern
+      // When a trip is selected, filteredShapes only contains that trip's shape
+      // So we need to check all shape_ids in the pattern, not just the first one
+      let patternShape = null;
+      for (const shapeId of (patternInfo.shape_ids || [])) {
+        patternShape = filteredShapes.find(s => s.properties.shape_id === shapeId);
+        if (patternShape) break;
+      }
 
       if (!patternShape || patternShape.geometry.type !== 'LineString') {
         return;
@@ -2742,10 +2758,37 @@ export default function MapCanvas() {
   }, [routeComparisonMap, comparisonMode]);
 
   // Create a map of stop comparison values (Date-time 2 values) for stops list display
+  // When a route is selected, use route-specific stop data for accurate comparison
   const stopComparisonValueMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
     const map = new Map<string, number>();
-    if (allStopsData2?.stops) {
+
+    // Use route-specific data when a route is selected, otherwise use system-wide data
+    if (selectedRouteId && routeStopsRidership2?.stops) {
+      routeStopsRidership2.stops.forEach(s => {
+        let value: number;
+        switch (selectedMetric) {
+          case 'Average daily boardings':
+            value = s.avgDailyBoardings;
+            break;
+          case 'Total boardings':
+            value = s.totalBoardings;
+            break;
+          case 'Average daily alightings':
+            value = s.avgDailyAlightings;
+            break;
+          case 'Average daily activity':
+            value = s.avgDailyActivity;
+            break;
+          case 'Total activity':
+            value = s.totalActivity;
+            break;
+          default:
+            value = s.avgDailyActivity;
+        }
+        map.set(s.stopId, value);
+      });
+    } else if (allStopsData2?.stops) {
       const daysInRange2 = systemData2?.metrics?.daysInRange || 1;
       allStopsData2.stops.forEach(s => {
         let value: number;
@@ -2772,7 +2815,7 @@ export default function MapCanvas() {
       });
     }
     return map;
-  }, [comparisonMode, allStopsData2, systemData2, selectedMetric]);
+  }, [comparisonMode, allStopsData2, systemData2, selectedMetric, selectedRouteId, routeStopsRidership2]);
 
   const stopComparisonMap = React.useMemo(() => {
     if (!comparisonMode) return new Map<string, number>();
@@ -4455,15 +4498,19 @@ export default function MapCanvas() {
     // Use trip-specific comparison map when a trip is selected
     if (comparisonMode) {
       let percentChange: number;
+      let rangeToUse: { min: number; max: number };
       if (selectedTrip) {
         // When a trip is selected, only use trip-specific comparison values
         // Don't fall back to system-wide stopComparisonMap as it would compare
         // trip-specific value1 with system-wide value2, causing incorrect colors
         percentChange = tripStopComparisonMap.get(stopId) ?? 0;
+        rangeToUse = tripStopComparisonRange;
       } else {
         percentChange = stopComparisonMap.get(stopId) || 0;
+        // Use stopComparisonRange when in route detail view to match the scale display
+        rangeToUse = (selectedRouteId || activeTab === 'stops') ? stopComparisonRange : comparisonValueRange;
       }
-      const color = getComparisonColorRGB(percentChange, comparisonValueRange.min, comparisonValueRange.max);
+      const color = getComparisonColorRGB(percentChange, rangeToUse.min, rangeToUse.max);
       return [color[0], color[1], color[2], 255] as [number, number, number, number];
     }
 
@@ -4475,7 +4522,7 @@ export default function MapCanvas() {
     const color = valueToColor(value, stopValueRange.min, stopValueRange.max);
     const alpha = 200;
     return [...color, alpha] as [number, number, number, number];
-  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, tripStopComparisonMap, comparisonValueRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
+  }, [stopValueMap, tripStopValueMap, selectedTrip, stopValueRange, showSegmentColoring, isAmenitiesView, comparisonMode, stopComparisonMap, tripStopComparisonMap, comparisonValueRange, stopComparisonRange, tripStopComparisonRange, activeTab, isAllStopsLoading, selectedRouteId, isRouteLoading, isSegmentsLoading, isTripLoading, isRouteDataStale, isSegmentDataStale]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const getStopCenterColor = React.useCallback((_d: any): [number, number, number, number] => {
@@ -4544,16 +4591,18 @@ export default function MapCanvas() {
       // In comparison mode with a trip selected, we need BOTH tripData and tripData2 segments
       // Check if grid data is loading (needed for segment coloring)
       const isGridSegmentDataLoading = isGridDataLoading || isGridDataStale || !routeGridData?.data;
+      // In comparison mode, also check if comparison grid data is loading
+      const isGridSegment2DataLoading = comparisonMode && (isGridData2Loading || isGridData2Stale || !routeGridData2?.data);
 
       const isSegmentDataLoading = selectedTrip
         ? (comparisonMode
-            ? (!(tripData?.segments && tripData.segments.length > 0) || !(tripData2?.segments && tripData2.segments.length > 0))
-            : (isTripLoading && !(tripData?.segments && tripData.segments.length > 0)))
-        : (isRouteLoading || isRouteDataStale || isGridSegmentDataLoading);
+            ? (isTripLoading || isTripData2Loading)
+            : isTripLoading)
+        : (isRouteLoading || isRouteDataStale || isGridSegmentDataLoading || isGridSegment2DataLoading);
 
       layers.push(
         new PathLayer({
-          id: 'route-segments',
+          id: `route-segments-${isSegmentDataLoading ? 'loading' : 'loaded'}`,
           data: segmentsWithIndex,
           getPath: (d) => d.path,
           getWidth: 15,
@@ -4582,7 +4631,7 @@ export default function MapCanvas() {
             return [...color, alpha];
           },
           updateTriggers: {
-            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isTripLoading, selectedTrip, isRouteDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange, isGridDataLoading, isGridDataStale, routeGridData]
+            getColor: [segmentValueRange, hoveredSegment, comparisonMode, segmentComparisonMap, segmentComparisonRange, isRouteLoading, isTripLoading, isTripData2Loading, selectedTrip, isRouteDataStale, tripData, tripData2, tripSegmentComparisonMap, tripSegmentComparisonRange, isGridDataLoading, isGridDataStale, isGridData2Loading, isGridData2Stale, routeGridData, routeGridData2]
           },
           widthMinPixels: 5,
           widthMaxPixels: 25,
@@ -7461,7 +7510,8 @@ export default function MapCanvas() {
 
       {/* Loading Spinner Overlay - positioned over the visible map area */}
       {/* Show spinner when loading ridership data OR when loading grid data for segment coloring in route detail view */}
-      {(isRidershipLoading || (selectedRouteId && !selectedTrip && showSegmentColoring && (isGridDataLoading || isGridDataStale))) && (
+      {/* In comparison mode, also show spinner when comparison grid data is loading */}
+      {(isRidershipLoading || (selectedRouteId && !selectedTrip && showSegmentColoring && (isGridDataLoading || isGridDataStale || (comparisonMode && (isGridData2Loading || isGridData2Stale))))) && (
         <div
           style={{
             position: 'fixed',
@@ -8584,6 +8634,7 @@ export default function MapCanvas() {
                       value1={value1}
                       value2={value2}
                       swapped={comparisonSwapped}
+                      loading={!!isTripComparisonLoading}
                     />
                   );
                 })()
@@ -9142,6 +9193,7 @@ export default function MapCanvas() {
                             value1={value1}
                             value2={value2}
                             swapped={comparisonSwapped}
+                            loading={isComparisonDataLoading}
                           />
                         );
                       })()
@@ -9750,6 +9802,7 @@ export default function MapCanvas() {
                         value1={value1}
                         value2={value2}
                         swapped={comparisonSwapped}
+                        loading={!!isRouteComparisonLoading}
                       />
                     );
                   })()
@@ -10945,6 +10998,7 @@ export default function MapCanvas() {
                     value1={value1}
                     value2={value2}
                     swapped={comparisonSwapped}
+                    loading={isComparisonDataLoading}
                   />
                 );
               })()
@@ -11244,7 +11298,7 @@ export default function MapCanvas() {
                           cursor: isAllStopsLoading ? 'default' : 'pointer'
                         }}>
                         {comparisonMode ? (
-                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} />
+                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} loading={isComparisonDataLoading} />
                         ) : (
                           <MetricCard value={item.value} title={item.name} valueLoading={isAllStopsLoading} />
                         )}
@@ -11429,7 +11483,7 @@ export default function MapCanvas() {
                           cursor: 'pointer'
                         }}>
                         {comparisonMode ? (
-                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} />
+                          <ComparisonMetricCard value1={item.value} value2={value2} title={item.name} swapped={comparisonSwapped} loading={isComparisonDataLoading} />
                         ) : (
                           <MetricCard value={item.value} title={item.name} />
                         )}
