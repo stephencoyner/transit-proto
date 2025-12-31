@@ -109,7 +109,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
         style={{
           position: 'absolute',
           inset: '12px',
-          borderRadius: '16px',
+          borderRadius: '28px',
           overflow: 'hidden',
           display: 'flex',
           border: '0.5px solid var(--border-default)',
