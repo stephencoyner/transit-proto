@@ -21,7 +21,6 @@ import type { FilterState } from '@/lib/utils/filterBuilder';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
 import BookmarksModal from '@/components/BookmarksModal';
 import SaveBookmarkModal from '@/components/SaveBookmarkModal';
-import SaveBookmarkModalFullScreen from '@/components/SaveBookmarkModalFullScreen';
 
 // Type for bounds
 type LngLatBoundsLike = [[number, number], [number, number]];
@@ -434,7 +433,6 @@ export default function MapCanvas() {
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
   const [allowAbsoluteNumberComparisons, setAllowAbsoluteNumberComparisons] = useState<boolean>(false);
-  const [fullScreenBookmarkModal, setFullScreenBookmarkModal] = useState<boolean>(false);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -5111,8 +5109,6 @@ export default function MapCanvas() {
           onDifferentiatedPanelBackgroundsChange={setDifferentiatedPanelBackgrounds}
           allowAbsoluteNumberComparisons={allowAbsoluteNumberComparisons}
           onAllowAbsoluteNumberComparisonsChange={setAllowAbsoluteNumberComparisons}
-          fullScreenBookmarkModal={fullScreenBookmarkModal}
-          onFullScreenBookmarkModalChange={setFullScreenBookmarkModal}
           onOpenBookmarks={() => setIsBookmarksModalOpen(true)}
           showBookmarkSavedToast={showBookmarkSavedToast}
         />
@@ -8317,33 +8313,16 @@ export default function MapCanvas() {
               const visibleMapWidth = mapCanvas.width - totalPanelWidth;
               const visibleMapHeight = mapCanvas.height;
 
-              // For full-screen modal: capture entire canvas (including area behind panels)
-              // For standard modal: crop a square from the center of visible area
-              let cropX: number, cropY: number, cropWidth: number, cropHeight: number;
-              let outputWidth: number, outputHeight: number;
-
-              if (fullScreenBookmarkModal) {
-                // Capture the entire canvas (the floating panel will cover the left side anyway)
-                cropX = 0;
-                cropY = 0;
-                cropWidth = mapCanvas.width;
-                cropHeight = mapCanvas.height;
-                // Output at same aspect ratio, scaled to reasonable size
-                const maxDimension = 1920;
-                const scale = Math.min(maxDimension / cropWidth, maxDimension / cropHeight, 1);
-                outputWidth = Math.round(cropWidth * scale);
-                outputHeight = Math.round(cropHeight * scale);
-              } else {
-                // Crop a square from the center of the visible map area
-                const cropSize = Math.min(visibleMapWidth, visibleMapHeight);
-                cropX = visibleMapLeft + (visibleMapWidth - cropSize) / 2;
-                cropY = (visibleMapHeight - cropSize) / 2;
-                cropWidth = cropSize;
-                cropHeight = cropSize;
-                // 720px square for high-res display on 360px preview
-                outputWidth = 720;
-                outputHeight = 720;
-              }
+              // Capture the entire canvas (the floating panel will cover the left side anyway)
+              const cropX = 0;
+              const cropY = 0;
+              const cropWidth = mapCanvas.width;
+              const cropHeight = mapCanvas.height;
+              // Output at same aspect ratio, scaled to reasonable size
+              const maxDimension = 1920;
+              const scale = Math.min(maxDimension / cropWidth, maxDimension / cropHeight, 1);
+              const outputWidth = Math.round(cropWidth * scale);
+              const outputHeight = Math.round(cropHeight * scale);
 
               const compositeCanvas = document.createElement('canvas');
               compositeCanvas.width = outputWidth;
@@ -12497,18 +12476,13 @@ export default function MapCanvas() {
           },
         };
 
-        return fullScreenBookmarkModal ? (
-          <SaveBookmarkModalFullScreen {...bookmarkModalProps} />
-        ) : (
-          <SaveBookmarkModal {...bookmarkModalProps} />
-        );
+        return <SaveBookmarkModal {...bookmarkModalProps} />;
       })()}
 
       {/* Bookmarks Modal */}
       <BookmarksModal
         isOpen={isBookmarksModalOpen}
         onClose={() => setIsBookmarksModalOpen(false)}
-        fullScreenBookmarkModal={fullScreenBookmarkModal}
         onViewBookmark={(bookmark) => {
           // Restore state from bookmark
           const state = bookmark.state;

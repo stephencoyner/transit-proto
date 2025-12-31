@@ -15,8 +15,6 @@ interface NavRailProps {
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
   allowAbsoluteNumberComparisons: boolean;
   onAllowAbsoluteNumberComparisonsChange: (value: boolean) => void;
-  fullScreenBookmarkModal: boolean;
-  onFullScreenBookmarkModalChange: (value: boolean) => void;
   onOpenBookmarks: () => void;
   showBookmarkSavedToast?: boolean;
 }
@@ -131,8 +129,6 @@ const NavRail: React.FC<NavRailProps> = ({
   onDifferentiatedPanelBackgroundsChange,
   allowAbsoluteNumberComparisons,
   onAllowAbsoluteNumberComparisonsChange,
-  fullScreenBookmarkModal,
-  onFullScreenBookmarkModalChange,
   onOpenBookmarks,
   showBookmarkSavedToast = false
 }) => {
@@ -517,40 +513,6 @@ const NavRail: React.FC<NavRailProps> = ({
                       position: 'absolute',
                       top: '1px',
                       left: allowAbsoluteNumberComparisons ? '19px' : '1px',
-                      transition: 'left 0.2s ease'
-                    }}
-                  />
-                </div>
-              </div>
-              {/* Toggle Item - Full Screen Bookmark Modal */}
-              <div
-                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-                onClick={() => onFullScreenBookmarkModalChange(!fullScreenBookmarkModal)}
-              >
-                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
-                  Full Screen Bookmark Modal
-                </span>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '18px',
-                    borderRadius: '9px',
-                    backgroundColor: fullScreenBookmarkModal ? 'var(--text-primary)' : 'var(--bg-secondary)',
-                    border: '1px solid var(--border-default)',
-                    position: 'relative',
-                    transition: 'background-color 0.2s ease',
-                    flexShrink: 0
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--bg-elevated)',
-                      position: 'absolute',
-                      top: '1px',
-                      left: fullScreenBookmarkModal ? '19px' : '1px',
                       transition: 'left 0.2s ease'
                     }}
                   />
