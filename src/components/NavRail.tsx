@@ -13,8 +13,6 @@ interface NavRailProps {
   onRouteControlsTitleSemiboldChange: (value: boolean) => void;
   differentiatedPanelBackgrounds: boolean;
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
-  allowAbsoluteNumberComparisons: boolean;
-  onAllowAbsoluteNumberComparisonsChange: (value: boolean) => void;
   onOpenBookmarks: () => void;
   showBookmarkSavedToast?: boolean;
 }
@@ -127,8 +125,6 @@ const NavRail: React.FC<NavRailProps> = ({
   onRouteControlsTitleSemiboldChange,
   differentiatedPanelBackgrounds,
   onDifferentiatedPanelBackgroundsChange,
-  allowAbsoluteNumberComparisons,
-  onAllowAbsoluteNumberComparisonsChange,
   onOpenBookmarks,
   showBookmarkSavedToast = false
 }) => {
@@ -450,13 +446,13 @@ const NavRail: React.FC<NavRailProps> = ({
                   />
                 </div>
               </div>
-              {/* Toggle Item - Differentiated Panel Backgrounds */}
+              {/* Toggle Item - Darker Panel Background */}
               <div
                 className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
                 onClick={() => onDifferentiatedPanelBackgroundsChange(!differentiatedPanelBackgrounds)}
               >
                 <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
-                  Differentiated Panel Backgrounds
+                  Darker Panel Background
                 </span>
                 <div
                   style={{
@@ -479,40 +475,6 @@ const NavRail: React.FC<NavRailProps> = ({
                       position: 'absolute',
                       top: '1px',
                       left: differentiatedPanelBackgrounds ? '19px' : '1px',
-                      transition: 'left 0.2s ease'
-                    }}
-                  />
-                </div>
-              </div>
-              {/* Toggle Item - Allow Absolute Number Comparisons */}
-              <div
-                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
-                onClick={() => onAllowAbsoluteNumberComparisonsChange(!allowAbsoluteNumberComparisons)}
-              >
-                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
-                  Absolute Number Comparisons
-                </span>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '18px',
-                    borderRadius: '9px',
-                    backgroundColor: allowAbsoluteNumberComparisons ? 'var(--text-primary)' : 'var(--bg-secondary)',
-                    border: '1px solid var(--border-default)',
-                    position: 'relative',
-                    transition: 'background-color 0.2s ease',
-                    flexShrink: 0
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--bg-elevated)',
-                      position: 'absolute',
-                      top: '1px',
-                      left: allowAbsoluteNumberComparisons ? '19px' : '1px',
                       transition: 'left 0.2s ease'
                     }}
                   />

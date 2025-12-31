@@ -4,18 +4,11 @@ import React from 'react';
 import { MAP_COLORS, getScaleLabels, formatScaleValue } from '@/lib/utils/colorScale';
 import { COMPARISON_SCALE_COLORS, hexToRGBA } from '@/utils/comparisonColors';
 
-export type ComparisonDisplayMode = 'percent' | 'number';
-
 interface MapScaleProps {
   title: string;
   min: number;
   max: number;
   comparisonMode?: boolean;
-  comparisonDisplayMode?: ComparisonDisplayMode;
-  onComparisonDisplayModeChange?: (mode: ComparisonDisplayMode) => void;
-  // For number mode, we need the actual min/max difference values
-  minDiff?: number;
-  maxDiff?: number;
 }
 
 const MapScale: React.FC<MapScaleProps> = ({
@@ -23,10 +16,6 @@ const MapScale: React.FC<MapScaleProps> = ({
   min,
   max,
   comparisonMode = false,
-  comparisonDisplayMode = 'percent',
-  onComparisonDisplayModeChange,
-  minDiff = 0,
-  maxDiff = 0
 }) => {
   // For comparison mode, show a different scale
   if (comparisonMode) {
@@ -34,19 +23,10 @@ const MapScale: React.FC<MapScaleProps> = ({
     const formatComparisonValue = (value: number): string => {
       // Guard against NaN and non-finite values
       if (!Number.isFinite(value)) return '0';
-      if (comparisonDisplayMode === 'number') {
-        if (value === 0) return '0';
-        const prefix = value > 0 ? '+' : '';
-        return `${prefix}${Math.round(value).toLocaleString()}`;
-      }
       if (value === 0) return '0%';
       const prefix = value > 0 ? '+' : '';
       return `${prefix}${Math.round(value)}%`;
     };
-
-    // Use appropriate min/max based on display mode
-    const displayMin = comparisonDisplayMode === 'number' ? minDiff : min;
-    const displayMax = comparisonDisplayMode === 'number' ? maxDiff : max;
 
     return (
       <div
@@ -61,63 +41,6 @@ const MapScale: React.FC<MapScaleProps> = ({
           gap: '8px',
         }}
       >
-        {/* Floating Toggle Control */}
-        {onComparisonDisplayModeChange && (
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: '9999px',
-              padding: '4px',
-              border: '0.5px solid var(--border-default)',
-              boxShadow: 'var(--shadow-sm)',
-              gap: '4px',
-              width: '88px',
-              height: '48px',
-              boxSizing: 'border-box',
-            }}
-          >
-            <button
-              onClick={() => onComparisonDisplayModeChange('percent')}
-              style={{
-                flex: 1,
-                height: '40px',
-                fontSize: '16px',
-                fontWeight: 700,
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: comparisonDisplayMode === 'percent' ? 'var(--bg-elevated)' : 'transparent',
-                color: comparisonDisplayMode === 'percent' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              }}
-            >
-              %
-            </button>
-            <button
-              onClick={() => onComparisonDisplayModeChange('number')}
-              style={{
-                flex: 1,
-                height: '40px',
-                fontSize: '16px',
-                fontWeight: 700,
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: comparisonDisplayMode === 'number' ? 'var(--bg-elevated)' : 'transparent',
-                color: comparisonDisplayMode === 'number' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              }}
-            >
-              #
-            </button>
-          </div>
-        )}
-
         {/* Scale Card */}
         <div
           className="bg-bg-elevated"
@@ -153,8 +76,8 @@ const MapScale: React.FC<MapScaleProps> = ({
           // Determine which portion of the scale to show based on the data range
           // COMPARISON_SCALE_COLORS has 7 colors: indices 0-2 are negative (red to orange),
           // index 3 is neutral (yellow/amber), indices 4-6 are positive (light green to dark green)
-          const isAllNegative = displayMax <= 0 && displayMin < 0;
-          const isAllPositive = displayMin >= 0 && displayMax > 0;
+          const isAllNegative = max <= 0 && min < 0;
+          const isAllPositive = min >= 0 && max > 0;
 
           // Create a mutable array from the readonly tuple for slicing
           const allColors = [...COMPARISON_SCALE_COLORS];
@@ -206,25 +129,25 @@ const MapScale: React.FC<MapScaleProps> = ({
                 {isAllNegative ? (
                   <>
                     {/* All negative: show min, mid, 0 */}
-                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(displayMin)}</span>
-                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMin / 2))}</span>
+                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(min)}</span>
+                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(min / 2))}</span>
                     <span style={{ position: 'absolute', right: 0 }}>0</span>
                   </>
                 ) : isAllPositive ? (
                   <>
                     {/* All positive: show 0, mid, max */}
                     <span style={{ position: 'absolute', left: 0 }}>0</span>
-                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMax / 2))}</span>
-                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(displayMax)}</span>
+                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(max / 2))}</span>
+                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(max)}</span>
                   </>
                 ) : (
                   <>
                     {/* Mixed: show full range with 5 labels */}
-                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(displayMin)}</span>
-                    <span style={{ position: 'absolute', left: 'calc(25% + 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMin / 2))}</span>
+                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(min)}</span>
+                    <span style={{ position: 'absolute', left: 'calc(25% + 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(min / 2))}</span>
                     <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>0</span>
-                    <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(displayMax / 2))}</span>
-                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(displayMax)}</span>
+                    <span style={{ position: 'absolute', left: 'calc(75% - 8px)', transform: 'translateX(-50%)' }}>{formatComparisonValue(Math.round(max / 2))}</span>
+                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(max)}</span>
                   </>
                 )}
                 {/* Spacer to maintain height */}
