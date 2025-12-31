@@ -40,7 +40,7 @@ const getBookmarkContext = (bookmark: Bookmark) => {
       contextTitle = `${routeName} (${formatTime12Hour(state.selectedTrip.start_time)} · ${state.selectedPattern || state.selectedTrip.headsign})`;
     } else if (state.selectedPattern) {
       // Pattern selected but no trip: show route and pattern
-      contextTitle = `${routeName}, ${state.selectedPattern}`;
+      contextTitle = `${routeName} (${state.selectedPattern})`;
     } else {
       // Just route selected
       contextTitle = routeName;
