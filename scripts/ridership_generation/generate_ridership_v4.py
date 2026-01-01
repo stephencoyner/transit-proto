@@ -841,24 +841,28 @@ def calculate_stop_factors_route70(
     is_before_breakpoint = (stop_seq <= breakpoint_seq)
 
     if trip.direction_id == 0:
-        # U-District bound: tourists board downtown (before breakpoint)
+        # U-District bound: starts downtown, ends at U-District
         if is_summer:
             if is_before_breakpoint:
-                # Downtown stops: BOOST boardings 10-20% based on tourist timing
-                # Base boost of ~25%, scaled by time of day to hit +10-15% avg
-                boost = 1.25 + (0.25 * tourist_time_mult)  # 1.25 to 1.50
-                return (1.3 * boost, 0.4)  # More boardings, fewer alightings
+                # Downtown stops: boardings UP (tourists getting on)
+                boost = 1.25 + (0.20 * tourist_time_mult)  # 1.25 to 1.45
+                return (1.3 * boost, 0.3)  # High boardings, low alightings
             else:
-                # After breakpoint: graduated DROP to maintain overall ~30% route drop
-                # The further along, the bigger the drop
-                # Calculate how far past breakpoint (0.0 = at breakpoint, 1.0 = end)
-                progress_after = min(1.0, (stop_seq - breakpoint_seq) / max(1, 120))  # normalize over ~120 seq
+                # After downtown (Eastlake toward U-District)
+                # Boardings DROP significantly, alightings moderate
+                # Some tourists ride through, so load drop is less than boarding drop
+                progress_after = min(1.0, (stop_seq - breakpoint_seq) / max(1, 120))
 
-                # Drop from 0.45 at breakpoint to 0.25 at end (55-75% drop)
-                drop_factor = 0.45 - (0.20 * progress_after)
-                return (drop_factor, drop_factor * 1.0)
+                # Boardings: steep drop (40-55% of spring)
+                b_factor = 0.40 - (0.15 * progress_after)  # 0.40 to 0.25
+
+                # Alightings: moderate - tourists staying on reduces this
+                # Lower alightings = load stays higher relative to boardings
+                a_factor = 0.5 + (0.3 * progress_after)  # 0.5 to 0.8 at end
+
+                return (b_factor, a_factor)
         else:
-            # Spring: normal pattern with good downtown activity
+            # Spring: normal pattern
             if position < 0.3:
                 return (1.3, 0.4)
             elif position < 0.6:
@@ -867,20 +871,34 @@ def calculate_stop_factors_route70(
                 return (0.5, 1.3)
 
     else:
-        # Downtown bound (direction 1): tourists alight downtown (after breakpoint)
+        # Downtown bound (direction 1): starts at U-District, ends downtown
         if is_summer:
             if is_before_breakpoint:
-                # Before breakpoint (leaving U-District area): graduated DROP
-                # Earlier stops drop more
+                # U-District/Eastlake: boardings DROP, but less extreme
+                # Some tourists board here to ride to downtown
                 progress_before = min(1.0, stop_seq / max(1, breakpoint_seq))
 
-                # Drop from 0.45 at start to 0.60 near breakpoint (40-55% drop)
-                drop_factor = 0.45 + (0.15 * progress_before)
-                return (drop_factor, drop_factor * 0.9)
+                # Boardings: moderate drop (50-65% of spring)
+                b_factor = 0.50 + (0.15 * progress_before)  # 0.50 to 0.65
+
+                # Alightings: low - tourists stay on, keeps load from dropping as much
+                a_factor = 0.35 + (0.15 * progress_before)  # 0.35 to 0.50
+
+                return (b_factor, a_factor)
             else:
-                # Downtown stops (after breakpoint): BOOST alightings for tourists getting off
-                boost = 1.15 + (0.20 * tourist_time_mult)
-                return (0.9, 1.2 * boost)  # More alightings downtown
+                # Downtown stops: boardings UP (tourists getting on to go further)
+                # Keep modest - spring has low boardings here so % change is sensitive
+                boost = 1.05 + (0.10 * tourist_time_mult)  # 1.05 to 1.15
+
+                # Calculate progress through downtown
+                progress_downtown = min(1.0, (stop_seq - breakpoint_seq) / max(1, 80))
+
+                if progress_downtown < 0.7:
+                    # Early/mid downtown: tourists boarding - modest boost
+                    return (1.1 * boost, 0.7)
+                else:
+                    # Final stops: tourists getting off
+                    return (0.85, 1.15 * boost)
         else:
             # Spring: normal pattern
             if position < 0.3:
