@@ -4,8 +4,6 @@ A data visualization and analysis tool for transit planners to explore ridership
 
 **Live Demo:** [stephenstransitapp.vercel.app](https://stephenstransitapp.vercel.app)
 
-![Transit Platform Screenshot](docs/screenshot.png)
-
 ## Features
 
 - **Route Analysis**: View ridership metrics (boardings, alightings, load) at the route, trip, and stop level
@@ -98,22 +96,6 @@ This platform uses synthetic ridership data modeled on realistic King County Met
 - Seasonal patterns (spring vs summer)
 - Time-of-day patterns (AM peak, PM peak, midday, evening)
 - Special scenarios (back-to-school crowding, summer tourist patterns, holiday ridership)
-
-## Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Add your Mapbox token and Supabase credentials
-
-# Run development server
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the app.
 
 ## License
 
