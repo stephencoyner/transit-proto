@@ -220,8 +220,8 @@ const CustomYAxisTick = ({ y, payload, visibleTicksCount }: any) => {
         y={0}
         dy={4}
         textAnchor="start"
-        fill="var(--text-tertiary)"
-        style={{ fontSize: 'var(--caption-size)' }}
+        fill="var(--text-secondary)"
+        style={{ fontSize: 'var(--caption-size)', fontWeight: 500 }}
       >
         {payload.value}
       </text>
@@ -331,24 +331,28 @@ export default function ByRouteChart({ data, metric, loading = false, onRouteCli
         {isHorizontal ? (
           // Horizontal bar chart for many routes
           <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
             <defs>
               <linearGradient id="barCursorRouteH" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.1} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.1} />
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+              </linearGradient>
+              <linearGradient id="barGradientRouteH" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.4} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={1} />
               </linearGradient>
             </defs>
             <YAxis
               dataKey="displayName"
               type="category"
               tick={<CustomYAxisTick />}
-              axisLine={{ stroke: 'var(--border-default)' }}
+              axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
               tickLine={false}
               width={30}
             />
             <XAxis
               type="number"
-              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
+              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
@@ -361,9 +365,11 @@ export default function ByRouteChart({ data, metric, loading = false, onRouteCli
             />
             <Bar
               dataKey="value"
-              fill="var(--border-hover)"
+              fill="url(#barGradientRouteH)"
               radius={[0, 4, 4, 0]}
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={400}
+              animationEasing="ease-out"
               onClick={handleBarClick}
               cursor={onRouteClick ? 'pointer' : 'default'}
             />
@@ -371,22 +377,26 @@ export default function ByRouteChart({ data, metric, loading = false, onRouteCli
         ) : (
           // Vertical bar chart for 2 routes
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
             <defs>
               <linearGradient id="barCursorRouteV" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.1} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.1} />
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+              </linearGradient>
+              <linearGradient id="barGradientRouteV" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={1} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.4} />
               </linearGradient>
             </defs>
             <XAxis
               dataKey="displayName"
-              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
-              axisLine={{ stroke: 'var(--border-default)' }}
+              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
+              axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
               tickLine={false}
               interval={0}
             />
             <YAxis
-              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
+              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
@@ -399,9 +409,11 @@ export default function ByRouteChart({ data, metric, loading = false, onRouteCli
             />
             <Bar
               dataKey="value"
-              fill="var(--border-hover)"
+              fill="url(#barGradientRouteV)"
               radius={[4, 4, 0, 0]}
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={400}
+              animationEasing="ease-out"
               onClick={handleBarClick}
               cursor={onRouteClick ? 'pointer' : 'default'}
             />
