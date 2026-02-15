@@ -56,7 +56,7 @@ except ImportError:
     sys.exit(1)
 
 # Data directory
-DATA_DIR = Path(__file__).parent.parent.parent / "data" / "generated_v3"
+DATA_DIR = Path(__file__).parent.parent.parent / "data" / "generated_v4"
 
 # Import order matters due to foreign key constraints
 IMPORT_ORDER = [
@@ -69,6 +69,7 @@ IMPORT_ORDER = [
     "daily_route_summary",    # Depends on routes
     "daily_stop_summary",     # Depends on stops
     "daily_period_summary",   # No dependencies
+    "daily_route_stop_summary",  # Depends on routes, stops (LARGE - ~4M rows)
 ]
 
 # Column mappings for each table (CSV column -> DB column)
@@ -100,6 +101,10 @@ TABLE_COLUMNS = {
     ],
     "daily_period_summary": [
         "date", "time_period", "day_of_week", "total_boardings", "total_alightings", "avg_load", "max_load"
+    ],
+    "daily_route_stop_summary": [
+        "date", "route_id", "stop_id", "direction_id", "day_of_week", "stop_sequence",
+        "total_boardings", "total_alightings", "avg_load", "max_load"
     ],
 }
 

@@ -5,13 +5,15 @@ interface ComparisonMetricCardProps {
   value2: number;
   title?: string;
   swapped?: boolean;
+  loading?: boolean;  // Show skeleton state when comparison data is still loading
 }
 
 export default function ComparisonMetricCard({
   value1,
   value2,
   title = 'Average daily boardings',
-  swapped = false
+  swapped = false,
+  loading = false
 }: ComparisonMetricCardProps) {
   // If swapped, display values in reverse order
   const displayValue1 = swapped ? value2 : value1;
@@ -19,6 +21,19 @@ export default function ComparisonMetricCard({
   const percentChange = calculatePercentChange(displayValue1, displayValue2);
   const isPositive = percentChange > 0;
   const isNegative = percentChange < 0;
+
+  // Skeleton placeholder component
+  const Skeleton = ({ width }: { width: string }) => (
+    <div
+      style={{
+        width,
+        height: '20px',
+        backgroundColor: 'var(--bg-secondary)',
+        borderRadius: '4px',
+        animation: 'pulse 1.5s ease-in-out infinite',
+      }}
+    />
+  );
 
   return (
     <div
@@ -29,6 +44,12 @@ export default function ComparisonMetricCard({
         padding: '16px',
         marginBottom: '8px'
       }}>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
       <div style={{
         fontSize: 'var(--body-regular-size)',
         color: 'var(--text-tertiary)',
@@ -58,31 +79,41 @@ export default function ComparisonMetricCard({
             backgroundColor: DATETIME_1_COLOR,
             flexShrink: 0
           }} />
-          <span style={{
-            fontSize: '20px',
-            fontWeight: 'var(--data-large-weight)',
-            color: 'var(--text-primary)',
-            lineHeight: '1'
-          }}>
-            {displayValue1.toLocaleString()}
-          </span>
+          {loading ? (
+            <Skeleton width="60px" />
+          ) : (
+            <span style={{
+              fontSize: '20px',
+              fontWeight: 'var(--data-large-weight)',
+              color: 'var(--text-primary)',
+              lineHeight: '1'
+            }}>
+              {displayValue1.toLocaleString()}
+            </span>
+          )}
         </div>
 
         {/* Percentage change pill */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          padding: '2px 8px',
-          borderRadius: '24px',
-          backgroundColor: isPositive ? POSITIVE_PILL_BG : isNegative ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
-          color: isPositive ? POSITIVE_PILL_TEXT : isNegative ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
-          fontSize: 'var(--caption-size)',
-          fontWeight: 600,
-          marginLeft: '8px',
-          marginRight: '16px'
-        }}>
-          {formatPercentChange(percentChange)}
-        </div>
+        {loading ? (
+          <div style={{ marginLeft: '8px', marginRight: '16px' }}>
+            <Skeleton width="50px" />
+          </div>
+        ) : (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '2px 8px',
+            borderRadius: '24px',
+            backgroundColor: isPositive ? POSITIVE_PILL_BG : isNegative ? NEGATIVE_PILL_BG : 'var(--bg-secondary)',
+            color: isPositive ? POSITIVE_PILL_TEXT : isNegative ? NEGATIVE_PILL_TEXT : 'var(--text-secondary)',
+            fontSize: 'var(--caption-size)',
+            fontWeight: 600,
+            marginLeft: '8px',
+            marginRight: '16px'
+          }}>
+            {formatPercentChange(percentChange)}
+          </div>
+        )}
 
         {/* Value 2 with circle */}
         <div style={{
@@ -97,14 +128,18 @@ export default function ComparisonMetricCard({
             backgroundColor: DATETIME_2_COLOR,
             flexShrink: 0
           }} />
-          <span style={{
-            fontSize: '20px',
-            fontWeight: 'var(--data-large-weight)',
-            color: 'var(--text-primary)',
-            lineHeight: '1'
-          }}>
-            {displayValue2.toLocaleString()}
-          </span>
+          {loading ? (
+            <Skeleton width="60px" />
+          ) : (
+            <span style={{
+              fontSize: '20px',
+              fontWeight: 'var(--data-large-weight)',
+              color: 'var(--text-primary)',
+              lineHeight: '1'
+            }}>
+              {displayValue2.toLocaleString()}
+            </span>
+          )}
         </div>
       </div>
     </div>

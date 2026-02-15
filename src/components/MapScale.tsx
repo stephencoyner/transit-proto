@@ -93,25 +93,9 @@ const MapScale: React.FC<MapScaleProps> = ({
             colorsToShow = allColors.slice(3, 7);
             colorWeights = [1, 1, 1, 1];
           } else {
-            // Mixed range: calculate proportional widths
-            // Colors 0-2 represent negative values (3 colors), color 3 is neutral, colors 4-6 are positive (3 colors)
-            const negativeRange = Math.abs(min);
-            const positiveRange = Math.abs(max);
-            const totalRange = negativeRange + positiveRange;
-
-            if (totalRange > 0) {
-              // Calculate the width ratio for negative vs positive sections
-              const negativeRatio = negativeRange / totalRange;
-              const positiveRatio = positiveRange / totalRange;
-
-              // Distribute among colors: 3 negative colors + 1 neutral + 3 positive colors
-              // Negative colors (0-2) share the negative portion
-              // Positive colors (4-6) share the positive portion
-              // Neutral (3) is at the boundary
-              const negWeight = negativeRatio / 3;
-              const posWeight = positiveRatio / 3;
-              colorWeights = [negWeight, negWeight, negWeight, 0.001, posWeight, posWeight, posWeight];
-            }
+            // Mixed range: all 7 colors shown with equal widths
+            // The "0" label position will be calculated separately to show proportional placement
+            colorWeights = [1, 1, 1, 1, 1, 1, 1];
           }
 
           return (
@@ -165,19 +149,10 @@ const MapScale: React.FC<MapScaleProps> = ({
                   </>
                 ) : (
                   <>
-                    {/* Mixed: show min, 0, max - position 0 based on actual data range */}
-                    {(() => {
-                      // Calculate where 0 falls in the range from min to max
-                      const range = max - min;
-                      const zeroPosition = range === 0 ? 50 : ((-min) / range) * 100;
-                      return (
-                        <>
-                          <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(min)}</span>
-                          <span style={{ position: 'absolute', left: `${zeroPosition}%`, transform: 'translateX(-50%)' }}>0</span>
-                          <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(max)}</span>
-                        </>
-                      );
-                    })()}
+                    {/* Mixed: show min, 0, max - 0 is always in the middle since color index 3 (yellow) is the center */}
+                    <span style={{ position: 'absolute', left: 0 }}>{formatComparisonValue(min)}</span>
+                    <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>0</span>
+                    <span style={{ position: 'absolute', right: 0 }}>{formatComparisonValue(max)}</span>
                   </>
                 )}
                 {/* Spacer to maintain height */}
