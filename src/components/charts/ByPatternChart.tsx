@@ -222,8 +222,8 @@ const CustomYAxisTick = ({ y, payload, visibleTicksCount }: any) => {
         y={0}
         dy={4}
         textAnchor="start"
-        fill="var(--text-tertiary)"
-        style={{ fontSize: 'var(--caption-size)' }}
+        fill="var(--text-secondary)"
+        style={{ fontSize: 'var(--caption-size)', fontWeight: 500 }}
       >
         {payload.value}
       </text>
@@ -353,24 +353,36 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
         {isHorizontal ? (
           // Horizontal bar chart for many patterns
           <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
             <defs>
               <linearGradient id="barCursorPatternH" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.1} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.1} />
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+              </linearGradient>
+              <linearGradient id="barGradientPatternH" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.4} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={1} />
+              </linearGradient>
+              <linearGradient id="barGradientPatternH1" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
+                <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={1} />
+              </linearGradient>
+              <linearGradient id="barGradientPatternH2" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
+                <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={1} />
               </linearGradient>
             </defs>
             <YAxis
               dataKey="displayName"
               type="category"
               tick={<CustomYAxisTick />}
-              axisLine={{ stroke: 'var(--border-default)' }}
+              axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
               tickLine={false}
               width={80}
             />
             <XAxis
               type="number"
-              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
+              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
@@ -386,18 +398,22 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
                 <Bar
                   dataKey="value1"
                   name="Date-time 1"
-                  fill={DATETIME_1_COLOR}
+                  fill="url(#barGradientPatternH1)"
                   radius={[0, 4, 4, 0]}
-                  isAnimationActive={false}
+                  isAnimationActive={true}
+                  animationDuration={400}
+                  animationEasing="ease-out"
                   onClick={handleBarClick}
                   cursor={onPatternClick ? 'pointer' : 'default'}
                 />
                 <Bar
                   dataKey="value2"
                   name="Date-time 2"
-                  fill={DATETIME_2_COLOR}
+                  fill="url(#barGradientPatternH2)"
                   radius={[0, 4, 4, 0]}
-                  isAnimationActive={false}
+                  isAnimationActive={true}
+                  animationDuration={400}
+                  animationEasing="ease-out"
                   onClick={handleBarClick}
                   cursor={onPatternClick ? 'pointer' : 'default'}
                 />
@@ -405,9 +421,11 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
             ) : (
               <Bar
                 dataKey="value"
-                fill="var(--border-hover)"
+                fill="url(#barGradientPatternH)"
                 radius={[0, 4, 4, 0]}
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={400}
+                animationEasing="ease-out"
                 onClick={handleBarClick}
                 cursor={onPatternClick ? 'pointer' : 'default'}
               />
@@ -416,22 +434,34 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
         ) : (
           // Vertical bar chart for 2 patterns
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
             <defs>
               <linearGradient id="barCursorPatternV" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.1} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.1} />
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+              </linearGradient>
+              <linearGradient id="barGradientPatternV" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={borderDefault} stopOpacity={1} />
+                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.4} />
+              </linearGradient>
+              <linearGradient id="barGradientPatternV1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={1} />
+                <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
+              </linearGradient>
+              <linearGradient id="barGradientPatternV2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={1} />
+                <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
               </linearGradient>
             </defs>
             <XAxis
               dataKey="displayName"
-              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
-              axisLine={{ stroke: 'var(--border-default)' }}
+              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
+              axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
               tickLine={false}
               interval={0}
             />
             <YAxis
-              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
+              tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
@@ -447,18 +477,22 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
                 <Bar
                   dataKey="value1"
                   name="Date-time 1"
-                  fill={DATETIME_1_COLOR}
+                  fill="url(#barGradientPatternV1)"
                   radius={[4, 4, 0, 0]}
-                  isAnimationActive={false}
+                  isAnimationActive={true}
+                  animationDuration={400}
+                  animationEasing="ease-out"
                   onClick={handleBarClick}
                   cursor={onPatternClick ? 'pointer' : 'default'}
                 />
                 <Bar
                   dataKey="value2"
                   name="Date-time 2"
-                  fill={DATETIME_2_COLOR}
+                  fill="url(#barGradientPatternV2)"
                   radius={[4, 4, 0, 0]}
-                  isAnimationActive={false}
+                  isAnimationActive={true}
+                  animationDuration={400}
+                  animationEasing="ease-out"
                   onClick={handleBarClick}
                   cursor={onPatternClick ? 'pointer' : 'default'}
                 />
@@ -466,9 +500,11 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
             ) : (
               <Bar
                 dataKey="value"
-                fill="var(--border-hover)"
+                fill="url(#barGradientPatternV)"
                 radius={[4, 4, 0, 0]}
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={400}
+                animationEasing="ease-out"
                 onClick={handleBarClick}
                 cursor={onPatternClick ? 'pointer' : 'default'}
               />

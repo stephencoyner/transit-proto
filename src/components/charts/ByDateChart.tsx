@@ -249,8 +249,8 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 16 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.8} />
-              <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.1} />
+              <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.6} />
+              <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.05} />
             </linearGradient>
             <linearGradient id={`${gradientId}-primary`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
@@ -261,16 +261,16 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
               <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
-            axisLine={{ stroke: 'var(--border-default)' }}
+            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
+            axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
             tickLine={false}
             hide
           />
           <YAxis
-            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
+            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
@@ -292,7 +292,9 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
                 strokeOpacity={1}
                 strokeWidth={4}
                 fill="none"
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={500}
+                animationEasing="ease-out"
               />
               <Area
                 type="monotone"
@@ -302,7 +304,9 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
                 strokeOpacity={1}
                 strokeWidth={4}
                 fill="none"
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={500}
+                animationEasing="ease-out"
               />
             </>
           ) : (
@@ -313,7 +317,9 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
               strokeOpacity={1}
               strokeWidth={2}
               fill={`url(#${gradientId})`}
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={500}
+              animationEasing="ease-out"
             />
           )}
         </AreaChart>

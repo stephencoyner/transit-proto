@@ -205,21 +205,33 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="0" stroke="var(--border-default)" strokeWidth={0.5} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
           <defs>
             <linearGradient id="barCursor" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.1} />
-              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.1} />
+              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
+              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+            </linearGradient>
+            <linearGradient id="barGradientDay" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={borderDefault} stopOpacity={1} />
+              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.4} />
+            </linearGradient>
+            <linearGradient id="barGradientDay1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={1} />
+              <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
+            </linearGradient>
+            <linearGradient id="barGradientDay2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={1} />
+              <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
             </linearGradient>
           </defs>
           <XAxis
             dataKey="day"
-            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
-            axisLine={{ stroke: 'var(--border-default)' }}
+            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
+            axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-tertiary)' }}
+            tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(value) => value === 0 ? '0' : value >= 1000 ? `${(value / 1000).toFixed(0)}K` : String(value)}
@@ -235,24 +247,30 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
               <Bar
                 dataKey="value1"
                 name="Date-time 1"
-                fill={DATETIME_1_COLOR}
+                fill="url(#barGradientDay1)"
                 radius={[4, 4, 0, 0]}
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={400}
+                animationEasing="ease-out"
               />
               <Bar
                 dataKey="value2"
                 name="Date-time 2"
-                fill={DATETIME_2_COLOR}
+                fill="url(#barGradientDay2)"
                 radius={[4, 4, 0, 0]}
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={400}
+                animationEasing="ease-out"
               />
             </>
           ) : (
             <Bar
               dataKey="value"
-              fill="var(--border-hover)"
+              fill="url(#barGradientDay)"
               radius={[4, 4, 0, 0]}
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={400}
+              animationEasing="ease-out"
             />
           )}
         </BarChart>
