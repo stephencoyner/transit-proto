@@ -272,7 +272,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                   onMouseLeave={() => setHoveredItemIndex(null)}
                   className="button-small"
                   style={{
-                    padding: '12px 16px',
+                    padding: '8px 16px',
                     cursor: option.disabled ? 'not-allowed' : 'pointer',
                     color: option.disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
                     display: 'flex',
