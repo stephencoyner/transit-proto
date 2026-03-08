@@ -369,3 +369,10 @@ body {
     background-position: 200% 0;
   }
 }
+
+/* Compare button animated border */
+@keyframes compare-border-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
