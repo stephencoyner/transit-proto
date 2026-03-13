@@ -4301,7 +4301,7 @@ export default function MapCanvas() {
     tripsScrollPositionRef.current = 0;
   }, [selectedRouteId, selectedPattern]);
 
-  // Restore trips scroll position when returning from trip detail view
+  // Restore scroll position when returning from trip detail view
   useEffect(() => {
     if (!selectedTrip && tripsScrollRef.current && tripsScrollPositionRef.current > 0) {
       tripsScrollRef.current.scrollTop = tripsScrollPositionRef.current;
@@ -7190,63 +7190,146 @@ export default function MapCanvas() {
                         <div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 48px)', columnGap: '0', marginBottom: '8px', marginTop: '8px', justifyContent: 'center' }}>
                             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                              <div key={idx} style={{ fontSize: 'var(--label-size)', fontWeight: 'var(--label-weight)', color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0' }}>{day}</div>
+                              <div key={idx} style={{ fontSize: 'var(--label-size)', fontWeight: 'var(--label-weight)', color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0', letterSpacing: 'var(--label-letter-spacing)' }}>{day}</div>
                             ))}
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 48px)', rowGap: '4px', columnGap: '0', justifyContent: 'center' }}>
                             {days.map((day, idx) => {
-                              if (!day) return <div key={`empty-${idx}`} />;
+                              if (!day) {
+                                return <div key={`empty-${idx}`} />;
+                              }
 
                               // Check if date is within valid data range
                               const isDisabled = !isDateInDataRange(day);
 
                               const isStart = stagedStartDate2 && day.getTime() === stagedStartDate2.getTime();
                               const isEnd = stagedEndDate2 && day.getTime() === stagedEndDate2.getTime();
-                              const isInRange = stagedStartDate2 && stagedEndDate2 && day.getTime() > stagedStartDate2.getTime() && day.getTime() < stagedEndDate2.getTime();
+                              const isInRange = stagedStartDate2 && stagedEndDate2 &&
+                                day.getTime() > stagedStartDate2.getTime() &&
+                                day.getTime() < stagedEndDate2.getTime();
                               const isSelected = isStart || isEnd;
 
+                              // Check if this date is at the start or end of a week row
+                              const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
+                              const isRowStart = dayOfWeek === 0; // Sunday
+                              const isRowEnd = dayOfWeek === 6; // Saturday
+
+                              // Determine border radius for wrapper background
+                              let wrapperBorderRadius = '0';
+                              let buttonBorderRadius = '8px';
+                              const isActive = isSelected || isInRange;
+
+                              // Check if adjacent to selected dates
+                              const prevIsSelected = idx > 0 && days[idx - 1] && stagedStartDate2 && stagedEndDate2 && (
+                                days[idx - 1]!.getTime() === stagedStartDate2.getTime() ||
+                                days[idx - 1]!.getTime() === stagedEndDate2.getTime()
+                              );
+                              const nextIsSelected = idx < days.length - 1 && days[idx + 1] && stagedStartDate2 && stagedEndDate2 && (
+                                days[idx + 1]!.getTime() === stagedStartDate2.getTime() ||
+                                days[idx + 1]!.getTime() === stagedEndDate2.getTime()
+                              );
+
+                              // Margins to extend backgrounds into adjacent cells
+                              let wrapperMarginLeft = '0';
+                              let wrapperMarginRight = '0';
+                              let backgroundZIndex = 0;
+
+                              if (isActive) {
+                                if (isSelected) {
+                                  wrapperBorderRadius = '50%';
+                                  buttonBorderRadius = '50%';
+                                  backgroundZIndex = 2;
+                                } else if (isInRange) {
+                                  if (prevIsSelected) {
+                                    wrapperMarginLeft = '-24px';
+                                  }
+                                  if (nextIsSelected) {
+                                    wrapperMarginRight = '-24px';
+                                  }
+
+                                  const roundLeft = isRowStart;
+                                  const roundRight = isRowEnd;
+
+                                  if (roundLeft && roundRight) {
+                                    wrapperBorderRadius = '8px';
+                                  } else if (roundLeft) {
+                                    wrapperBorderRadius = '8px 0 0 8px';
+                                  } else if (roundRight) {
+                                    wrapperBorderRadius = '0 8px 8px 0';
+                                  }
+                                  buttonBorderRadius = '8px';
+                                  backgroundZIndex = 1;
+                                }
+                              }
+
                               return (
-                                <div key={idx} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '48px' }}>
-                                  {(isSelected || isInRange) && !isDisabled && (
-                                    <div style={{
-                                      position: 'absolute',
-                                      inset: 0,
-                                      backgroundColor: isSelected ? 'var(--border-focus)' : 'var(--bg-secondary)',
-                                      borderRadius: isSelected ? '50%' : '0',
-                                      margin: 'auto',
-                                      width: isSelected ? '40px' : '100%',
-                                      height: isSelected ? '40px' : '100%'
-                                    }} />
-                                  )}
+                                <div
+                                  key={idx}
+                                  style={{
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: '48px'
+                                  }}
+                                >
+                                  {/* Background layer */}
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: wrapperMarginLeft,
+                                    right: wrapperMarginRight,
+                                    bottom: 0,
+                                    background: isSelected ? 'var(--bg-secondary)' : (isInRange ? 'var(--bg-primary)' : 'transparent'),
+                                    borderRadius: wrapperBorderRadius,
+                                    zIndex: backgroundZIndex
+                                  }} />
                                   <button
-                                    type="button"
                                     disabled={isDisabled}
                                     onClick={() => {
                                       if (isDisabled) return;
+                                      setStagedQuickPick2(null);
+                                      setStagedSeason2(null);
+
                                       if (!stagedStartDate2 || (stagedStartDate2 && stagedEndDate2)) {
                                         setStagedStartDate2(day);
                                         setStagedEndDate2(null);
-                                        setStagedSeason2(null);
-                                        setStagedQuickPick2(null);
-                                      } else if (day.getTime() < stagedStartDate2.getTime()) {
-                                        setStagedStartDate2(day);
-                                      } else {
+                                      } else if (day.getTime() > stagedStartDate2.getTime()) {
                                         setStagedEndDate2(day);
+                                      } else {
+                                        setStagedEndDate2(stagedStartDate2);
+                                        setStagedStartDate2(day);
                                       }
                                     }}
                                     style={{
                                       position: 'relative',
-                                      zIndex: 1,
-                                      width: '40px',
-                                      height: '40px',
-                                      border: 'none',
-                                      borderRadius: '50%',
-                                      backgroundColor: 'transparent',
+                                      zIndex: 3,
+                                      background: isDisabled ? 'transparent' : (isSelected ? 'var(--bg-secondary)' : 'transparent'),
+                                      border: isSelected && !isDisabled ? '1px solid var(--border-focus)' : 'none',
+                                      borderRadius: buttonBorderRadius,
+                                      color: isDisabled ? 'var(--text-disabled)' : 'var(--text-primary)',
                                       cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                      fontFamily: 'Inter, sans-serif',
-                                      fontSize: 'var(--button-small-size)',
-                                      color: isDisabled ? 'var(--text-disabled)' : (isSelected ? 'var(--text-btn-primary)' : 'var(--text-primary)'),
+                                      width: '48px',
+                                      height: '48px',
+                                      fontSize: 'var(--body-regular-size)',
+                                      fontWeight: 'var(--body-regular-weight)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'all 0.2s ease',
                                       opacity: isDisabled ? 0.4 : 1
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!isSelected && !isInRange && !isDisabled) {
+                                        e.currentTarget.style.background = 'var(--bg-secondary)';
+                                        e.currentTarget.style.borderRadius = '50%';
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (!isSelected && !isInRange && !isDisabled) {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.borderRadius = buttonBorderRadius;
+                                      }
                                     }}
                                   >
                                     {day.getDate()}
@@ -8009,83 +8092,28 @@ export default function MapCanvas() {
               }}
             >
               {/* Stop connection diagram */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {/* From stop row */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  {/* Circle container - height matches lineHeight so circle centers with first line */}
-                  <div style={{
-                    width: '6px',
-                    minHeight: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    flexShrink: 0
-                  }}>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      backgroundColor: 'black',
-                      marginTop: '5px'
-                    }} />
-                    {/* Line extends down from first circle */}
-                    <div style={{
-                      width: '1px',
-                      backgroundColor: 'black',
-                      flexGrow: 1
-                    }} />
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+                  <div style={{ width: '6px', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: '5px', left: 0, width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'black', zIndex: 1 }} />
+                    <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '8px', bottom: 0, width: '1px', backgroundColor: 'black' }} />
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '12px',
-                      fontWeight: 400,
-                      color: 'var(--text-secondary)',
-                      wordWrap: 'break-word',
-                      lineHeight: '16px',
-                      flex: 1
-                    }}
-                  >
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', wordWrap: 'break-word', lineHeight: '16px', flex: 1 }}>
                     {fromStop?.properties.name || seg.fromStopId}
                   </div>
                 </div>
+                {/* Spacer with connecting line */}
+                <div style={{ height: '8px', position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '3px', transform: 'translateX(-50%)', top: 0, bottom: 0, width: '1px', backgroundColor: 'black' }} />
+                </div>
                 {/* To stop row */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  {/* Circle container with line coming from above */}
-                  <div style={{
-                    width: '6px',
-                    minHeight: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    flexShrink: 0
-                  }}>
-                    {/* Line from gap connects to circle */}
-                    <div style={{
-                      width: '1px',
-                      height: '13px',
-                      backgroundColor: 'black',
-                      marginTop: '-8px'
-                    }} />
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      backgroundColor: 'black',
-                      marginTop: '0px'
-                    }} />
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+                  <div style={{ width: '6px', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, height: '8px', width: '1px', backgroundColor: 'black' }} />
+                    <div style={{ position: 'absolute', top: '5px', left: 0, width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'black', zIndex: 1 }} />
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '12px',
-                      fontWeight: 400,
-                      color: 'var(--text-secondary)',
-                      wordWrap: 'break-word',
-                      lineHeight: '16px',
-                      flex: 1
-                    }}
-                  >
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', wordWrap: 'break-word', lineHeight: '16px', flex: 1 }}>
                     {toStop?.properties.name || seg.toStopId}
                   </div>
                 </div>
@@ -8336,83 +8364,28 @@ export default function MapCanvas() {
               }}
             >
               {/* Stop connection diagram */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {/* From stop row */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  {/* Circle container - height matches lineHeight so circle centers with first line */}
-                  <div style={{
-                    width: '6px',
-                    minHeight: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    flexShrink: 0
-                  }}>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      backgroundColor: 'black',
-                      marginTop: '5px'
-                    }} />
-                    {/* Line extends down from first circle */}
-                    <div style={{
-                      width: '1px',
-                      backgroundColor: 'black',
-                      flexGrow: 1
-                    }} />
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+                  <div style={{ width: '6px', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: '5px', left: 0, width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'black', zIndex: 1 }} />
+                    <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '8px', bottom: 0, width: '1px', backgroundColor: 'black' }} />
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '12px',
-                      fontWeight: 400,
-                      color: 'var(--text-secondary)',
-                      wordWrap: 'break-word',
-                      lineHeight: '16px',
-                      flex: 1
-                    }}
-                  >
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', wordWrap: 'break-word', lineHeight: '16px', flex: 1 }}>
                     {fromStop.n}
                   </div>
                 </div>
+                {/* Spacer with connecting line */}
+                <div style={{ height: '8px', position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '3px', transform: 'translateX(-50%)', top: 0, bottom: 0, width: '1px', backgroundColor: 'black' }} />
+                </div>
                 {/* To stop row */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  {/* Circle container with line coming from above */}
-                  <div style={{
-                    width: '6px',
-                    minHeight: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    flexShrink: 0
-                  }}>
-                    {/* Line from gap connects to circle */}
-                    <div style={{
-                      width: '1px',
-                      height: '13px',
-                      backgroundColor: 'black',
-                      marginTop: '-8px'
-                    }} />
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      backgroundColor: 'black',
-                      marginTop: '0px'
-                    }} />
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+                  <div style={{ width: '6px', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, height: '8px', width: '1px', backgroundColor: 'black' }} />
+                    <div style={{ position: 'absolute', top: '5px', left: 0, width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'black', zIndex: 1 }} />
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '12px',
-                      fontWeight: 400,
-                      color: 'var(--text-secondary)',
-                      wordWrap: 'break-word',
-                      lineHeight: '16px',
-                      flex: 1
-                    }}
-                  >
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', wordWrap: 'break-word', lineHeight: '16px', flex: 1 }}>
                     {toStop.n}
                   </div>
                 </div>
@@ -8933,7 +8906,7 @@ export default function MapCanvas() {
                                     left: '-5.5px',
                                     top: '-2px',
                                     width: '28px',
-                                    height: 'calc(100% + 20px + 24px)',
+                                    height: 'calc(100% + 20px + 14.5px)',
                                     backgroundColor: `rgba(${segmentColor.slice(0, 3).join(',')}, 0.31)`,
                                     borderRadius: '14px',
                                     zIndex: 0
@@ -8944,9 +8917,9 @@ export default function MapCanvas() {
                                   <div style={{
                                     position: 'absolute',
                                     left: '4px',
-                                    top: '12px',
+                                    top: '10.5px',
                                     width: '9px',
-                                    height: 'calc(100% + 24px - 12px + 14px)',
+                                    height: 'calc(100% + 20px)',
                                     backgroundColor: `rgb(${segmentColor.slice(0, 3).join(',')})`,
                                     opacity: hoveredSegment !== null && !isSelected ? 0.4 : 1,
                                     transition: 'opacity 0.2s',
@@ -9069,8 +9042,8 @@ export default function MapCanvas() {
                         <div style={{
                           position: 'absolute',
                           left: '8px',
-                          top: '8px',
-                          height: selectedTripStops.length > 1 ? `calc(100% - 8px - 42px)` : '0px',
+                          top: '12px',
+                          height: selectedTripStops.length > 1 ? `calc(100% - 12px - 32px)` : '0px',
                           width: '4px',
                           backgroundColor: 'var(--border-default)'
                         }} />
