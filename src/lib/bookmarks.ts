@@ -15,7 +15,7 @@ export interface BookmarkTrip {
 
 export interface BookmarkState {
   // View state
-  activeTab: 'system' | 'routes' | 'stops' | 'components' | 'bookmarks';
+  activeTab: 'home' | 'system' | 'routes' | 'stops' | 'components' | 'bookmarks';
   selectedRouteId: string | null;
   selectedRouteName?: string | null;  // Display name for the route (e.g., "E Line", "Route 44")
   selectedStopId: string | null;

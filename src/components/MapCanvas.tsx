@@ -17,6 +17,9 @@ import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
+import { useInsights } from '@/hooks/useInsights';
+import { InsightsPanel } from '@/components/insights/InsightsPanel';
+import type { InsightCard as InsightCardType } from '@/types/insights';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
 import BookmarksModal from '@/components/BookmarksModal';
@@ -402,7 +405,7 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'system' | 'routes' | 'stops' | 'components'>('system');
+  const [activeTab, setActiveTab] = useState<'home' | 'system' | 'routes' | 'stops' | 'components'>('system');
   const [isBookmarksModalOpen, setIsBookmarksModalOpen] = useState(false);
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
@@ -432,6 +435,7 @@ export default function MapCanvas() {
   const [experimentalDetailViewNav] = useState<boolean>(true); // Always true - controls visibility of route/stop controls
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
+  const [aiMode, setAiMode] = useState<boolean>(false);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -2438,6 +2442,43 @@ export default function MapCanvas() {
 
   // Check if we're in Grid view (full screen data panel) - includes Reports tab
   const isGridView = !!(selectedRouteId && selectedRouteTab === 'Grid' && !selectedTrip);
+  const isInsightsView = aiMode && activeTab === 'home';
+  const isFullWidthPanel = isGridView || isInsightsView;
+
+  // AI Insights — only fetches when user clicks Generate
+  const { data: insightsData, isLoading: insightsLoading, error: insightsError, generate: generateInsights, refetch: refetchInsights } = useInsights();
+
+  const handleInvestigateInsight = useCallback((insight: InsightCardType) => {
+    if (insight.deepLink?.routeId) {
+      setActiveTab('routes');
+      setSelectedRouteId(insight.deepLink.routeId);
+      setSelectedRouteTab('Summary');
+      // Apply date range from insight deep link
+      if (insight.deepLink.startDate && insight.deepLink.endDate) {
+        const newStart = new Date(insight.deepLink.startDate + 'T00:00:00');
+        const newEnd = new Date(insight.deepLink.endDate + 'T00:00:00');
+        setAppliedStartDate(newStart);
+        setAppliedEndDate(newEnd);
+        setStagedStartDate(newStart);
+        setStagedEndDate(newEnd);
+        setAppliedSeason(null);
+        setStagedSeason(null);
+      }
+      // Apply period filters
+      if (insight.deepLink.periods && insight.deepLink.periods.length > 0) {
+        setAppliedTimePeriods(insight.deepLink.periods);
+        setAppliedTimeMode('custom');
+        setStagedDaysMode(appliedDaysMode);
+      }
+      // Apply day filters
+      if (insight.deepLink.days && insight.deepLink.days.length > 0) {
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const customDays = insight.deepLink.days.map(d => dayNames[d]);
+        setAppliedCustomDays(customDays);
+        setAppliedDaysMode('custom');
+      }
+    }
+  }, [appliedDaysMode]);
 
   // Generate segments between consecutive stops with real API load values
   const segmentGeoms = React.useMemo(() => {
@@ -5140,11 +5181,11 @@ export default function MapCanvas() {
         left: '12px',
         top: '12px',
         height: 'calc(100% - 24px)',
-        width: isGridView ? 'calc(100% - 24px)' : (isFiltersPanelOpen ? '704px' : '448px'),
+        width: isFullWidthPanel ? 'calc(100% - 24px)' : (isFiltersPanelOpen ? '704px' : '448px'),
         boxShadow: 'var(--shadow-lg)',
         borderRadius: '28px',
         pointerEvents: 'none',
-        zIndex: isGridView ? 1999 : 999,
+        zIndex: isFullWidthPanel ? 1999 : 999,
         transition: 'width 300ms ease-in-out'
       }} />
 
@@ -5160,25 +5201,45 @@ export default function MapCanvas() {
         <NavRail
           activeTab={activeTab}
           onTabChange={(tab) => {
+            // Only allow home tab when AI mode is on
+            if (tab === 'home' && !aiMode) return;
             setActiveTab(tab);
-            setSelectedRouteId(null);
-            setSelectedStopId(null);
-            // Clear trip selection when switching main tabs
-            setSelectedTrip(null);
-            setSelectedTripStops([]);
-            // Reset detail view tabs when switching main tabs
-            setSelectedStopTab('Summary');
-            setSelectedRouteTab('Summary');
-            // Clear navigation back stack when switching tabs
-            setNavigationStack([]);
+            if (tab === 'home' && aiMode) {
+              // Force filter panel closed when entering Home
+              setIsFiltersPanelOpen(false);
+            } else {
+              setSelectedRouteId(null);
+              setSelectedStopId(null);
+              // Clear trip selection when switching main tabs
+              setSelectedTrip(null);
+              setSelectedTripStops([]);
+              // Reset detail view tabs when switching main tabs
+              setSelectedStopTab('Summary');
+              setSelectedRouteTab('Summary');
+              // Clear navigation back stack when switching tabs
+              setNavigationStack([]);
+            }
           }}
           userInitial="S"
           isFiltersPanelOpen={isFiltersPanelOpen}
-          onToggleFiltersPanel={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
+          onToggleFiltersPanel={() => { if (!(aiMode && activeTab === 'home')) setIsFiltersPanelOpen(!isFiltersPanelOpen); }}
           routeControlsTitleSemibold={routeControlsTitleSemibold}
           onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
           differentiatedPanelBackgrounds={differentiatedPanelBackgrounds}
           onDifferentiatedPanelBackgroundsChange={setDifferentiatedPanelBackgrounds}
+          aiMode={aiMode}
+          onAiModeChange={(value) => {
+            setAiMode(value);
+            if (value) {
+              // Switching to AI mode: go to home tab, close filters
+              setActiveTab('home');
+              setIsFiltersPanelOpen(false);
+            } else {
+              // Switching off AI mode: go to system tab, open filters
+              if (activeTab === 'home') setActiveTab('system');
+              setIsFiltersPanelOpen(true);
+            }
+          }}
           onOpenBookmarks={() => setIsBookmarksModalOpen(true)}
           showBookmarkSavedToast={showBookmarkSavedToast}
         />
@@ -5209,9 +5270,11 @@ export default function MapCanvas() {
           padding: '22px 16px 24px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px', // Space between filter sections
+          gap: '20px',
           width: '256px',
-          minWidth: '256px'
+          minWidth: '256px',
+          height: '100%',
+          overflow: 'auto',
         }}>
           {/* Date-time Section */}
           <div>
@@ -5879,6 +5942,35 @@ export default function MapCanvas() {
                 />
               </div>
             </>
+          )}
+
+          {/* Close Filters Panel Button - only in AI mode (non-AI mode has hamburger toggle) */}
+          {aiMode && (
+            <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+              <button
+                onClick={() => setIsFiltersPanelOpen(false)}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'var(--border-width) solid var(--border-default)',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Close Filters
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -8647,14 +8739,14 @@ export default function MapCanvas() {
         top: '12px',
         bottom: '12px',
         left: isFiltersPanelOpen ? '340px' : '84px',
-        width: isGridView
+        width: isFullWidthPanel
           ? `calc(100% - ${isFiltersPanelOpen ? '340px' : '84px'} - 12px)`
           : '376px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
-        padding: '0 16px 0 16px',
+        padding: isInsightsView ? '0' : '0 16px 0 16px',
         fontFamily: 'Inter, sans-serif',
-        zIndex: isGridView ? 2000 : 1001,
+        zIndex: isFullWidthPanel ? 2000 : 1001,
         overflowX: 'hidden',
         transition: 'left 300ms ease-in-out, width 300ms ease-in-out',
         border: '0.5px solid var(--border-default)',
@@ -8662,7 +8754,65 @@ export default function MapCanvas() {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {selectedTrip ? (
+        {/* Pinned Date Bar - shown when AI mode is on, filters panel is closed, and not in insights view */}
+        {aiMode && !isFiltersPanelOpen && !isInsightsView && (
+          <div
+            style={{
+              flexShrink: 0,
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: '0.5px solid var(--border-default)',
+              backgroundColor: 'var(--bg-primary)',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--text-secondary)',
+              }}
+            >
+              {getDateFilterText()}
+            </span>
+            <button
+              onClick={() => setIsFiltersPanelOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '4px',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '12px',
+                fontWeight: 500,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+                <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+                <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+              </svg>
+              Filters
+            </button>
+          </div>
+        )}
+
+        {/* AI Insights Panel */}
+        {isInsightsView ? (
+          <InsightsPanel
+            data={insightsData}
+            isLoading={insightsLoading}
+            error={insightsError}
+            onClose={() => setActiveTab('system')}
+            onInvestigate={handleInvestigateInsight}
+            onGenerate={generateInsights}
+            onRefresh={refetchInsights}
+          />
+        ) : selectedTrip ? (
           /* Trip Detail View */
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
             {/* Close Button and Header */}
@@ -12720,7 +12870,7 @@ export default function MapCanvas() {
           isRestoringBookmarkRef.current = true;
 
           // Set view state
-          setActiveTab(state.activeTab as 'system' | 'routes' | 'stops' | 'components');
+          setActiveTab(state.activeTab as 'home' | 'system' | 'routes' | 'stops' | 'components');
           setSelectedRouteId(state.selectedRouteId);
           setSelectedStopId(state.selectedStopId);
           // Restore route tab (with backwards compatibility for older bookmarks)

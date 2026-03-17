@@ -4,8 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface NavRailProps {
-  activeTab: 'system' | 'routes' | 'stops' | 'components';
-  onTabChange: (tab: 'system' | 'routes' | 'stops' | 'components') => void;
+  activeTab: 'home' | 'system' | 'routes' | 'stops' | 'components';
+  onTabChange: (tab: 'home' | 'system' | 'routes' | 'stops' | 'components') => void;
   userInitial?: string;
   isFiltersPanelOpen: boolean;
   onToggleFiltersPanel: () => void;
@@ -13,11 +13,20 @@ interface NavRailProps {
   onRouteControlsTitleSemiboldChange: (value: boolean) => void;
   differentiatedPanelBackgrounds: boolean;
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
+  aiMode: boolean;
+  onAiModeChange: (value: boolean) => void;
   onOpenBookmarks: () => void;
   showBookmarkSavedToast?: boolean;
 }
 
 // Inline SVG components for nav icons
+const HomeIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 7.5L9 2.5L15 7.5V14.5C15 15.0523 14.5523 15.5 14 15.5H4C3.44772 15.5 3 15.0523 3 14.5V7.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7 15.5V9.5H11V15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const SystemIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="8" y="16.4852" width="12" height="2" rx="1" transform="rotate(-45 8 16.4852)" fill="currentColor"/>
@@ -125,6 +134,8 @@ const NavRail: React.FC<NavRailProps> = ({
   onRouteControlsTitleSemiboldChange,
   differentiatedPanelBackgrounds,
   onDifferentiatedPanelBackgroundsChange,
+  aiMode,
+  onAiModeChange,
   onOpenBookmarks,
   showBookmarkSavedToast = false
 }) => {
@@ -137,11 +148,14 @@ const NavRail: React.FC<NavRailProps> = ({
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  const navItems = [
+  const baseNavItems = [
     { id: 'system' as const, label: 'System', Icon: SystemIcon },
     { id: 'routes' as const, label: 'Routes', Icon: RoutesIcon },
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
   ];
+  const navItems = aiMode
+    ? [{ id: 'home' as const, label: 'Home', Icon: HomeIcon }, ...baseNavItems]
+    : baseNavItems;
 
   const handleMouseEnter = () => {
     if (!hasClicked) {
@@ -211,29 +225,61 @@ const NavRail: React.FC<NavRailProps> = ({
 
   return (
     <div className="flex flex-col items-center h-full px-2 relative" style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', backgroundColor: navRailBackground, transition: 'background-color 300ms ease-in-out' }}>
-      {/* Toggle Filters Button */}
-      <button
-        onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        className="flex items-center justify-center w-10 h-10 rounded-default transition-colors hover:bg-btn-secondary/50 mb-4 text-text-tertiary"
-        aria-label="Toggle filters panel"
-        aria-expanded={isFiltersPanelOpen}
-        aria-controls="filters-panel"
-      >
-        {getFiltersIcon()}
-      </button>
+      {/* Toggle Filters Button - only shown when AI mode is OFF */}
+      {!aiMode && (
+        <button
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className="flex items-center justify-center w-10 h-10 rounded-default transition-colors hover:bg-btn-secondary/50 mb-4 text-text-tertiary"
+          aria-label="Toggle filters panel"
+          aria-expanded={isFiltersPanelOpen}
+          aria-controls="filters-panel"
+        >
+          {getFiltersIcon()}
+        </button>
+      )}
 
       {/* Navigation Items */}
-      <nav className="flex flex-col w-full flex-1" aria-label="Main navigation">
-        {navItems.map((item) => {
+      <nav className={`flex flex-col ${aiMode ? 'items-center' : ''} w-full flex-1`} aria-label="Main navigation">
+        {navItems.map((item, index) => {
           const isActive = activeTab === item.id;
+          const isHome = item.id === 'home';
 
+          if (aiMode) {
+            // AI mode: icons only, custom spacing
+            const marginBottom = isHome ? '42px' : (index < navItems.length - 1 ? '20px' : '0');
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className="flex items-center justify-center"
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
+                style={{ marginBottom }}
+              >
+                <div
+                  className={`
+                    flex items-center justify-center rounded-default transition-colors
+                    ${isActive
+                      ? 'bg-btn-secondary text-text-tertiary'
+                      : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
+                    }
+                  `}
+                  style={{ width: '40px', height: '32px' }}
+                >
+                  <item.Icon />
+                </div>
+              </button>
+            );
+          }
+
+          // Non-AI mode: original layout with labels
           return (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className="flex flex-col items-center justify-center gap-1 py-3 px-2"
+              className="flex flex-col items-center justify-center gap-1 py-2 px-2"
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}
             >
@@ -475,6 +521,40 @@ const NavRail: React.FC<NavRailProps> = ({
                       position: 'absolute',
                       top: '1px',
                       left: differentiatedPanelBackgrounds ? '19px' : '1px',
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Toggle Item - AI Mode */}
+              <div
+                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+                onClick={() => onAiModeChange(!aiMode)}
+              >
+                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
+                  AI Mode
+                </span>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: aiMode ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-elevated)',
+                      position: 'absolute',
+                      top: '1px',
+                      left: aiMode ? '19px' : '1px',
                       transition: 'left 0.2s ease'
                     }}
                   />

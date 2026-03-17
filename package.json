@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.79.0",
     "@deck.gl/core": "^9.1.15",
     "@deck.gl/layers": "^9.1.15",
     "@deck.gl/react": "^9.1.15",
