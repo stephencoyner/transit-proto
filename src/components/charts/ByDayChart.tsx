@@ -249,7 +249,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
                 name="Date-time 1"
                 fill="url(#barGradientDay1)"
                 radius={[4, 4, 0, 0]}
-                isAnimationActive={true}
+                isAnimationActive={false}
                 animationDuration={400}
                 animationEasing="ease-out"
               />
@@ -258,7 +258,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
                 name="Date-time 2"
                 fill="url(#barGradientDay2)"
                 radius={[4, 4, 0, 0]}
-                isAnimationActive={true}
+                isAnimationActive={false}
                 animationDuration={400}
                 animationEasing="ease-out"
               />
@@ -268,7 +268,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
               dataKey="value"
               fill="url(#barGradientDay)"
               radius={[4, 4, 0, 0]}
-              isAnimationActive={true}
+              isAnimationActive={false}
               animationDuration={400}
               animationEasing="ease-out"
             />

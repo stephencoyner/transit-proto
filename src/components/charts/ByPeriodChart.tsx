@@ -241,7 +241,7 @@ export default function ByPeriodChart({
                 name="Date-time 1"
                 fill="url(#barGradientPeriod1)"
                 radius={[0, 4, 4, 0]}
-                isAnimationActive={true}
+                isAnimationActive={false}
                 animationDuration={400}
                 animationEasing="ease-out"
               />
@@ -250,7 +250,7 @@ export default function ByPeriodChart({
                 name="Date-time 2"
                 fill="url(#barGradientPeriod2)"
                 radius={[0, 4, 4, 0]}
-                isAnimationActive={true}
+                isAnimationActive={false}
                 animationDuration={400}
                 animationEasing="ease-out"
               />
@@ -260,7 +260,7 @@ export default function ByPeriodChart({
               dataKey="value"
               fill="url(#barGradientPeriod)"
               radius={[0, 4, 4, 0]}
-              isAnimationActive={true}
+              isAnimationActive={false}
               animationDuration={400}
               animationEasing="ease-out"
             />

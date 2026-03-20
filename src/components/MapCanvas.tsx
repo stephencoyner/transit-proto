@@ -407,6 +407,10 @@ export default function MapCanvas() {
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
   const [activeTab, setActiveTab] = useState<'home' | 'system' | 'routes' | 'stops' | 'components'>('home');
+  const [isTabTransitioning, setIsTabTransitioning] = useState(false); // controls layout (panel positions)
+  const [isTabContentHidden, setIsTabContentHidden] = useState(false); // controls opacity
+  const pendingTabRef = useRef<string | null>(null);
+  const [transitionToHome, setTransitionToHome] = useState(false); // true = growing to home, false = shrinking from home
   const [isBookmarksModalOpen, setIsBookmarksModalOpen] = useState(false);
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
@@ -440,6 +444,7 @@ export default function MapCanvas() {
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
   const [aiMode, setAiMode] = useState<boolean>(true);
+  // crossFadeAnimation is always on (tab transition animation)
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -3115,8 +3120,9 @@ export default function MapCanvas() {
   }, [filteredShapes]);
 
   // Determine what to show based on active tab
-  const showRoutes = (activeTab === 'system' || activeTab === 'routes') && !selectedStopId;
-  const showStops = (activeTab === 'stops' || selectedStopId || selectedRouteId) && activeTab !== 'components';
+  // Keep routes/stops visible during tab transitions so they don't disappear mid-animation
+  const showRoutes = ((activeTab === 'system' || activeTab === 'routes') || isTabContentHidden || isTabTransitioning) && !selectedStopId;
+  const showStops = ((activeTab === 'stops' || selectedStopId || selectedRouteId) || isTabContentHidden) && activeTab !== 'components';
 
   // Helper function to calculate bounding box from features (MultiLineString-safe)
   const calculateBounds = (features: RouteFeature[]) => {
@@ -5226,7 +5232,7 @@ export default function MapCanvas() {
         borderRadius: '28px',
         pointerEvents: 'none',
         zIndex: isFullWidthPanel ? 1999 : 999,
-        transition: 'width 300ms ease-in-out'
+        transition: `width ${'350ms'} ease-in-out`,
       }} />
 
       {/* Nav Rail */}
@@ -5243,25 +5249,51 @@ export default function MapCanvas() {
           onTabChange={(tab) => {
             // Only allow home tab when AI mode is on
             if (tab === 'home' && !aiMode) return;
-            setActiveTab(tab);
-            if (tab === 'home' && aiMode) {
-              // No auto-close — only user action closes filters
-            } else {
-              // First time leaving Home: auto-open filters (unless user explicitly closed them)
-              if (!hasLeftHomeRef.current && !hasUserClosedFiltersRef.current) {
-                setIsFiltersPanelOpen(true);
-                hasLeftHomeRef.current = true;
+            if (tab === activeTab || isTabTransitioning) return;
+
+            const applyTab = (t: string) => {
+              setActiveTab(t as typeof activeTab);
+              if (t === 'home' && aiMode) {
+                // No auto-close — only user action closes filters
+              } else {
+                // First time leaving Home: auto-open filters (unless user explicitly closed them)
+                if (!hasLeftHomeRef.current && !hasUserClosedFiltersRef.current) {
+                  setIsFiltersPanelOpen(true);
+                  hasLeftHomeRef.current = true;
+                }
+                setSelectedRouteId(null);
+                setSelectedStopId(null);
+                setSelectedTrip(null);
+                setSelectedTripStops([]);
+                setSelectedStopTab('Summary');
+                setSelectedRouteTab('Summary');
+                setNavigationStack([]);
               }
-              setSelectedRouteId(null);
-              setSelectedStopId(null);
-              // Clear trip selection when switching main tabs
-              setSelectedTrip(null);
-              setSelectedTripStops([]);
-              // Reset detail view tabs when switching main tabs
-              setSelectedStopTab('Summary');
-              setSelectedRouteTab('Summary');
-              // Clear navigation back stack when switching tabs
-              setNavigationStack([]);
+            };
+
+            // Only use phased transition when switching to/from Home (panel resizes)
+            const isHomeTransition = activeTab === 'home' || tab === 'home';
+            if (isHomeTransition && aiMode) {
+              const goingHome = tab === 'home';
+              const animDuration = 350;
+
+              pendingTabRef.current = tab;
+              setTransitionToHome(goingHome);
+              setIsTabTransitioning(true);
+              setIsTabContentHidden(true); // fade out content
+
+              setTimeout(() => {
+                applyTab(tab);
+
+                setTimeout(() => {
+                  setIsTabTransitioning(false);
+                  setTransitionToHome(false);
+                  setIsTabContentHidden(false);
+                  pendingTabRef.current = null;
+                }, animDuration);
+              }, 150);
+            } else {
+              applyTab(tab);
             }
           }}
           userInitial="S"
@@ -5303,7 +5335,7 @@ export default function MapCanvas() {
           backgroundColor: differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
           borderBottom: '0.5px solid var(--border-default)',
-          borderRight: (isFiltersPanelOpen && !isInsightsView) ? '0.5px solid var(--border-default)' : 'none',
+          borderRight: (isFiltersPanelOpen && !isInsightsView && !isTabContentHidden && !isTabTransitioning) ? '0.5px solid var(--border-default)' : 'none',
           display: 'flex',
           flexDirection: 'column',
           position: 'fixed',
@@ -5311,8 +5343,8 @@ export default function MapCanvas() {
           top: '12px',
           zIndex: 1000,
           overflow: 'hidden',
-          transition: 'width 300ms ease-in-out, left 300ms ease-in-out',
-          borderRadius: '0'
+          transition: `width ${'350ms'} ease-in-out`,
+          borderRadius: '0',
         }}>
         {/* Filter Section */}
         <div style={{
@@ -5324,6 +5356,8 @@ export default function MapCanvas() {
           minWidth: '256px',
           height: '100%',
           overflow: 'auto',
+          opacity: isTabContentHidden ? 0 : 1,
+          transition: 'opacity 150ms ease',
         }}>
           {/* Date-time Section */}
           <div>
@@ -8619,7 +8653,7 @@ export default function MapCanvas() {
         fontFamily: 'Inter, sans-serif',
         zIndex: isFullWidthPanel ? 2000 : 1001,
         overflowX: 'hidden',
-        transition: 'left 300ms ease-in-out, width 300ms ease-in-out',
+        transition: `left ${'350ms'} ease-in-out, width ${'350ms'} ease-in-out`,
         border: '0.5px solid var(--border-default)',
         borderLeft: 'none',
         display: 'flex',
@@ -8672,6 +8706,15 @@ export default function MapCanvas() {
           </div>
         )}
 
+        {/* Content wrapper with fade transition */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          opacity: isTabContentHidden ? 0 : 1,
+          transition: 'opacity 150ms ease',
+        }}>
         {/* AI Insights Panel */}
         {isInsightsView ? (
           <InsightsPanel
@@ -11700,6 +11743,8 @@ export default function MapCanvas() {
           })()
         )}
       </div>
+
+      </div>{/* end opacity wrapper */}
 
       </div>
 

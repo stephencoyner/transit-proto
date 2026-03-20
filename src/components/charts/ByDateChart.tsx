@@ -292,7 +292,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
                 strokeOpacity={1}
                 strokeWidth={4}
                 fill="none"
-                isAnimationActive={true}
+                isAnimationActive={false}
                 animationDuration={500}
                 animationEasing="ease-out"
               />
@@ -304,7 +304,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
                 strokeOpacity={1}
                 strokeWidth={4}
                 fill="none"
-                isAnimationActive={true}
+                isAnimationActive={false}
                 animationDuration={500}
                 animationEasing="ease-out"
               />
@@ -317,7 +317,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
               strokeOpacity={1}
               strokeWidth={2}
               fill={`url(#${gradientId})`}
-              isAnimationActive={true}
+              isAnimationActive={false}
               animationDuration={500}
               animationEasing="ease-out"
             />
