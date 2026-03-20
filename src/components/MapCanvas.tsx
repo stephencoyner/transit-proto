@@ -10,7 +10,7 @@ import { CompositeLayer, Layer } from '@deck.gl/core';
 import { fetchShapesKCM, fetchStopsKCM, fetchRouteStopsMap, fetchPatternLookup, fetchRoutePatterns, PatternInfo, RoutePatternInfo, TripsByPattern, Trip, fetchRouteTrips, organizeTripsbyPattern, getTripStopTimes, TripStopTime, fetchTripStopTimes } from '@/lib/data/loaders';
 import { WebMercatorViewport } from '@deck.gl/core';
 import NavRail from '@/components/NavRail';
-import { Button, Card, Input, Select, SearchableSelect, StatefulButton } from '@/components/ui';
+import { Button, Card, Input, Select, SearchableSelect, StatefulButton, SegmentedControl } from '@/components/ui';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChart, ByPatternChart, ByRouteChart } from '@/components/charts';
 import MapScale from '@/components/MapScale';
@@ -19,6 +19,8 @@ import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PIL
 import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import { useInsights } from '@/hooks/useInsights';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
+import type { ChatMessage } from '@/lib/chatHistory';
+import { saveChatConversation, generateConversationId } from '@/lib/chatHistory';
 import type { InsightCard as InsightCardType } from '@/types/insights';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
@@ -191,10 +193,9 @@ function isRangeInDataRange(start: Date, end: Date): boolean {
 }
 
 // Calculate UI padding dynamically based on visible panels
-const getUIPadding = (isFiltersPanelOpen: boolean) => {
-  // NavRail: 72px, Filters panel: 256px (when open), Data panel: 376px
+const getUIPadding = (isFiltersPanelOpen: boolean, navRailWidth: number = 72) => {
+  // NavRail: 72px (default) or 60px (AI mode), Filters panel: 256px (when open), Data panel: 376px
   // Margins: 12px between panels, 12px from screen edges
-  const navRailWidth = 72;
   const filtersPanelWidth = isFiltersPanelOpen ? 256 : 0;
   const dataPanelWidth = 376;
   const leftMargin = 12; // margin from screen edge
@@ -405,7 +406,7 @@ export default function MapCanvas() {
   const [shapes, setShapes] = useState<RouteFeature[]>([]);
   const [stops, setStops] = useState<StopFeature[]>([]);
   const [routeStopsMap, setRouteStopsMap] = useState<{ [routeId: string]: Set<string> }>({});
-  const [activeTab, setActiveTab] = useState<'home' | 'system' | 'routes' | 'stops' | 'components'>('system');
+  const [activeTab, setActiveTab] = useState<'home' | 'system' | 'routes' | 'stops' | 'components'>('home');
   const [isBookmarksModalOpen, setIsBookmarksModalOpen] = useState(false);
   const [hoveredRoute, setHoveredRoute] = useState<string | null>(null);
   const [hoveredStop, setHoveredStop] = useState<string | null>(null);
@@ -431,11 +432,14 @@ export default function MapCanvas() {
     | { type: 'stop'; stopId: string; stopTab: 'Summary' | 'Amenities' };
   const [navigationStack, setNavigationStack] = useState<NavStackItem[]>([]);
   const [isGridTransitioning, setIsGridTransitioning] = useState<boolean>(false);
-  const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(true);
+  const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState<boolean>(false);
+  const hasUserClosedFiltersRef = useRef<boolean>(false); // tracks if user explicitly closed filters
+  const hasLeftHomeRef = useRef<boolean>(false); // tracks if user has navigated away from home at least once
+
   const [experimentalDetailViewNav] = useState<boolean>(true); // Always true - controls visibility of route/stop controls
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
-  const [aiMode, setAiMode] = useState<boolean>(false);
+  const [aiMode, setAiMode] = useState<boolean>(true);
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
   const [isRouteDropdownOpen, setIsRouteDropdownOpen] = useState<boolean>(false);
@@ -528,6 +532,7 @@ export default function MapCanvas() {
   const [stagedDaysMode2, setStagedDaysMode2] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
   const [stagedCustomDays2, setStagedCustomDays2] = useState<string[]>([]);
   const [stagedTimeMode2, setStagedTimeMode2] = useState<'all' | 'custom'>('all');
+
   const [stagedTimePeriods2, setStagedTimePeriods2] = useState<string[]>([]);
   const [originalDaysMode2, setOriginalDaysMode2] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
   const [originalCustomDays2, setOriginalCustomDays2] = useState<string[]>([]);
@@ -2448,6 +2453,40 @@ export default function MapCanvas() {
   // AI Insights — only fetches when user clicks Generate
   const { data: insightsData, isLoading: insightsLoading, error: insightsError, generate: generateInsights, refetch: refetchInsights } = useInsights();
 
+  // Chat state — lifted so it persists across tab changes
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatTitle, setChatTitle] = useState('');
+  const [chatConvoId, setChatConvoId] = useState('');
+  const [greeting, setGreeting] = useState('');
+
+  // Save chat to localStorage whenever messages update
+  useEffect(() => {
+    if (chatMessages.length > 0 && chatConvoId) {
+      saveChatConversation({
+        id: chatConvoId,
+        title: chatTitle || 'New Chat',
+        messages: chatMessages,
+        createdAt: chatConvoId.split('-')[1] ? new Date(parseInt(chatConvoId.split('-')[1])).toISOString() : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }, [chatMessages, chatTitle, chatConvoId]);
+
+  // Generate greeting once on session start
+  useEffect(() => {
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Complete this greeting naturally in 3-6 words: "Hi Stephen, ___". Reply with ONLY the completion. It should read naturally after "Hi Stephen,". Start with a capital letter and end with punctuation.' }],
+        system: 'You complete greetings. Reply with only 3-6 words that flow naturally after "Hi Stephen,". Capitalize the first word and end with a period or exclamation. Examples: "What would you like to explore?", "Ready when you are.", "Good to have you back!", "Let\'s take a look at things."',
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.content) setGreeting(d.content.trim()); })
+      .catch(() => {});
+  }, []);
+
   const handleInvestigateInsight = useCallback((insight: InsightCardType) => {
     if (insight.deepLink?.routeId) {
       setActiveTab('routes');
@@ -3125,7 +3164,7 @@ export default function MapCanvas() {
       return null;
     }
     try {
-      const rawPadding = getUIPadding(isFiltersPanelOpen);
+      const rawPadding = getUIPadding(isFiltersPanelOpen, aiMode ? 60 : 72);
       // Clamp padding so it never exceeds viewport dimensions (prevents fitBounds assertion)
       const maxHorizontalPadding = Math.max(width - 1, 0);
       const maxVerticalPadding = Math.max(height - 1, 0);
@@ -4453,7 +4492,7 @@ export default function MapCanvas() {
       const el = mapContainerRef.current;
       const width = el?.clientWidth ?? window.innerWidth;
       const height = el?.clientHeight ?? window.innerHeight;
-      const padding = getUIPadding(isFiltersPanelOpen);
+      const padding = getUIPadding(isFiltersPanelOpen, aiMode ? 60 : 72);
 
       // Create a viewport at zoom 16 centered on the stop
       const viewport = new WebMercatorViewport({
@@ -5173,6 +5212,7 @@ export default function MapCanvas() {
     );
   }
 
+
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       {/* Left Container Wrapper with Shadow */}
@@ -5181,7 +5221,7 @@ export default function MapCanvas() {
         left: '12px',
         top: '12px',
         height: 'calc(100% - 24px)',
-        width: isFullWidthPanel ? 'calc(100% - 24px)' : (isFiltersPanelOpen ? '704px' : '448px'),
+        width: isFullWidthPanel ? 'calc(100% - 24px)' : ((isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '692px' : '704px') : (aiMode ? '436px' : '448px')),
         boxShadow: 'var(--shadow-lg)',
         borderRadius: '28px',
         pointerEvents: 'none',
@@ -5191,7 +5231,7 @@ export default function MapCanvas() {
 
       {/* Nav Rail */}
       <div style={{
-        width: '72px',
+        width: aiMode ? '60px' : '72px',
         height: 'calc(100% - 24px)',
         position: 'fixed',
         left: '12px',
@@ -5205,9 +5245,13 @@ export default function MapCanvas() {
             if (tab === 'home' && !aiMode) return;
             setActiveTab(tab);
             if (tab === 'home' && aiMode) {
-              // Force filter panel closed when entering Home
-              setIsFiltersPanelOpen(false);
+              // No auto-close — only user action closes filters
             } else {
+              // First time leaving Home: auto-open filters (unless user explicitly closed them)
+              if (!hasLeftHomeRef.current && !hasUserClosedFiltersRef.current) {
+                setIsFiltersPanelOpen(true);
+                hasLeftHomeRef.current = true;
+              }
               setSelectedRouteId(null);
               setSelectedStopId(null);
               // Clear trip selection when switching main tabs
@@ -5222,7 +5266,13 @@ export default function MapCanvas() {
           }}
           userInitial="S"
           isFiltersPanelOpen={isFiltersPanelOpen}
-          onToggleFiltersPanel={() => { if (!(aiMode && activeTab === 'home')) setIsFiltersPanelOpen(!isFiltersPanelOpen); }}
+          onToggleFiltersPanel={() => {
+            if (!(aiMode && activeTab === 'home')) {
+              const newState = !isFiltersPanelOpen;
+              if (!newState) hasUserClosedFiltersRef.current = true;
+              setIsFiltersPanelOpen(newState);
+            }
+          }}
           routeControlsTitleSemibold={routeControlsTitleSemibold}
           onRouteControlsTitleSemiboldChange={setRouteControlsTitleSemibold}
           differentiatedPanelBackgrounds={differentiatedPanelBackgrounds}
@@ -5231,9 +5281,8 @@ export default function MapCanvas() {
           onAiModeChange={(value) => {
             setAiMode(value);
             if (value) {
-              // Switching to AI mode: go to home tab, close filters
+              // Switching to AI mode: go to home tab
               setActiveTab('home');
-              setIsFiltersPanelOpen(false);
             } else {
               // Switching off AI mode: go to system tab, open filters
               if (activeTab === 'home') setActiveTab('system');
@@ -5249,20 +5298,20 @@ export default function MapCanvas() {
       <div
         id="filters-panel"
         style={{
-          width: isFiltersPanelOpen ? '256px' : '0px',
+          width: (isFiltersPanelOpen && !isInsightsView) ? '256px' : '0px',
           height: 'calc(100% - 24px)',
           backgroundColor: differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
           borderBottom: '0.5px solid var(--border-default)',
-          borderRight: isFiltersPanelOpen ? '0.5px solid var(--border-default)' : 'none',
+          borderRight: (isFiltersPanelOpen && !isInsightsView) ? '0.5px solid var(--border-default)' : 'none',
           display: 'flex',
           flexDirection: 'column',
           position: 'fixed',
-          left: '84px',
+          left: aiMode ? '72px' : '84px',
           top: '12px',
           zIndex: 1000,
           overflow: 'hidden',
-          transition: 'width 300ms ease-in-out',
+          transition: 'width 300ms ease-in-out, left 300ms ease-in-out',
           borderRadius: '0'
         }}>
         {/* Filter Section */}
@@ -5948,7 +5997,7 @@ export default function MapCanvas() {
           {aiMode && (
             <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
               <button
-                onClick={() => setIsFiltersPanelOpen(false)}
+                onClick={() => { hasUserClosedFiltersRef.current = true; setIsFiltersPanelOpen(false); }}
                 style={{
                   width: '100%',
                   background: 'none',
@@ -5998,54 +6047,12 @@ export default function MapCanvas() {
           {openFilter === 'date' ? (
             <div>
               {/* Segmented Control */}
-              <div style={{
-                display: 'flex',
-                backgroundColor: 'var(--bg-secondary)',
-                borderRadius: '24px',
-                padding: '4px',
-                marginBottom: '24px',
-                width: 'fit-content',
-                margin: '0 auto 24px auto'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setDatePickerMode('shortcuts')}
-                  style={{
-                    padding: '8px 32px',
-                    backgroundColor: datePickerMode === 'shortcuts' ? 'var(--bg-elevated)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--button-small-size)',
-                    fontWeight: 'var(--button-small-weight)',
-                    color: datePickerMode === 'shortcuts' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                    lineHeight: 'var(--button-small-line-height)',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Seasons
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDatePickerMode('custom')}
-                  style={{
-                    padding: '8px 32px',
-                    backgroundColor: datePickerMode === 'custom' ? 'var(--bg-elevated)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--button-small-size)',
-                    fontWeight: 'var(--button-small-weight)',
-                    color: datePickerMode === 'custom' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                    lineHeight: 'var(--button-small-line-height)',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Custom
-                </button>
-              </div>
+              <SegmentedControl
+                options={[{ value: 'shortcuts', label: 'Seasons' }, { value: 'custom', label: 'Custom' }]}
+                value={datePickerMode}
+                onChange={(v) => setDatePickerMode(v as 'shortcuts' | 'custom')}
+                style={{ margin: '0 auto 24px auto' }}
+              />
 
               {datePickerMode === 'shortcuts' ? (
                 <div>
@@ -6669,42 +6676,21 @@ export default function MapCanvas() {
                 {/* Container to align segmented control and custom options */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   {/* Segmented Control */}
-                  <div style={{
-                    display: 'flex',
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderRadius: '24px',
-                    padding: '4px',
-                  }}>
-                    {(['all', 'weekdays', 'weekends', 'custom'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => {
-                          setStagedDaysMode(mode);
-                          if (mode === 'weekdays') {
-                            setStagedCustomDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-                          } else if (mode === 'weekends') {
-                            setStagedCustomDays(['Sat', 'Sun']);
-                          }
-                        }}
-                        style={{
-                          padding: '8px 20px',
-                          backgroundColor: stagedDaysMode === mode ? 'var(--bg-elevated)' : 'transparent',
-                          border: 'none',
-                          borderRadius: '20px',
-                          cursor: 'pointer',
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: 'var(--button-small-size)',
-                          fontWeight: 'var(--button-small-weight)',
-                          color: stagedDaysMode === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          lineHeight: 'var(--button-small-line-height)',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {mode === 'all' ? 'All' : mode === 'weekdays' ? 'Weekdays' : mode === 'weekends' ? 'Weekends' : 'Custom'}
-                      </button>
-                    ))}
-                  </div>
+                  <SegmentedControl
+                    options={[
+                      { value: 'all', label: 'All' },
+                      { value: 'weekdays', label: 'Weekdays' },
+                      { value: 'weekends', label: 'Weekends' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    value={stagedDaysMode}
+                    onChange={(v) => {
+                      const mode = v as 'all' | 'weekdays' | 'weekends' | 'custom';
+                      setStagedDaysMode(mode);
+                      if (mode === 'weekdays') setStagedCustomDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+                      else if (mode === 'weekends') setStagedCustomDays(['Sat', 'Sun']);
+                    }}
+                  />
 
                   {/* Custom day selector */}
                   {stagedDaysMode === 'custom' && (
@@ -6763,42 +6749,16 @@ export default function MapCanvas() {
                   Time of day
                 </div>
                 {/* Segmented Control */}
-                <div style={{
-                  display: 'flex',
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderRadius: '24px',
-                  padding: '4px',
-                  width: 'fit-content',
-                  margin: '0 auto 12px auto'
-                }}>
-                  {(['all', 'custom'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => {
-                        setStagedTimeMode(mode);
-                        if (mode === 'all') {
-                          setStagedTimePeriods([]);
-                        }
-                      }}
-                      style={{
-                        padding: '8px 32px',
-                        backgroundColor: stagedTimeMode === mode ? 'var(--bg-elevated)' : 'transparent',
-                        border: 'none',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 'var(--button-small-size)',
-                        fontWeight: 'var(--button-small-weight)',
-                        color: stagedTimeMode === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                        lineHeight: 'var(--button-small-line-height)',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      {mode === 'all' ? 'All' : 'By Period'}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  options={[{ value: 'all', label: 'All' }, { value: 'custom', label: 'By Period' }]}
+                  value={stagedTimeMode}
+                  onChange={(v) => {
+                    const mode = v as 'all' | 'custom';
+                    setStagedTimeMode(mode);
+                    if (mode === 'all') setStagedTimePeriods([]);
+                  }}
+                  style={{ margin: '0 auto 12px auto' }}
+                />
 
                 {/* Custom time periods */}
                 {stagedTimeMode === 'custom' && (
@@ -6899,54 +6859,12 @@ export default function MapCanvas() {
             <div>
               {/* Date-time 2 Date Picker - Same as date picker but for comparison range */}
               {/* Segmented Control */}
-              <div style={{
-                display: 'flex',
-                backgroundColor: 'var(--bg-secondary)',
-                borderRadius: '24px',
-                padding: '4px',
-                marginBottom: '24px',
-                width: 'fit-content',
-                margin: '0 auto 24px auto'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setDate2PickerMode('shortcuts')}
-                  style={{
-                    padding: '8px 32px',
-                    backgroundColor: date2PickerMode === 'shortcuts' ? 'var(--bg-elevated)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--button-small-size)',
-                    fontWeight: 'var(--button-small-weight)',
-                    color: date2PickerMode === 'shortcuts' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                    lineHeight: 'var(--button-small-line-height)',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Seasons
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDate2PickerMode('custom')}
-                  style={{
-                    padding: '8px 32px',
-                    backgroundColor: date2PickerMode === 'custom' ? 'var(--bg-elevated)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 'var(--button-small-size)',
-                    fontWeight: 'var(--button-small-weight)',
-                    color: date2PickerMode === 'custom' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                    lineHeight: 'var(--button-small-line-height)',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Custom
-                </button>
-              </div>
+              <SegmentedControl
+                options={[{ value: 'shortcuts', label: 'Seasons' }, { value: 'custom', label: 'Custom' }]}
+                value={date2PickerMode}
+                onChange={(v) => setDate2PickerMode(v as 'shortcuts' | 'custom')}
+                style={{ margin: '0 auto 24px auto' }}
+              />
 
               {date2PickerMode === 'shortcuts' ? (
                 <div>
@@ -7513,42 +7431,21 @@ export default function MapCanvas() {
                   Days of the week
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{
-                    display: 'flex',
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderRadius: '24px',
-                    padding: '4px',
-                  }}>
-                    {(['all', 'weekdays', 'weekends', 'custom'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => {
-                          setStagedDaysMode2(mode);
-                          if (mode === 'weekdays') {
-                            setStagedCustomDays2(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-                          } else if (mode === 'weekends') {
-                            setStagedCustomDays2(['Sat', 'Sun']);
-                          }
-                        }}
-                        style={{
-                          padding: '8px 20px',
-                          backgroundColor: stagedDaysMode2 === mode ? 'var(--bg-elevated)' : 'transparent',
-                          border: 'none',
-                          borderRadius: '20px',
-                          cursor: 'pointer',
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: 'var(--button-small-size)',
-                          fontWeight: 'var(--button-small-weight)',
-                          color: stagedDaysMode2 === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          lineHeight: 'var(--button-small-line-height)',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {mode === 'all' ? 'All' : mode === 'weekdays' ? 'Weekdays' : mode === 'weekends' ? 'Weekends' : 'Custom'}
-                      </button>
-                    ))}
-                  </div>
+                  <SegmentedControl
+                    options={[
+                      { value: 'all', label: 'All' },
+                      { value: 'weekdays', label: 'Weekdays' },
+                      { value: 'weekends', label: 'Weekends' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    value={stagedDaysMode2}
+                    onChange={(v) => {
+                      const mode = v as 'all' | 'weekdays' | 'weekends' | 'custom';
+                      setStagedDaysMode2(mode);
+                      if (mode === 'weekdays') setStagedCustomDays2(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+                      else if (mode === 'weekends') setStagedCustomDays2(['Sat', 'Sun']);
+                    }}
+                  />
 
                   {stagedDaysMode2 === 'custom' && (
                     <>
@@ -7595,42 +7492,16 @@ export default function MapCanvas() {
                   Time of day
                 </div>
                 {/* Segmented Control */}
-                <div style={{
-                  display: 'flex',
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderRadius: '24px',
-                  padding: '4px',
-                  width: 'fit-content',
-                  margin: '0 auto 12px auto'
-                }}>
-                  {(['all', 'custom'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => {
-                        setStagedTimeMode2(mode);
-                        if (mode === 'all') {
-                          setStagedTimePeriods2([]);
-                        }
-                      }}
-                      style={{
-                        padding: '8px 32px',
-                        backgroundColor: stagedTimeMode2 === mode ? 'var(--bg-elevated)' : 'transparent',
-                        border: 'none',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 'var(--button-small-size)',
-                        fontWeight: 'var(--button-small-weight)',
-                        color: stagedTimeMode2 === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                        lineHeight: 'var(--button-small-line-height)',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      {mode === 'all' ? 'All' : 'By Period'}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  options={[{ value: 'all', label: 'All' }, { value: 'custom', label: 'By Period' }]}
+                  value={stagedTimeMode2}
+                  onChange={(v) => {
+                    const mode = v as 'all' | 'custom';
+                    setStagedTimeMode2(mode);
+                    if (mode === 'all') setStagedTimePeriods2([]);
+                  }}
+                  style={{ margin: '0 auto 12px auto' }}
+                />
 
                 {/* Custom time periods */}
                 {stagedTimeMode2 === 'custom' && (
@@ -8620,9 +8491,9 @@ export default function MapCanvas() {
               const deckCanvas = container?.querySelector('canvas:not(.mapboxgl-canvas)') as HTMLCanvasElement | null;
 
               // The data panel takes up the left side of the screen
-              // NavRail: 72px, Filters panel: 256px (when open), Data panel: 376px, gaps: 12px each
+              // NavRail: 60px (AI) or 72px (default), Filters panel: 256px (when open), Data panel: 376px, gaps: 12px each
               const dpr = window.devicePixelRatio || 1;
-              const navRailWidth = 72;
+              const navRailWidth = aiMode ? 60 : 72;
               const filtersPanelWidth = isFiltersPanelOpen ? 256 : 0;
               const dataPanelWidth = 376;
               const gaps = 12 + (isFiltersPanelOpen ? 12 : 0); // gap after nav rail + gap after filters if open
@@ -8738,9 +8609,9 @@ export default function MapCanvas() {
         position: 'fixed',
         top: '12px',
         bottom: '12px',
-        left: isFiltersPanelOpen ? '340px' : '84px',
+        left: (isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '328px' : '340px') : (aiMode ? '72px' : '84px'),
         width: isFullWidthPanel
-          ? `calc(100% - ${isFiltersPanelOpen ? '340px' : '84px'} - 12px)`
+          ? `calc(100% - ${(isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '328px' : '340px') : (aiMode ? '72px' : '84px')} - 12px)`
           : '376px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
@@ -8811,6 +8682,13 @@ export default function MapCanvas() {
             onInvestigate={handleInvestigateInsight}
             onGenerate={generateInsights}
             onRefresh={refetchInsights}
+            chatMessages={chatMessages}
+            setChatMessages={setChatMessages}
+            chatTitle={chatTitle}
+            setChatTitle={setChatTitle}
+            chatConvoId={chatConvoId}
+            setChatConvoId={setChatConvoId}
+            greeting={greeting}
           />
         ) : selectedTrip ? (
           /* Trip Detail View */
@@ -11235,7 +11113,7 @@ export default function MapCanvas() {
                                               const el = mapContainerRef.current;
                                               const width = el?.clientWidth ?? window.innerWidth;
                                               const height = el?.clientHeight ?? window.innerHeight;
-                                              const padding = getUIPadding(isFiltersPanelOpen);
+                                              const padding = getUIPadding(isFiltersPanelOpen, aiMode ? 60 : 72);
 
                                               // Create a viewport at zoom 13 centered on the stop
                                               const viewport = new WebMercatorViewport({
