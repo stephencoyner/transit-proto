@@ -15,3 +15,5 @@ export type { SearchableSelectProps, SearchableSelectOption } from './Searchable
 
 export { SortButton } from './SortButton';
 export type { SortButtonProps, SortOption } from './SortButton';
+
+export { SegmentedControl } from './SegmentedControl';
