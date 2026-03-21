@@ -71,7 +71,6 @@ export function InsightsPanel({
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [homeTab, setHomeTab] = useState<'home' | 'history'>('home');
   const [isControlStuck, setIsControlStuck] = useState(false);
-  const controlSentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [chatHistory, setChatHistory] = useState<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -102,12 +101,12 @@ export function InsightsPanel({
     }
   }, [messages, isChatLoading, inChat]);
 
-  // Detect when segmented control becomes sticky via scroll position
+  // Show divider when content scrolls under the segmented control
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const handleScroll = () => {
-      setIsControlStuck(container.scrollTop > 40);
+      setIsControlStuck(container.scrollTop > 64);
     };
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
@@ -482,38 +481,31 @@ export function InsightsPanel({
         background: 'var(--bg-primary)',
       }}
     >
+      {/* Segmented Control - fixed above scroll */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        paddingTop: '16px',
+        paddingBottom: '16px',
+        backgroundColor: 'var(--bg-primary)',
+        borderBottom: isControlStuck ? 'var(--border-width) solid var(--border-default)' : 'var(--border-width) solid transparent',
+        transition: 'border-color 150ms ease',
+      }}>
+        <SegmentedControl
+          options={[{ value: 'home', label: 'Home' }, { value: 'history', label: 'History' }]}
+          value={homeTab}
+          onChange={(v) => setHomeTab(v as 'home' | 'history')}
+        />
+      </div>
       {/* Scrollable Content */}
       <div
         ref={scrollContainerRef}
         style={{
           flex: 1,
           overflow: 'auto',
-          padding: '0 28px 40px',
+          padding: '0 24px 40px',
         }}
       >
-        {/* Sentinel for sticky detection */}
-        <div ref={controlSentinelRef} style={{ height: '40px' }} />
-        {/* Segmented Control - sticky */}
-        <div style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '16px 0',
-          backgroundColor: 'var(--bg-primary)',
-          borderBottom: isControlStuck ? '0.5px solid var(--border-default)' : '0.5px solid transparent',
-          margin: '0 -28px',
-          paddingLeft: '28px',
-          paddingRight: '28px',
-          transition: 'border-color 150ms ease',
-        }}>
-          <SegmentedControl
-            options={[{ value: 'home', label: 'Home' }, { value: 'history', label: 'History' }]}
-            value={homeTab}
-            onChange={(v) => setHomeTab(v as 'home' | 'history')}
-          />
-        </div>
         <div style={{ height: '64px' }} />
         {homeTab === 'history' ? (
           <div
@@ -609,7 +601,7 @@ export function InsightsPanel({
               </div>
             )}
           </div>
-        ) : (
+        ) : (<>
         <div
           style={{
             maxWidth: '700px',
@@ -641,7 +633,7 @@ export function InsightsPanel({
           </h1>
 
           {/* Chat Input */}
-          <div style={{ margin: '16px 0 48px' }}>
+          <div style={{ margin: '16px 0 0' }}>
             <div
               style={{
                 display: 'flex',
@@ -651,7 +643,7 @@ export function InsightsPanel({
                 borderRadius: '36px',
                 padding: '20px',
                 border: '0.5px solid var(--border-default)',
-                height: '72px',
+                height: '64px',
                 boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
               }}
             >
@@ -813,27 +805,26 @@ export function InsightsPanel({
             </div>
           )}
 
+        </div>
+
           {/* Insight Cards */}
           {hasData && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h2
-                style={{
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  margin: '8px 0 0',
-                }}
-              >
-                System Insights
-              </h2>
-              {data.insights.map((insight) => (
-                <InsightCard
-                  key={insight.id}
-                  insight={insight}
-                  onInvestigate={onInvestigate}
-                />
-              ))}
-            </div>
+            <>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '24px',
+                marginTop: '140px',
+              }}>
+                {data.insights.map((insight) => (
+                  <InsightCard
+                    key={insight.id}
+                    insight={insight}
+                    onInvestigate={onInvestigate}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
           {/* Empty State */}
@@ -849,8 +840,7 @@ export function InsightsPanel({
               <p style={{ fontSize: '13px', margin: 0 }}>Try refreshing to run a new analysis.</p>
             </div>
           )}
-        </div>
-        )}
+        </>)}
       </div>
 
       {/* CSS animations */}
