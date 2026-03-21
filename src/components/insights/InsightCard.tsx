@@ -23,9 +23,8 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
     <div
       style={{
         background: 'var(--bg-elevated)',
-        border: 'var(--border-width) solid var(--border-default)',
-        borderRadius: '20px',
-        borderLeft: `4px solid ${config.color}`,
+        border: '0.5px solid var(--border-default)',
+        borderRadius: '24px',
         overflow: 'hidden',
       }}
     >
@@ -146,12 +145,7 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
           </div>
         )}
 
-        {/* Sparkline */}
-        {insight.sparklineData && insight.sparklineData.length > 0 && (
-          <div style={{ marginBottom: '16px' }}>
-            <InsightSparkline data={insight.sparklineData} color={config.color} />
-          </div>
-        )}
+        {/* Sparkline - hidden for now */}
       </div>
 
       {/* Footer */}

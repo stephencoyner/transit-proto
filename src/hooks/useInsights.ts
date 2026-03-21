@@ -3,6 +3,132 @@
 import { useState, useCallback, useRef } from 'react';
 import type { InsightsResponse } from '@/types/insights';
 
+// Set to true to use mock data instead of calling the API
+const USE_MOCK_DATA = true;
+
+const MOCK_INSIGHTS: InsightsResponse = {
+  generatedAt: new Date().toISOString(),
+  dateRange: { start: '2025-06-22', end: '2025-09-18' },
+  toolCallCount: 11,
+  insights: [
+    {
+      id: 'mock-1',
+      category: 'crowding',
+      severity: 'critical',
+      title: 'Route 62 Overcrowding on Weekday PM Peak',
+      narrative: 'Route 62 is consistently exceeding 85% seat capacity during weekday PM peak hours (4–6 PM), particularly between U District and Downtown. Average load factor has increased 12% since July.',
+      hypothesis: 'Increased university enrollment and return-to-office trends may be driving higher demand on this corridor.',
+      investigationSteps: [
+        'Check Route 62 by-period data for PM peak trends',
+        'Compare weekday vs weekend loads',
+        'Review stop-level boardings at U District stations',
+      ],
+      routeIds: ['62'],
+      dateRange: { start: '2025-08-01', end: '2025-09-18' },
+      sparklineData: [
+        { label: 'Jun 22', value: 1820 },
+        { label: 'Jul 6', value: 1950 },
+        { label: 'Jul 20', value: 2100 },
+        { label: 'Aug 3', value: 2280 },
+        { label: 'Aug 17', value: 2450 },
+        { label: 'Sep 1', value: 2580 },
+        { label: 'Sep 15', value: 2640 },
+      ],
+    },
+    {
+      id: 'mock-2',
+      category: 'decline',
+      severity: 'warning',
+      title: 'Route 13 Weekend Ridership Dropping',
+      narrative: 'Weekend ridership on Route 13 has declined 18% over the past 6 weeks. Saturday boardings are down from an average of 890 to 730 per day.',
+      hypothesis: 'Construction on Queen Anne Ave may be deterring weekend riders who have more flexibility to avoid disrupted routes.',
+      investigationSteps: [
+        'Review Route 13 weekend-specific by-date trends',
+        'Compare with nearby Route 1 and Route 8 for substitution patterns',
+        'Check stop-level data for stops near construction zones',
+      ],
+      routeIds: ['13'],
+      dateRange: { start: '2025-08-01', end: '2025-09-18' },
+      sparklineData: [
+        { label: 'Aug 2', value: 890 },
+        { label: 'Aug 9', value: 860 },
+        { label: 'Aug 16', value: 820 },
+        { label: 'Aug 23', value: 780 },
+        { label: 'Aug 30', value: 750 },
+        { label: 'Sep 6', value: 740 },
+        { label: 'Sep 13', value: 730 },
+      ],
+    },
+    {
+      id: 'mock-3',
+      category: 'positive',
+      severity: 'positive',
+      title: 'Route 44 Hitting Record Highs',
+      narrative: 'Route 44 (Ballard–UW) has seen a steady 22% ridership increase since summer began, now averaging 3,400 daily boardings — the highest in 3 years.',
+      hypothesis: 'New bike-bus integration at the Burke-Gilman Trail connections and increased density along the corridor are likely contributors.',
+      investigationSteps: [
+        'Examine Route 44 by-date trend for growth trajectory',
+        'Identify highest-growth stops along the corridor',
+        'Compare AM vs PM peak growth rates',
+      ],
+      routeIds: ['44'],
+      dateRange: { start: '2025-06-22', end: '2025-09-18' },
+      sparklineData: [
+        { label: 'Jun 22', value: 2780 },
+        { label: 'Jul 6', value: 2900 },
+        { label: 'Jul 20', value: 3050 },
+        { label: 'Aug 3', value: 3180 },
+        { label: 'Aug 17', value: 3280 },
+        { label: 'Sep 1', value: 3350 },
+        { label: 'Sep 15', value: 3400 },
+      ],
+    },
+    {
+      id: 'mock-4',
+      category: 'anomaly',
+      severity: 'info',
+      title: 'Unusual Spike on Route 70 Last Tuesday',
+      narrative: 'Route 70 (Eastlake) saw a 45% ridership spike last Tuesday compared to the prior 4-week Tuesday average. The spike was concentrated at the Fairview & Campus Dr stop.',
+      hypothesis: 'A special event at South Lake Union or a nearby office reopening may have caused the temporary surge.',
+      investigationSteps: [
+        'Check Route 70 stop-level data for Fairview & Campus Dr',
+        'Compare with other Tuesdays in September',
+        'Look for similar spikes on adjacent routes (40, 62)',
+      ],
+      routeIds: ['70'],
+      dateRange: { start: '2025-09-09', end: '2025-09-16' },
+      sparklineData: [
+        { label: 'Tue 8/19', value: 1200 },
+        { label: 'Tue 8/26', value: 1180 },
+        { label: 'Tue 9/2', value: 1220 },
+        { label: 'Tue 9/9', value: 1740 },
+        { label: 'Tue 9/16', value: 1190 },
+      ],
+    },
+    {
+      id: 'mock-5',
+      category: 'trend',
+      severity: 'info',
+      title: 'System-Wide AM Peak Shift',
+      narrative: 'Across all 10 routes, the AM peak is shifting 15 minutes later compared to June. Peak boarding time has moved from 7:45 AM to 8:00 AM on average.',
+      hypothesis: 'Flexible work schedules and hybrid return-to-office policies may be contributing to a gradual shift in commute timing.',
+      investigationSteps: [
+        'Review system-level by-period data for AM trends',
+        'Compare early AM (6-7) vs late AM (8-9) boarding ratios',
+        'Check if the shift is uniform or concentrated on specific routes',
+      ],
+      routeIds: ['1', '8', '10', '11', '13', '14', '40', '44', '62', '70'],
+      dateRange: { start: '2025-06-22', end: '2025-09-18' },
+      sparklineData: [
+        { label: 'Jun', value: 8200 },
+        { label: 'Jul', value: 8350 },
+        { label: 'Aug', value: 8500 },
+        { label: 'Sep', value: 8420 },
+      ],
+    },
+  ],
+};
+
 interface UseInsightsResult {
   data: InsightsResponse | null;
   isLoading: boolean;
@@ -12,12 +138,17 @@ interface UseInsightsResult {
 }
 
 export function useInsights(): UseInsightsResult {
-  const [data, setData] = useState<InsightsResponse | null>(null);
+  const [data, setData] = useState<InsightsResponse | null>(USE_MOCK_DATA ? MOCK_INSIGHTS : null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async (refresh: boolean = false) => {
+    if (USE_MOCK_DATA) {
+      setData(MOCK_INSIGHTS);
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }

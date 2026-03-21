@@ -2462,8 +2462,6 @@ export default function MapCanvas() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatTitle, setChatTitle] = useState('');
   const [chatConvoId, setChatConvoId] = useState('');
-  const [greeting, setGreeting] = useState('');
-
   // Save chat to localStorage whenever messages update
   useEffect(() => {
     if (chatMessages.length > 0 && chatConvoId) {
@@ -2477,20 +2475,6 @@ export default function MapCanvas() {
     }
   }, [chatMessages, chatTitle, chatConvoId]);
 
-  // Generate greeting once on session start
-  useEffect(() => {
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: 'Complete this greeting naturally in 3-6 words: "Hi Stephen, ___". Reply with ONLY the completion. It should read naturally after "Hi Stephen,". Start with a capital letter and end with punctuation.' }],
-        system: 'You complete greetings. Reply with only 3-6 words that flow naturally after "Hi Stephen,". Capitalize the first word and end with a period or exclamation. Examples: "What would you like to explore?", "Ready when you are.", "Good to have you back!", "Let\'s take a look at things."',
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.content) setGreeting(d.content.trim()); })
-      .catch(() => {});
-  }, []);
 
   const handleInvestigateInsight = useCallback((insight: InsightCardType) => {
     if (insight.deepLink?.routeId) {
@@ -8665,13 +8649,33 @@ export default function MapCanvas() {
             style={{
               flexShrink: 0,
               padding: '12px 16px',
+              margin: '0 -16px',
               display: 'flex',
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottom: '0.5px solid var(--border-default)',
+              gap: '8px',
               backgroundColor: 'var(--bg-primary)',
+              borderBottom: '0.5px solid var(--border-default)',
             }}
           >
+            <button
+              onClick={() => setIsFiltersPanelOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '0',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+                <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+                <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+              </svg>
+            </button>
             <span
               style={{
                 fontSize: '13px',
@@ -8681,28 +8685,6 @@ export default function MapCanvas() {
             >
               {getDateFilterText()}
             </span>
-            <button
-              onClick={() => setIsFiltersPanelOpen(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '4px',
-                cursor: 'pointer',
-                color: 'var(--text-tertiary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '12px',
-                fontWeight: 500,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-                <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-                <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-              </svg>
-              Filters
-            </button>
           </div>
         )}
 
@@ -8731,7 +8713,6 @@ export default function MapCanvas() {
             setChatTitle={setChatTitle}
             chatConvoId={chatConvoId}
             setChatConvoId={setChatConvoId}
-            greeting={greeting}
           />
         ) : selectedTrip ? (
           /* Trip Detail View */
