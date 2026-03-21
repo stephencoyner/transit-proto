@@ -15,7 +15,7 @@ export interface InsightCard {
   title: string;
   narrative: string;
   hypothesis: string;
-  investigationSteps: string[];
+  analysisSteps: string[];
   routeIds: string[];
   dateRange: { start: string; end: string };
   deepLink?: {
@@ -45,9 +45,27 @@ export interface WalkthroughFilterState {
   comparisonEndDate?: string;
 }
 
+export type StoryChartType = 'area' | 'bar' | 'metric';
+
+export interface StoryChartSpec {
+  id: string;
+  type: StoryChartType;
+  title: string;
+  data: Array<Record<string, string | number>>;
+  xKey: string;
+  yKey: string;
+  yKey2?: string;
+  color?: string;
+  metricValue?: string | number;
+  metricLabel?: string;
+}
+
 export interface WalkthroughStep {
   narrative: string;
   filters: WalkthroughFilterState;
+  pageName?: string;
+  charts?: StoryChartSpec[];
+  filterSummary?: string;
 }
 
 export interface InsightsResponse {
