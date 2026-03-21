@@ -16,13 +16,15 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData, setCachedData } from '@/hooks/useRidershipData';
 import { useInsights } from '@/hooks/useInsights';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import type { ChatMessage } from '@/lib/chatHistory';
 import { saveChatConversation, generateConversationId } from '@/lib/chatHistory';
-import type { InsightCard as InsightCardType } from '@/types/insights';
+import type { InsightCard as InsightCardType, WalkthroughFilterState } from '@/types/insights';
+import { InvestigationCard } from '@/components/insights/InvestigationCard';
 import type { FilterState } from '@/lib/utils/filterBuilder';
+import { buildApiUrl, getCacheKey } from '@/lib/utils/filterBuilder';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
 import BookmarksModal from '@/components/BookmarksModal';
 import SaveBookmarkModal from '@/components/SaveBookmarkModal';
@@ -2462,7 +2464,49 @@ export default function MapCanvas() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatTitle, setChatTitle] = useState('');
   const [chatConvoId, setChatConvoId] = useState('');
-  const [greeting, setGreeting] = useState('');
+  // Legend width measurement for story card alignment
+  const legendRef = useRef<HTMLDivElement>(null);
+  const [legendWidth, setLegendWidth] = useState(280);
+  const [legendHeight, setLegendHeight] = useState(88);
+
+  // Investigation walkthrough state
+  const [isInvestigationMode, setIsInvestigationMode] = useState(false);
+  const [investigationInsight, setInvestigationInsight] = useState<InsightCardType | null>(null);
+  const [investigationStepIndex, setInvestigationStepIndex] = useState(0);
+  const savedFilterStateRef = useRef<{
+    activeTab: string;
+    selectedRouteId: string | null;
+    selectedRouteTab: string;
+    selectedStopId: string | null;
+    appliedStartDate: Date | null;
+    appliedEndDate: Date | null;
+    appliedSeason: { season: string; year: number } | null;
+    appliedQuickPick: string | null;
+    appliedDaysMode: string;
+    appliedCustomDays: string[];
+    appliedTimeMode: string;
+    appliedTimePeriods: string[];
+    comparisonMode: boolean;
+    comparisonDateRange: { start: Date | null; end: Date | null };
+    isFiltersPanelOpen: boolean;
+  } | null>(null);
+
+  // Measure legend size for story card alignment
+  useEffect(() => {
+    if (!isInvestigationMode) return;
+    const measure = () => {
+      const el = document.querySelector('[data-map-scale]') as HTMLElement;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setLegendWidth(rect.width);
+        setLegendHeight(rect.height);
+      }
+    };
+    measure();
+    // Re-measure when comparison mode changes legend size
+    const timer = setInterval(measure, 500);
+    return () => clearInterval(timer);
+  }, [isInvestigationMode, comparisonMode]);
 
   // Save chat to localStorage whenever messages update
   useEffect(() => {
@@ -2477,27 +2521,182 @@ export default function MapCanvas() {
     }
   }, [chatMessages, chatTitle, chatConvoId]);
 
-  // Generate greeting once on session start
-  useEffect(() => {
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: 'Complete this greeting naturally in 3-6 words: "Hi Stephen, ___". Reply with ONLY the completion. It should read naturally after "Hi Stephen,". Start with a capital letter and end with punctuation.' }],
-        system: 'You complete greetings. Reply with only 3-6 words that flow naturally after "Hi Stephen,". Capitalize the first word and end with a period or exclamation. Examples: "What would you like to explore?", "Ready when you are.", "Good to have you back!", "Let\'s take a look at things."',
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.content) setGreeting(d.content.trim()); })
-      .catch(() => {});
-  }, []);
+
+  const applyWalkthroughStep = useCallback((filters: WalkthroughFilterState) => {
+    // Tab & route — resolve short name (e.g. '62') to full route ID (e.g. '100264')
+    setActiveTab(filters.tab);
+    if (filters.routeId) {
+      const match = routesList.find(r => r.shortName === filters.routeId || r.id === filters.routeId);
+      setSelectedRouteId(match ? match.id : filters.routeId);
+    } else {
+      setSelectedRouteId(null);
+    }
+    if (filters.routeTab) setSelectedRouteTab(filters.routeTab);
+    setSelectedStopId(filters.stopId ?? null);
+
+    // Date range
+    if (filters.startDate && filters.endDate) {
+      const start = new Date(filters.startDate + 'T00:00:00');
+      const end = new Date(filters.endDate + 'T00:00:00');
+      setAppliedStartDate(start);
+      setAppliedEndDate(end);
+      setStagedStartDate(start);
+      setStagedEndDate(end);
+      setAppliedSeason(null);
+      setStagedSeason(null);
+      setAppliedQuickPick(null);
+    }
+
+    // Days
+    const daysMode = filters.daysMode ?? 'all';
+    setAppliedDaysMode(daysMode);
+    setStagedDaysMode(daysMode);
+    setAppliedCustomDays(filters.customDays ?? []);
+    setStagedCustomDays(filters.customDays ?? []);
+
+    // Time periods
+    const timeMode = filters.timeMode ?? 'all';
+    setAppliedTimeMode(timeMode);
+    setStagedTimeMode(timeMode);
+    setAppliedTimePeriods(filters.timePeriods ?? []);
+    setStagedTimePeriods(filters.timePeriods ?? []);
+
+    // Comparison
+    setComparisonMode(filters.comparisonMode ?? false);
+    if (filters.comparisonStartDate && filters.comparisonEndDate) {
+      setComparisonDateRange({
+        start: new Date(filters.comparisonStartDate + 'T00:00:00'),
+        end: new Date(filters.comparisonEndDate + 'T00:00:00'),
+      });
+    } else {
+      setComparisonDateRange({ start: null, end: null });
+    }
+  }, [routesList]);
+
+  // Prefetch all walkthrough steps' data to warm the cache
+  const prefetchWalkthroughData = useCallback((steps: import('@/types/insights').WalkthroughStep[]) => {
+    steps.forEach((step) => {
+      const filters = step.filters;
+      const startDate = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : null;
+      const endDate = filters.endDate ? new Date(filters.endDate + 'T00:00:00') : null;
+
+      // Resolve route ID
+      let resolvedRouteId: string | null = null;
+      if (filters.routeId) {
+        const match = routesList.find(r => r.shortName === filters.routeId || r.id === filters.routeId);
+        resolvedRouteId = match ? match.id : filters.routeId;
+      }
+
+      const filterState: FilterState = {
+        startDate,
+        endDate,
+        daysMode: filters.daysMode ?? 'all',
+        customDays: filters.customDays ?? [],
+        timeMode: filters.timeMode ?? 'all',
+        timePeriods: filters.timePeriods ?? [],
+      };
+
+      // Determine which endpoints to prefetch based on tab/route
+      const endpoints: string[] = [];
+      if (filters.tab === 'system') {
+        endpoints.push('system', 'system/by-date', 'system/by-day');
+      } else if (filters.tab === 'routes' && resolvedRouteId) {
+        endpoints.push(
+          `route/${resolvedRouteId}`,
+          `route/${resolvedRouteId}/by-date`,
+          `route/${resolvedRouteId}/by-day`,
+          `route/${resolvedRouteId}/stops`,
+          `route/${resolvedRouteId}/segments`,
+        );
+      }
+
+      // Fire prefetch requests and populate the in-memory cache
+      endpoints.forEach((endpoint) => {
+        const url = buildApiUrl(endpoint, filterState);
+        const cacheKey = getCacheKey(endpoint, filterState);
+        if (url && cacheKey) {
+          fetch(url)
+            .then(r => r.json())
+            .then(data => setCachedData(cacheKey, data))
+            .catch(() => {});
+        }
+      });
+
+      // Also prefetch comparison data if needed
+      if (filters.comparisonMode && filters.comparisonStartDate && filters.comparisonEndDate) {
+        const compFilterState: FilterState = {
+          startDate: new Date(filters.comparisonStartDate + 'T00:00:00'),
+          endDate: new Date(filters.comparisonEndDate + 'T00:00:00'),
+          daysMode: filters.daysMode ?? 'all',
+          customDays: filters.customDays ?? [],
+          timeMode: filters.timeMode ?? 'all',
+          timePeriods: filters.timePeriods ?? [],
+        };
+        endpoints.forEach((endpoint) => {
+          const url = buildApiUrl(endpoint, compFilterState);
+          const cacheKey = getCacheKey(endpoint, compFilterState);
+          if (url && cacheKey) {
+            fetch(url)
+              .then(r => r.json())
+              .then(data => setCachedData(cacheKey, data))
+              .catch(() => {});
+          }
+        });
+      }
+    });
+  }, [routesList]);
 
   const handleInvestigateInsight = useCallback((insight: InsightCardType) => {
+    // If insight has walkthrough steps, enter investigation mode
+    if (insight.walkthrough && insight.walkthrough.length > 0) {
+      // Save current filter state for restore on close
+      savedFilterStateRef.current = {
+        activeTab, selectedRouteId, selectedRouteTab, selectedStopId,
+        appliedStartDate, appliedEndDate, appliedSeason, appliedQuickPick,
+        appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods,
+        comparisonMode, comparisonDateRange, isFiltersPanelOpen,
+      };
+
+      setIsInvestigationMode(true);
+      setInvestigationInsight(insight);
+      setInvestigationStepIndex(0);
+
+      // Prefetch all steps' data immediately
+      prefetchWalkthroughData(insight.walkthrough!);
+
+      // Use phased transition animation when leaving Home
+      const isHomeTransition = activeTab === 'home';
+      if (isHomeTransition && aiMode) {
+        const animDuration = 350;
+        pendingTabRef.current = insight.walkthrough[0].filters.tab;
+        setTransitionToHome(false);
+        setIsTabTransitioning(true);
+        setIsTabContentHidden(true);
+
+        setTimeout(() => {
+          setIsFiltersPanelOpen(true);
+          hasLeftHomeRef.current = true;
+          applyWalkthroughStep(insight.walkthrough![0].filters);
+
+          setTimeout(() => {
+            setIsTabTransitioning(false);
+            setTransitionToHome(false);
+            setIsTabContentHidden(false);
+            pendingTabRef.current = null;
+          }, animDuration);
+        }, 150);
+      } else {
+        setIsFiltersPanelOpen(true);
+        applyWalkthroughStep(insight.walkthrough[0].filters);
+      }
+      return;
+    }
+
+    // Fallback: use existing deepLink behavior
     if (insight.deepLink?.routeId) {
       setActiveTab('routes');
       setSelectedRouteId(insight.deepLink.routeId);
       setSelectedRouteTab('Summary');
-      // Apply date range from insight deep link
       if (insight.deepLink.startDate && insight.deepLink.endDate) {
         const newStart = new Date(insight.deepLink.startDate + 'T00:00:00');
         const newEnd = new Date(insight.deepLink.endDate + 'T00:00:00');
@@ -2508,13 +2707,10 @@ export default function MapCanvas() {
         setAppliedSeason(null);
         setStagedSeason(null);
       }
-      // Apply period filters
       if (insight.deepLink.periods && insight.deepLink.periods.length > 0) {
         setAppliedTimePeriods(insight.deepLink.periods);
         setAppliedTimeMode('custom');
-        setStagedDaysMode(appliedDaysMode);
       }
-      // Apply day filters
       if (insight.deepLink.days && insight.deepLink.days.length > 0) {
         const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const customDays = insight.deepLink.days.map(d => dayNames[d]);
@@ -2522,7 +2718,85 @@ export default function MapCanvas() {
         setAppliedDaysMode('custom');
       }
     }
-  }, [appliedDaysMode]);
+  }, [activeTab, selectedRouteId, selectedRouteTab, selectedStopId,
+      appliedStartDate, appliedEndDate, appliedSeason, appliedQuickPick,
+      appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods,
+      comparisonMode, comparisonDateRange, isFiltersPanelOpen, applyWalkthroughStep, prefetchWalkthroughData]);
+
+  const handleInvestigationNext = useCallback(() => {
+    if (!investigationInsight?.walkthrough) return;
+    const nextIndex = investigationStepIndex + 1;
+    if (nextIndex < investigationInsight.walkthrough.length) {
+      setInvestigationStepIndex(nextIndex);
+      applyWalkthroughStep(investigationInsight.walkthrough[nextIndex].filters);
+    }
+  }, [investigationInsight, investigationStepIndex, applyWalkthroughStep]);
+
+  const handleInvestigationPrev = useCallback(() => {
+    if (!investigationInsight?.walkthrough) return;
+    const prevIndex = investigationStepIndex - 1;
+    if (prevIndex >= 0) {
+      setInvestigationStepIndex(prevIndex);
+      applyWalkthroughStep(investigationInsight.walkthrough[prevIndex].filters);
+    }
+  }, [investigationInsight, investigationStepIndex, applyWalkthroughStep]);
+
+  const handleInvestigationClose = useCallback(() => {
+    setIsInvestigationMode(false);
+    setInvestigationInsight(null);
+    setInvestigationStepIndex(0);
+
+    const saved = savedFilterStateRef.current;
+    if (!saved) return;
+
+    const restoreState = () => {
+      setActiveTab(saved.activeTab as 'home' | 'system' | 'routes' | 'stops' | 'components');
+      setSelectedRouteId(saved.selectedRouteId);
+      setSelectedRouteTab(saved.selectedRouteTab as 'Summary' | 'Trips' | 'Grid');
+      setSelectedStopId(saved.selectedStopId);
+      setAppliedStartDate(saved.appliedStartDate);
+      setAppliedEndDate(saved.appliedEndDate);
+      setStagedStartDate(saved.appliedStartDate);
+      setStagedEndDate(saved.appliedEndDate);
+      setAppliedSeason(saved.appliedSeason as { season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null);
+      setStagedSeason(saved.appliedSeason as { season: 'winter' | 'spring' | 'summer' | 'fall'; year: number } | null);
+      setAppliedQuickPick(saved.appliedQuickPick);
+      setAppliedDaysMode(saved.appliedDaysMode as 'all' | 'weekdays' | 'weekends' | 'custom');
+      setStagedDaysMode(saved.appliedDaysMode as 'all' | 'weekdays' | 'weekends' | 'custom');
+      setAppliedCustomDays(saved.appliedCustomDays);
+      setStagedCustomDays(saved.appliedCustomDays);
+      setAppliedTimeMode(saved.appliedTimeMode as 'all' | 'custom');
+      setStagedTimeMode(saved.appliedTimeMode as 'all' | 'custom');
+      setAppliedTimePeriods(saved.appliedTimePeriods);
+      setStagedTimePeriods(saved.appliedTimePeriods);
+      setComparisonMode(saved.comparisonMode);
+      setComparisonDateRange(saved.comparisonDateRange);
+      setIsFiltersPanelOpen(saved.isFiltersPanelOpen);
+      savedFilterStateRef.current = null;
+    };
+
+    // Use animation when going back to Home
+    const goingHome = saved.activeTab === 'home';
+    if (goingHome && aiMode) {
+      const animDuration = 350;
+      pendingTabRef.current = 'home';
+      setTransitionToHome(true);
+      setIsTabTransitioning(true);
+      setIsTabContentHidden(true);
+
+      setTimeout(() => {
+        restoreState();
+        setTimeout(() => {
+          setIsTabTransitioning(false);
+          setTransitionToHome(false);
+          setIsTabContentHidden(false);
+          pendingTabRef.current = null;
+        }, animDuration);
+      }, 150);
+    } else {
+      restoreState();
+    }
+  }, [aiMode]);
 
   // Generate segments between consecutive stops with real API load values
   const segmentGeoms = React.useMemo(() => {
@@ -8638,6 +8912,21 @@ export default function MapCanvas() {
         />
       )}
 
+      {/* Story Card — floats 8px above the legend */}
+      {isInvestigationMode && investigationInsight?.walkthrough && (
+        <InvestigationCard
+          title={investigationInsight.title}
+          currentStep={investigationStepIndex}
+          totalSteps={investigationInsight.walkthrough.length}
+          narrative={investigationInsight.walkthrough[investigationStepIndex].narrative}
+          onNext={handleInvestigationNext}
+          onPrev={handleInvestigationPrev}
+          onClose={handleInvestigationClose}
+          width={legendWidth}
+          bottomOffset={legendHeight + 12 + 8}
+        />
+      )}
+
       {/* Data Panel */}
       <div style={{
         position: 'fixed',
@@ -8665,13 +8954,33 @@ export default function MapCanvas() {
             style={{
               flexShrink: 0,
               padding: '12px 16px',
+              margin: '0 -16px',
               display: 'flex',
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottom: '0.5px solid var(--border-default)',
+              gap: '8px',
               backgroundColor: 'var(--bg-primary)',
+              borderBottom: '0.5px solid var(--border-default)',
             }}
           >
+            <button
+              onClick={() => setIsFiltersPanelOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '0',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+                <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+                <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+              </svg>
+            </button>
             <span
               style={{
                 fontSize: '13px',
@@ -8681,28 +8990,6 @@ export default function MapCanvas() {
             >
               {getDateFilterText()}
             </span>
-            <button
-              onClick={() => setIsFiltersPanelOpen(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '4px',
-                cursor: 'pointer',
-                color: 'var(--text-tertiary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '12px',
-                fontWeight: 500,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-                <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-                <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-              </svg>
-              Filters
-            </button>
           </div>
         )}
 
@@ -8731,7 +9018,6 @@ export default function MapCanvas() {
             setChatTitle={setChatTitle}
             chatConvoId={chatConvoId}
             setChatConvoId={setChatConvoId}
-            greeting={greeting}
           />
         ) : selectedTrip ? (
           /* Trip Detail View */

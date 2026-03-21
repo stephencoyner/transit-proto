@@ -22,8 +22,31 @@ interface InsightsPanelProps {
   setChatTitle: React.Dispatch<React.SetStateAction<string>>;
   chatConvoId: string;
   setChatConvoId: React.Dispatch<React.SetStateAction<string>>;
-  greeting: string;
 }
+
+const GREETINGS = [
+  'What would you like to explore?',
+  'Ready when you are.',
+  'Good to have you back!',
+  "Let's take a look at things.",
+  'What can I help you find?',
+  "Let's dig into the data.",
+  'What are you curious about?',
+  'Ready to explore the numbers.',
+  "How's the network looking?",
+  'What should we look at today?',
+  "Let's see what's happening.",
+  'Need help with anything?',
+  'Where should we start?',
+  "Let's find some patterns.",
+  'What routes are on your mind?',
+  'Ready to dive in.',
+  "What's on your radar today?",
+  'Happy to help you explore.',
+];
+
+// Pick a stable greeting per session (based on date so it doesn't change on re-render)
+const sessionGreeting = GREETINGS[Math.floor(Date.now() / 86400000) % GREETINGS.length];
 
 export function InsightsPanel({
   data,
@@ -39,7 +62,6 @@ export function InsightsPanel({
   setChatTitle,
   chatConvoId,
   setChatConvoId,
-  greeting,
 }: InsightsPanelProps) {
   const hasData = data && data.insights.length > 0;
   const showInitialState = !data && !isLoading && !error;
@@ -48,6 +70,9 @@ export function InsightsPanel({
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [homeTab, setHomeTab] = useState<'home' | 'history'>('home');
+  const [isControlStuck, setIsControlStuck] = useState(false);
+  const controlSentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [chatHistory, setChatHistory] = useState<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -76,6 +101,17 @@ export function InsightsPanel({
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isChatLoading, inChat]);
+
+  // Detect when segmented control becomes sticky via scroll position
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      setIsControlStuck(container.scrollTop > 40);
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [inChat]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = chatInput.trim();
@@ -173,6 +209,7 @@ export function InsightsPanel({
               maxWidth: '700px',
               margin: '0 auto',
               width: '100%',
+              padding: '0 24px',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
@@ -223,7 +260,7 @@ export function InsightsPanel({
               maxWidth: '700px',
               margin: '0 auto',
               width: '100%',
-              padding: '0 20px',
+              padding: '0 24px',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
@@ -312,7 +349,7 @@ export function InsightsPanel({
               maxWidth: 'calc(700px + 56px)',
               width: '100%',
               margin: '0 auto',
-              padding: '0 28px 16px',
+              padding: '0 28px 0',
               pointerEvents: 'auto',
             }}
           >
@@ -322,7 +359,7 @@ export function InsightsPanel({
                 alignItems: 'center',
                 gap: '8px',
                 backgroundColor: 'var(--bg-elevated)',
-                borderRadius: '28px',
+                borderRadius: '36px',
                 padding: '20px',
                 border: '0.5px solid var(--border-default)',
                 height: '72px',
@@ -346,6 +383,7 @@ export function InsightsPanel({
                   lineHeight: '1.5',
                   resize: 'none',
                   fontFamily: 'Inter, sans-serif',
+                  marginLeft: '8px',
                 }}
               />
               <button
@@ -369,6 +407,14 @@ export function InsightsPanel({
                 </svg>
               </button>
             </div>
+            <p style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: 'var(--text-disabled)',
+              margin: '16px 0 16px',
+            }}>
+              Hopthru is AI and can make mistakes
+            </p>
           </div>
         </div>
 
@@ -436,29 +482,39 @@ export function InsightsPanel({
         background: 'var(--bg-primary)',
       }}
     >
-      {/* Segmented Control */}
-      <div style={{ height: '40px', flexShrink: 0 }} />
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        padding: '0 28px 80px',
-        flexShrink: 0,
-      }}>
-        <SegmentedControl
-          options={[{ value: 'home', label: 'Home' }, { value: 'history', label: 'History' }]}
-          value={homeTab}
-          onChange={(v) => setHomeTab(v as 'home' | 'history')}
-        />
-      </div>
-
       {/* Scrollable Content */}
       <div
+        ref={scrollContainerRef}
         style={{
           flex: 1,
           overflow: 'auto',
           padding: '0 28px 40px',
         }}
       >
+        {/* Sentinel for sticky detection */}
+        <div ref={controlSentinelRef} style={{ height: '40px' }} />
+        {/* Segmented Control - sticky */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '16px 0',
+          backgroundColor: 'var(--bg-primary)',
+          borderBottom: isControlStuck ? '0.5px solid var(--border-default)' : '0.5px solid transparent',
+          margin: '0 -28px',
+          paddingLeft: '28px',
+          paddingRight: '28px',
+          transition: 'border-color 150ms ease',
+        }}>
+          <SegmentedControl
+            options={[{ value: 'home', label: 'Home' }, { value: 'history', label: 'History' }]}
+            value={homeTab}
+            onChange={(v) => setHomeTab(v as 'home' | 'history')}
+          />
+        </div>
+        <div style={{ height: '64px' }} />
         {homeTab === 'history' ? (
           <div
             style={{
@@ -581,32 +637,18 @@ export function InsightsPanel({
               lineHeight: 1.2,
             }}
           >
-            {hasData ? 'Here are a few things worth looking at.' : (greeting || '\u00A0')}
+            {sessionGreeting}
           </h1>
-          {data && (
-            <p
-              style={{
-                fontSize: '13px',
-                color: 'var(--text-tertiary)',
-                margin: '0 0 4px',
-              }}
-            >
-              Based on analysis of {data.dateRange.start} to {data.dateRange.end}
-              {data.toolCallCount > 0 && (
-                <span> &middot; {data.toolCallCount} data queries</span>
-              )}
-            </p>
-          )}
 
           {/* Chat Input */}
-          <div style={{ margin: '20px 0' }}>
+          <div style={{ margin: '16px 0 48px' }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 backgroundColor: 'var(--bg-elevated)',
-                borderRadius: '28px',
+                borderRadius: '36px',
                 padding: '20px',
                 border: '0.5px solid var(--border-default)',
                 height: '72px',
@@ -630,6 +672,7 @@ export function InsightsPanel({
                   lineHeight: '1.5',
                   resize: 'none',
                   fontFamily: 'Inter, sans-serif',
+                  marginLeft: '8px',
                 }}
               />
               <button
@@ -773,6 +816,16 @@ export function InsightsPanel({
           {/* Insight Cards */}
           {hasData && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h2
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  margin: '8px 0 0',
+                }}
+              >
+                System Insights
+              </h2>
               {data.insights.map((insight) => (
                 <InsightCard
                   key={insight.id}

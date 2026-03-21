@@ -26,6 +26,28 @@ export interface InsightCard {
     days?: number[];
   };
   sparklineData?: Array<{ label: string; value: number }>;
+  walkthrough?: WalkthroughStep[];
+}
+
+export interface WalkthroughFilterState {
+  tab: 'system' | 'routes' | 'stops';
+  routeId?: string;
+  routeTab?: 'Summary' | 'Trips' | 'Grid';
+  stopId?: string;
+  startDate?: string;
+  endDate?: string;
+  daysMode?: 'all' | 'weekdays' | 'weekends' | 'custom';
+  customDays?: string[];
+  timeMode?: 'all' | 'custom';
+  timePeriods?: string[];
+  comparisonMode?: boolean;
+  comparisonStartDate?: string;
+  comparisonEndDate?: string;
+}
+
+export interface WalkthroughStep {
+  narrative: string;
+  filters: WalkthroughFilterState;
 }
 
 export interface InsightsResponse {
