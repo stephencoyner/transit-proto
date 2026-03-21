@@ -20,12 +20,16 @@ export function InsightCard({ insight, onAnalyze }: InsightCardProps) {
   const config = severityConfig[insight.severity];
 
   return (
+    <>
+    <style>{`.insight-card:hover { background: var(--bg-elevated) !important; }`}</style>
     <div
+      className="insight-card"
       style={{
-        background: 'var(--bg-elevated)',
+        background: 'var(--bg-primary)',
         border: '0.5px solid var(--border-default)',
         borderRadius: '24px',
         overflow: 'hidden',
+        transition: 'background 150ms ease',
       }}
     >
       {/* Header */}
@@ -188,5 +192,6 @@ export function InsightCard({ insight, onAnalyze }: InsightCardProps) {
         </div>
       )}
     </div>
+    </>
   );
 }
