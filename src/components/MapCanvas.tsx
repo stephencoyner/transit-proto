@@ -22,7 +22,7 @@ import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import type { ChatMessage } from '@/lib/chatHistory';
 import { saveChatConversation, generateConversationId } from '@/lib/chatHistory';
 import type { InsightCard as InsightCardType, WalkthroughFilterState } from '@/types/insights';
-import { InvestigationCard } from '@/components/insights/InvestigationCard';
+import { StoryModePanel } from '@/components/insights/StoryModePanel';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 import { buildApiUrl, getCacheKey } from '@/lib/utils/filterBuilder';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
@@ -2469,10 +2469,11 @@ export default function MapCanvas() {
   const [legendWidth, setLegendWidth] = useState(280);
   const [legendHeight, setLegendHeight] = useState(88);
 
-  // Investigation walkthrough state
-  const [isInvestigationMode, setIsInvestigationMode] = useState(false);
-  const [investigationInsight, setInvestigationInsight] = useState<InsightCardType | null>(null);
-  const [investigationStepIndex, setInvestigationStepIndex] = useState(0);
+  // Story mode walkthrough state
+  const [isStoryMode, setIsStoryMode] = useState(false);
+  const [storyModeInsight, setStoryModeInsight] = useState<InsightCardType | null>(null);
+  const [storyModeStepIndex, setStoryModeStepIndex] = useState(0);
+  const isStoryPanelVisible = isStoryMode && storyModeInsight !== null;
   const savedFilterStateRef = useRef<{
     activeTab: string;
     selectedRouteId: string | null;
@@ -2493,7 +2494,7 @@ export default function MapCanvas() {
 
   // Measure legend size for story card alignment
   useEffect(() => {
-    if (!isInvestigationMode) return;
+    if (!isStoryMode) return;
     const measure = () => {
       const el = document.querySelector('[data-map-scale]') as HTMLElement;
       if (el) {
@@ -2506,7 +2507,7 @@ export default function MapCanvas() {
     // Re-measure when comparison mode changes legend size
     const timer = setInterval(measure, 500);
     return () => clearInterval(timer);
-  }, [isInvestigationMode, comparisonMode]);
+  }, [isStoryMode, comparisonMode]);
 
   // Save chat to localStorage whenever messages update
   useEffect(() => {
@@ -2522,9 +2523,11 @@ export default function MapCanvas() {
   }, [chatMessages, chatTitle, chatConvoId]);
 
 
-  const applyWalkthroughStep = useCallback((filters: WalkthroughFilterState) => {
+  const applyWalkthroughStep = useCallback((filters: WalkthroughFilterState, { skipTab = false } = {}) => {
     // Tab & route — resolve short name (e.g. '62') to full route ID (e.g. '100264')
-    setActiveTab(filters.tab);
+    if (!skipTab) {
+      setActiveTab(filters.tab);
+    }
     if (filters.routeId) {
       const match = routesList.find(r => r.shortName === filters.routeId || r.id === filters.routeId);
       setSelectedRouteId(match ? match.id : filters.routeId);
@@ -2646,8 +2649,8 @@ export default function MapCanvas() {
     });
   }, [routesList]);
 
-  const handleInvestigateInsight = useCallback((insight: InsightCardType) => {
-    // If insight has walkthrough steps, enter investigation mode
+  const handleAnalyzeInsight = useCallback((insight: InsightCardType) => {
+    // If insight has walkthrough steps, enter story mode
     if (insight.walkthrough && insight.walkthrough.length > 0) {
       // Save current filter state for restore on close
       savedFilterStateRef.current = {
@@ -2657,38 +2660,15 @@ export default function MapCanvas() {
         comparisonMode, comparisonDateRange, isFiltersPanelOpen,
       };
 
-      setIsInvestigationMode(true);
-      setInvestigationInsight(insight);
-      setInvestigationStepIndex(0);
+      setIsStoryMode(true);
+      setStoryModeInsight(insight);
+      setStoryModeStepIndex(0);
 
       // Prefetch all steps' data immediately
       prefetchWalkthroughData(insight.walkthrough!);
 
-      // Use phased transition animation when leaving Home
-      const isHomeTransition = activeTab === 'home';
-      if (isHomeTransition && aiMode) {
-        const animDuration = 350;
-        pendingTabRef.current = insight.walkthrough[0].filters.tab;
-        setTransitionToHome(false);
-        setIsTabTransitioning(true);
-        setIsTabContentHidden(true);
-
-        setTimeout(() => {
-          setIsFiltersPanelOpen(true);
-          hasLeftHomeRef.current = true;
-          applyWalkthroughStep(insight.walkthrough![0].filters);
-
-          setTimeout(() => {
-            setIsTabTransitioning(false);
-            setTransitionToHome(false);
-            setIsTabContentHidden(false);
-            pendingTabRef.current = null;
-          }, animDuration);
-        }, 150);
-      } else {
-        setIsFiltersPanelOpen(true);
-        applyWalkthroughStep(insight.walkthrough[0].filters);
-      }
+      // Apply first step filters (route selection, dates, etc.) without changing tab
+      applyWalkthroughStep(insight.walkthrough[0].filters, { skipTab: true });
       return;
     }
 
@@ -2723,28 +2703,28 @@ export default function MapCanvas() {
       appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods,
       comparisonMode, comparisonDateRange, isFiltersPanelOpen, applyWalkthroughStep, prefetchWalkthroughData]);
 
-  const handleInvestigationNext = useCallback(() => {
-    if (!investigationInsight?.walkthrough) return;
-    const nextIndex = investigationStepIndex + 1;
-    if (nextIndex < investigationInsight.walkthrough.length) {
-      setInvestigationStepIndex(nextIndex);
-      applyWalkthroughStep(investigationInsight.walkthrough[nextIndex].filters);
+  const handleStoryModeNext = useCallback(() => {
+    if (!storyModeInsight?.walkthrough) return;
+    const nextIndex = storyModeStepIndex + 1;
+    if (nextIndex < storyModeInsight.walkthrough.length) {
+      setStoryModeStepIndex(nextIndex);
+      applyWalkthroughStep(storyModeInsight.walkthrough[nextIndex].filters, { skipTab: true });
     }
-  }, [investigationInsight, investigationStepIndex, applyWalkthroughStep]);
+  }, [storyModeInsight, storyModeStepIndex, applyWalkthroughStep]);
 
-  const handleInvestigationPrev = useCallback(() => {
-    if (!investigationInsight?.walkthrough) return;
-    const prevIndex = investigationStepIndex - 1;
+  const handleStoryModePrev = useCallback(() => {
+    if (!storyModeInsight?.walkthrough) return;
+    const prevIndex = storyModeStepIndex - 1;
     if (prevIndex >= 0) {
-      setInvestigationStepIndex(prevIndex);
-      applyWalkthroughStep(investigationInsight.walkthrough[prevIndex].filters);
+      setStoryModeStepIndex(prevIndex);
+      applyWalkthroughStep(storyModeInsight.walkthrough[prevIndex].filters, { skipTab: true });
     }
-  }, [investigationInsight, investigationStepIndex, applyWalkthroughStep]);
+  }, [storyModeInsight, storyModeStepIndex, applyWalkthroughStep]);
 
-  const handleInvestigationClose = useCallback(() => {
-    setIsInvestigationMode(false);
-    setInvestigationInsight(null);
-    setInvestigationStepIndex(0);
+  const handleStoryModeClose = useCallback(() => {
+    setIsStoryMode(false);
+    setStoryModeInsight(null);
+    setStoryModeStepIndex(0);
 
     const saved = savedFilterStateRef.current;
     if (!saved) return;
@@ -5501,11 +5481,13 @@ export default function MapCanvas() {
         left: '12px',
         top: '12px',
         height: 'calc(100% - 24px)',
-        width: isFullWidthPanel ? 'calc(100% - 24px)' : ((isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '692px' : '704px') : (aiMode ? '436px' : '448px')),
+        width: isStoryPanelVisible
+          ? (aiMode ? '492px' : '504px')
+          : isFullWidthPanel ? 'calc(100% - 24px)' : ((isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '692px' : '704px') : (aiMode ? '436px' : '448px')),
         boxShadow: 'var(--shadow-lg)',
         borderRadius: '28px',
         pointerEvents: 'none',
-        zIndex: isFullWidthPanel ? 1999 : 999,
+        zIndex: (isFullWidthPanel || isStoryPanelVisible) ? 1999 : 999,
         transition: `width ${'350ms'} ease-in-out`,
       }} />
 
@@ -5604,7 +5586,7 @@ export default function MapCanvas() {
       <div
         id="filters-panel"
         style={{
-          width: (isFiltersPanelOpen && !isInsightsView) ? '256px' : '0px',
+          width: (isFiltersPanelOpen && !isInsightsView && !isStoryPanelVisible) ? '256px' : '0px',
           height: 'calc(100% - 24px)',
           backgroundColor: differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)',
           borderTop: '0.5px solid var(--border-default)',
@@ -8912,35 +8894,24 @@ export default function MapCanvas() {
         />
       )}
 
-      {/* Story Card — floats 8px above the legend */}
-      {isInvestigationMode && investigationInsight?.walkthrough && (
-        <InvestigationCard
-          title={investigationInsight.title}
-          currentStep={investigationStepIndex}
-          totalSteps={investigationInsight.walkthrough.length}
-          narrative={investigationInsight.walkthrough[investigationStepIndex].narrative}
-          onNext={handleInvestigationNext}
-          onPrev={handleInvestigationPrev}
-          onClose={handleInvestigationClose}
-          width={legendWidth}
-          bottomOffset={legendHeight + 12 + 8}
-        />
-      )}
-
       {/* Data Panel */}
       <div style={{
         position: 'fixed',
         top: '12px',
         bottom: '12px',
-        left: (isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '328px' : '340px') : (aiMode ? '72px' : '84px'),
-        width: isFullWidthPanel
-          ? `calc(100% - ${(isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '328px' : '340px') : (aiMode ? '72px' : '84px')} - 12px)`
-          : '376px',
+        left: isStoryPanelVisible
+          ? (aiMode ? '72px' : '84px')
+          : (isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '328px' : '340px') : (aiMode ? '72px' : '84px'),
+        width: isStoryPanelVisible
+          ? '432px'
+          : isFullWidthPanel
+            ? `calc(100% - ${(isFiltersPanelOpen && !isInsightsView) ? (aiMode ? '328px' : '340px') : (aiMode ? '72px' : '84px')} - 12px)`
+            : '376px',
         backgroundColor: 'var(--bg-primary)',
         borderRadius: '0 28px 28px 0',
-        padding: isInsightsView ? '0' : '0 16px 0 16px',
+        padding: (isInsightsView || isStoryPanelVisible) ? '0' : '0 16px 0 16px',
         fontFamily: 'Inter, sans-serif',
-        zIndex: isFullWidthPanel ? 2000 : 1001,
+        zIndex: (isFullWidthPanel || isStoryPanelVisible) ? 2000 : 1001,
         overflowX: 'hidden',
         transition: `left ${'350ms'} ease-in-out, width ${'350ms'} ease-in-out`,
         border: '0.5px solid var(--border-default)',
@@ -8949,7 +8920,7 @@ export default function MapCanvas() {
         flexDirection: 'column'
       }}>
         {/* Pinned Date Bar - shown when AI mode is on, filters panel is closed, and not in insights view */}
-        {aiMode && !isFiltersPanelOpen && !isInsightsView && (
+        {aiMode && !isFiltersPanelOpen && !isInsightsView && !isStoryPanelVisible && (
           <div
             style={{
               flexShrink: 0,
@@ -9002,14 +8973,25 @@ export default function MapCanvas() {
           opacity: isTabContentHidden ? 0 : 1,
           transition: 'opacity 150ms ease',
         }}>
-        {/* AI Insights Panel */}
-        {isInsightsView ? (
+        {/* Story Mode Panel */}
+        {isStoryPanelVisible ? (
+          <StoryModePanel
+            insight={storyModeInsight!}
+            stepIndex={storyModeStepIndex}
+            onStepChange={(index: number) => {
+              setStoryModeStepIndex(index);
+              applyWalkthroughStep(storyModeInsight!.walkthrough![index].filters, { skipTab: true });
+            }}
+            onClose={handleStoryModeClose}
+            isContentHidden={isTabContentHidden}
+          />
+        ) : isInsightsView ? (
           <InsightsPanel
             data={insightsData}
             isLoading={insightsLoading}
             error={insightsError}
             onClose={() => setActiveTab('system')}
-            onInvestigate={handleInvestigateInsight}
+            onAnalyze={handleAnalyzeInsight}
             onGenerate={generateInsights}
             onRefresh={refetchInsights}
             chatMessages={chatMessages}

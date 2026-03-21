@@ -36,7 +36,7 @@ IMPORTANT GUIDELINES:
 - Prioritize: capacity/crowding issues > ridership declines > interesting patterns > positive trends
 - Be specific: cite exact numbers, routes, time periods, and dates
 - Generate 3-5 insights, no more
-- Each insight should tell a story: what's happening, why it might be happening, what to investigate
+- Each insight should tell a story: what's happening, why it might be happening, and what to analyze further
 
 When you've gathered enough data, respond with your final insights as a JSON array. Your response MUST be valid JSON matching this exact schema:
 
@@ -48,7 +48,7 @@ When you've gathered enough data, respond with your final insights as a JSON arr
     "title": "Short descriptive title",
     "narrative": "2-3 sentence explanation of what you found in the data",
     "hypothesis": "Your hypothesis for why this is happening",
-    "investigationSteps": ["Step 1 to investigate", "Step 2", "Step 3"],
+    "analysisSteps": ["Step 1 to analyze", "Step 2", "Step 3"],
     "routeIds": ["100224"],
     "dateRange": { "start": "2025-03-21", "end": "2025-09-30" },
     "deepLink": {
@@ -179,7 +179,7 @@ function parseInsightsResponse(text: string): InsightCard[] {
     title: (item.title as string) || 'Untitled Insight',
     narrative: (item.narrative as string) || '',
     hypothesis: (item.hypothesis as string) || '',
-    investigationSteps: (item.investigationSteps as string[]) || [],
+    analysisSteps: (item.analysisSteps as string[]) || [],
     routeIds: (item.routeIds as string[]) || [],
     dateRange: (item.dateRange as { start: string; end: string }) || { start: '2025-03-21', end: '2025-09-30' },
     deepLink: item.deepLink as InsightCard['deepLink'],

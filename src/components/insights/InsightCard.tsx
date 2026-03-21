@@ -6,7 +6,7 @@ import { InsightSparkline } from './InsightSparkline';
 
 interface InsightCardProps {
   insight: InsightCardType;
-  onInvestigate?: (insight: InsightCardType) => void;
+  onAnalyze?: (insight: InsightCardType) => void;
 }
 
 const severityConfig = {
@@ -16,7 +16,7 @@ const severityConfig = {
   positive: { color: 'var(--success)', label: 'POSITIVE', bg: 'rgba(45, 122, 79, 0.08)' },
 };
 
-export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
+export function InsightCard({ insight, onAnalyze }: InsightCardProps) {
   const config = severityConfig[insight.severity];
 
   return (
@@ -106,8 +106,8 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
           </div>
         )}
 
-        {/* Investigation Steps */}
-        {insight.investigationSteps.length > 0 && (
+        {/* Analysis Steps */}
+        {insight.analysisSteps.length > 0 && (
           <div style={{ marginBottom: '16px' }}>
             <span
               style={{
@@ -118,7 +118,7 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
                 marginBottom: '8px',
               }}
             >
-              Things to investigate
+              Analysis steps
             </span>
             <ul
               style={{
@@ -129,7 +129,7 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
                 gap: '4px',
               }}
             >
-              {insight.investigationSteps.map((step, i) => (
+              {insight.analysisSteps.map((step, i) => (
                 <li
                   key={i}
                   style={{
@@ -149,7 +149,7 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
       </div>
 
       {/* Footer */}
-      {onInvestigate && (
+      {onAnalyze && (
         <div
           style={{
             padding: '12px 24px 16px',
@@ -158,7 +158,7 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
           }}
         >
           <button
-            onClick={() => onInvestigate(insight)}
+            onClick={() => onAnalyze(insight)}
             style={{
               background: 'none',
               border: 'var(--border-width) solid var(--border-default)',
@@ -180,7 +180,7 @@ export function InsightCard({ insight, onInvestigate }: InsightCardProps) {
               (e.target as HTMLElement).style.background = 'none';
             }}
           >
-            Investigate
+            Analyze
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M5.25 3.5L8.75 7L5.25 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
