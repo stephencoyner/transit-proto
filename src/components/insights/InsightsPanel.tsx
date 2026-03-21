@@ -13,7 +13,7 @@ interface InsightsPanelProps {
   isLoading: boolean;
   error: Error | null;
   onClose: () => void;
-  onInvestigate: (insight: InsightCardType) => void;
+  onAnalyze: (insight: InsightCardType) => void;
   onGenerate: () => void;
   onRefresh: () => void;
   chatMessages: ChatMessage[];
@@ -53,7 +53,7 @@ export function InsightsPanel({
   isLoading,
   error,
   onClose,
-  onInvestigate,
+  onAnalyze,
   onGenerate,
   onRefresh,
   chatMessages: messages,
@@ -820,7 +820,7 @@ export function InsightsPanel({
                   <InsightCard
                     key={insight.id}
                     insight={insight}
-                    onInvestigate={onInvestigate}
+                    onAnalyze={onAnalyze}
                   />
                 ))}
               </div>

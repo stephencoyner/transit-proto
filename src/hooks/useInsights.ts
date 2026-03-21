@@ -18,7 +18,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
       title: 'Route 62 Overcrowding on Weekday PM Peak',
       narrative: 'Route 62 is consistently exceeding 85% seat capacity during weekday PM peak hours (4–6 PM), particularly between U District and Downtown. Average load factor has increased 12% since July.',
       hypothesis: 'Increased university enrollment and return-to-office trends may be driving higher demand on this corridor.',
-      investigationSteps: [
+      analysisSteps: [
         'Check Route 62 by-period data for PM peak trends',
         'Compare weekday vs weekend loads',
         'Review stop-level boardings at U District stations',
@@ -36,20 +36,43 @@ const MOCK_INSIGHTS: InsightsResponse = {
       ],
       walkthrough: [
         {
+          pageName: 'Route 62 Overview',
+          filterSummary: 'Aug 1 – Sep 18, 2025 · All days · All periods',
           narrative: 'Route 62 is seeing higher ridership than usual. Let\'s start with an overview of the full summer period.',
           filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18' },
+          charts: [
+            { id: 'r62-trend', type: 'area', title: 'Daily Ridership Trend', data: [{ date: 'Aug 1', value: 2280 }, { date: 'Aug 8', value: 2320 }, { date: 'Aug 15', value: 2450 }, { date: 'Aug 22', value: 2480 }, { date: 'Aug 29', value: 2520 }, { date: 'Sep 5', value: 2580 }, { date: 'Sep 12', value: 2640 }], xKey: 'date', yKey: 'value' },
+            { id: 'r62-avg', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '2,487', metricLabel: 'Avg Daily Boardings' },
+          ],
         },
         {
+          pageName: 'PM Peak Concentration',
+          filterSummary: 'Aug 1 – Sep 18, 2025 · All days · PM Peak',
           narrative: 'The crowding is concentrated during PM peak hours (3–7 PM). Notice the spike in the by-period chart.',
           filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['PM Peak'] },
+          charts: [
+            { id: 'r62-period', type: 'bar', title: 'Boardings by Period', data: [{ period: 'Early AM', value: 320 }, { period: 'AM Peak', value: 680 }, { period: 'Midday', value: 450 }, { period: 'PM Peak', value: 890 }, { period: 'Evening', value: 210 }], xKey: 'period', yKey: 'value' },
+            { id: 'r62-load', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '87%', metricLabel: 'PM Peak Avg Load Factor' },
+          ],
         },
         {
+          pageName: 'Weekday Breakdown',
+          filterSummary: 'Aug 1 – Sep 18, 2025 · Tue–Thu · PM Peak',
           narrative: 'Weekdays are hit hardest, especially Tuesday through Thursday. Weekend ridership is normal.',
           filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['PM Peak'], daysMode: 'custom', customDays: ['Tue', 'Wed', 'Thu'] },
+          charts: [
+            { id: 'r62-day', type: 'bar', title: 'Avg Boardings by Day', data: [{ day: 'Mon', value: 780 }, { day: 'Tue', value: 920 }, { day: 'Wed', value: 940 }, { day: 'Thu', value: 910 }, { day: 'Fri', value: 720 }, { day: 'Sat', value: 430 }, { day: 'Sun', value: 380 }], xKey: 'day', yKey: 'value' },
+          ],
         },
         {
+          pageName: 'Summer Comparison',
+          filterSummary: 'Aug 1 – Sep 18 vs Jun 22 – Jul 31, 2025',
           narrative: 'Here\'s how current ridership compares to earlier this summer. The increase is clear.',
           filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', comparisonMode: true, comparisonStartDate: '2025-06-22', comparisonEndDate: '2025-07-31' },
+          charts: [
+            { id: 'r62-comp', type: 'area', title: 'Ridership Comparison', data: [{ week: 'Wk 1', current: 2280, earlier: 1820 }, { week: 'Wk 2', current: 2370, earlier: 1950 }, { week: 'Wk 3', current: 2450, earlier: 2050 }, { week: 'Wk 4', current: 2520, earlier: 2100 }, { week: 'Wk 5', current: 2580, earlier: 2080 }, { week: 'Wk 6', current: 2640, earlier: 2120 }], xKey: 'week', yKey: 'current', yKey2: 'earlier' },
+            { id: 'r62-change', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '+12%', metricLabel: 'Increase vs Early Summer' },
+          ],
         },
       ],
     },
@@ -60,7 +83,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
       title: 'Route 13 Weekend Ridership Dropping',
       narrative: 'Weekend ridership on Route 13 has declined 18% over the past 6 weeks. Saturday boardings are down from an average of 890 to 730 per day.',
       hypothesis: 'Construction on Queen Anne Ave may be deterring weekend riders who have more flexibility to avoid disrupted routes.',
-      investigationSteps: [
+      analysisSteps: [
         'Review Route 13 weekend-specific by-date trends',
         'Compare with nearby Route 1 and Route 8 for substitution patterns',
         'Check stop-level data for stops near construction zones',
@@ -78,16 +101,32 @@ const MOCK_INSIGHTS: InsightsResponse = {
       ],
       walkthrough: [
         {
+          pageName: 'Route 13 Overview',
+          filterSummary: 'Aug 1 – Sep 18, 2025 · All days',
           narrative: 'Route 13 weekend ridership has been declining. Here\'s the full picture over the past 6 weeks.',
           filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18' },
+          charts: [
+            { id: 'r13-trend', type: 'area', title: 'Weekend Ridership Trend', data: [{ week: 'Aug 2', value: 890 }, { week: 'Aug 9', value: 860 }, { week: 'Aug 16', value: 820 }, { week: 'Aug 23', value: 780 }, { week: 'Aug 30', value: 750 }, { week: 'Sep 6', value: 740 }, { week: 'Sep 13', value: 730 }], xKey: 'week', yKey: 'value' },
+          ],
         },
         {
+          pageName: 'Weekend Focus',
+          filterSummary: 'Aug 1 – Sep 18, 2025 · Weekends only',
           narrative: 'The drop is specifically on weekends. Weekday ridership has stayed relatively stable.',
           filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', daysMode: 'weekends' },
+          charts: [
+            { id: 'r13-day', type: 'bar', title: 'Weekday vs Weekend', data: [{ type: 'Weekday Avg', value: 1120 }, { type: 'Saturday', value: 730 }, { type: 'Sunday', value: 680 }], xKey: 'type', yKey: 'value' },
+            { id: 'r13-drop', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '-18%', metricLabel: 'Saturday Decline (6 wks)' },
+          ],
         },
         {
+          pageName: 'Sat vs Sun Breakdown',
+          filterSummary: 'Aug 1 – Sep 18, 2025 · Sat & Sun',
           narrative: 'Saturday is worse than Sunday — down 18% versus 9%. Check the day-of-week breakdown.',
           filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', daysMode: 'custom', customDays: ['Sat', 'Sun'] },
+          charts: [
+            { id: 'r13-satvsun', type: 'bar', title: 'Saturday vs Sunday Trend', data: [{ week: 'Aug 2', sat: 520, sun: 370 }, { week: 'Aug 16', sat: 470, sun: 350 }, { week: 'Aug 30', sat: 430, sun: 320 }, { week: 'Sep 13', sat: 410, sun: 320 }], xKey: 'week', yKey: 'sat' },
+          ],
         },
       ],
     },
@@ -98,7 +137,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
       title: 'Route 44 Hitting Record Highs',
       narrative: 'Route 44 (Ballard–UW) has seen a steady 22% ridership increase since summer began, now averaging 3,400 daily boardings — the highest in 3 years.',
       hypothesis: 'New bike-bus integration at the Burke-Gilman Trail connections and increased density along the corridor are likely contributors.',
-      investigationSteps: [
+      analysisSteps: [
         'Examine Route 44 by-date trend for growth trajectory',
         'Identify highest-growth stops along the corridor',
         'Compare AM vs PM peak growth rates',
@@ -116,16 +155,33 @@ const MOCK_INSIGHTS: InsightsResponse = {
       ],
       walkthrough: [
         {
+          pageName: 'Route 44 Growth',
+          filterSummary: 'Jun 22 – Sep 18, 2025 · All days',
           narrative: 'Route 44 has been climbing steadily since June. It\'s now averaging 3,400 daily boardings.',
           filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-06-22', endDate: '2025-09-18' },
+          charts: [
+            { id: 'r44-trend', type: 'area', title: 'Daily Ridership', data: [{ date: 'Jun 22', value: 2780 }, { date: 'Jul 6', value: 2900 }, { date: 'Jul 20', value: 3050 }, { date: 'Aug 3', value: 3180 }, { date: 'Aug 17', value: 3280 }, { date: 'Sep 1', value: 3350 }, { date: 'Sep 15', value: 3400 }], xKey: 'date', yKey: 'value' },
+            { id: 'r44-high', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '3,400', metricLabel: 'Current Avg Daily Boardings' },
+          ],
         },
         {
+          pageName: 'AM Peak Growth',
+          filterSummary: 'Jun 22 – Sep 18, 2025 · AM Peak',
           narrative: 'Growth is strongest during the AM peak. Morning commuters are driving most of the increase.',
           filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-06-22', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['AM Peak'] },
+          charts: [
+            { id: 'r44-period', type: 'bar', title: 'Growth by Period', data: [{ period: 'AM Peak', value: 28 }, { period: 'Midday', value: 15 }, { period: 'PM Peak', value: 19 }, { period: 'Evening', value: 12 }], xKey: 'period', yKey: 'value' },
+          ],
         },
         {
+          pageName: 'June vs Now',
+          filterSummary: 'Aug 18 – Sep 18 vs Jun 22 – Jul 20, 2025',
           narrative: 'Compared to June, current ridership is up 22%. Here\'s the side-by-side view.',
           filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-08-18', endDate: '2025-09-18', comparisonMode: true, comparisonStartDate: '2025-06-22', comparisonEndDate: '2025-07-20' },
+          charts: [
+            { id: 'r44-change', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '+22%', metricLabel: 'Ridership Growth Since June' },
+            { id: 'r44-comp', type: 'area', title: 'Period Comparison', data: [{ week: 'Wk 1', current: 3280, earlier: 2780 }, { week: 'Wk 2', current: 3320, earlier: 2850 }, { week: 'Wk 3', current: 3360, earlier: 2900 }, { week: 'Wk 4', current: 3400, earlier: 2950 }], xKey: 'week', yKey: 'current', yKey2: 'earlier' },
+          ],
         },
       ],
     },
@@ -136,7 +192,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
       title: 'Unusual Spike on Route 70 Last Tuesday',
       narrative: 'Route 70 (Eastlake) saw a 45% ridership spike last Tuesday compared to the prior 4-week Tuesday average. The spike was concentrated at the Fairview & Campus Dr stop.',
       hypothesis: 'A special event at South Lake Union or a nearby office reopening may have caused the temporary surge.',
-      investigationSteps: [
+      analysisSteps: [
         'Check Route 70 stop-level data for Fairview & Campus Dr',
         'Compare with other Tuesdays in September',
         'Look for similar spikes on adjacent routes (40, 62)',
@@ -152,16 +208,32 @@ const MOCK_INSIGHTS: InsightsResponse = {
       ],
       walkthrough: [
         {
+          pageName: 'Route 70 Recent',
+          filterSummary: 'Sep 1 – Sep 18, 2025 · All days',
           narrative: 'Route 70 saw an unusual 45% ridership spike last Tuesday. Let\'s look at the recent trend.',
           filters: { tab: 'routes', routeId: '70', routeTab: 'Summary', startDate: '2025-09-01', endDate: '2025-09-18' },
+          charts: [
+            { id: 'r70-trend', type: 'area', title: 'Daily Ridership', data: [{ date: 'Sep 1', value: 1180 }, { date: 'Sep 3', value: 1200 }, { date: 'Sep 5', value: 1190 }, { date: 'Sep 8', value: 1210 }, { date: 'Sep 9', value: 1740 }, { date: 'Sep 10', value: 1220 }, { date: 'Sep 12', value: 1180 }, { date: 'Sep 15', value: 1190 }], xKey: 'date', yKey: 'value' },
+          ],
         },
         {
+          pageName: 'Tuesday Isolation',
+          filterSummary: 'Sep 1 – Sep 18, 2025 · Tuesdays only',
           narrative: 'The spike happened specifically on Tuesday. Other days were normal.',
           filters: { tab: 'routes', routeId: '70', routeTab: 'Summary', startDate: '2025-09-01', endDate: '2025-09-18', daysMode: 'custom', customDays: ['Tue'] },
+          charts: [
+            { id: 'r70-tues', type: 'bar', title: 'Tuesday Boardings', data: [{ date: 'Sep 2', value: 1200 }, { date: 'Sep 9', value: 1740 }, { date: 'Sep 16', value: 1190 }], xKey: 'date', yKey: 'value' },
+            { id: 'r70-spike', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '+45%', metricLabel: 'Spike on Sep 9 vs Avg' },
+          ],
         },
         {
+          pageName: 'Baseline Comparison',
+          filterSummary: 'Sep 9–16 vs Aug 12 – Sep 2 · Tuesdays',
           narrative: 'Here\'s the spike week compared to the prior month\'s Tuesday baseline.',
           filters: { tab: 'routes', routeId: '70', routeTab: 'Summary', startDate: '2025-09-09', endDate: '2025-09-16', daysMode: 'custom', customDays: ['Tue'], comparisonMode: true, comparisonStartDate: '2025-08-12', comparisonEndDate: '2025-09-02' },
+          charts: [
+            { id: 'r70-comp', type: 'bar', title: 'Spike vs Baseline', data: [{ label: 'Tuesday', current: 1740, baseline: 1200 }], xKey: 'label', yKey: 'current', yKey2: 'baseline' },
+          ],
         },
       ],
     },
@@ -172,7 +244,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
       title: 'System-Wide AM Peak Shift',
       narrative: 'Across all 10 routes, the AM peak is shifting 15 minutes later compared to June. Peak boarding time has moved from 7:45 AM to 8:00 AM on average.',
       hypothesis: 'Flexible work schedules and hybrid return-to-office policies may be contributing to a gradual shift in commute timing.',
-      investigationSteps: [
+      analysisSteps: [
         'Review system-level by-period data for AM trends',
         'Compare early AM (6-7) vs late AM (8-9) boarding ratios',
         'Check if the shift is uniform or concentrated on specific routes',
@@ -187,16 +259,32 @@ const MOCK_INSIGHTS: InsightsResponse = {
       ],
       walkthrough: [
         {
+          pageName: 'System Overview',
+          filterSummary: 'Jun 22 – Sep 18, 2025 · All routes',
           narrative: 'Across all 10 routes, the AM peak is shifting later. Let\'s look at system-wide trends.',
           filters: { tab: 'system', startDate: '2025-06-22', endDate: '2025-09-18' },
+          charts: [
+            { id: 'sys-am', type: 'area', title: 'System AM Ridership', data: [{ month: 'Jun', value: 8200 }, { month: 'Jul', value: 8350 }, { month: 'Aug', value: 8500 }, { month: 'Sep', value: 8420 }], xKey: 'month', yKey: 'value' },
+          ],
         },
         {
+          pageName: 'AM Peak Shift',
+          filterSummary: 'Jun 22 – Sep 18, 2025 · AM Peak',
           narrative: 'Early AM ridership (before 9 AM) is declining while late AM grows. Look at the period breakdown.',
           filters: { tab: 'system', startDate: '2025-06-22', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['AM Peak'] },
+          charts: [
+            { id: 'sys-earlyam', type: 'bar', title: 'Early vs Late AM', data: [{ slot: '6–7 AM', value: 2100 }, { slot: '7–8 AM', value: 3400 }, { slot: '8–9 AM', value: 3800 }, { slot: '9–10 AM', value: 2200 }], xKey: 'slot', yKey: 'value' },
+            { id: 'sys-shift', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '+15 min', metricLabel: 'Peak Shift Since June' },
+          ],
         },
         {
+          pageName: 'August vs June',
+          filterSummary: 'Aug 1 – Sep 18 vs Jun 22 – Jul 31 · AM Peak',
           narrative: 'The shift has accelerated since August. Compare August–September to the earlier summer months.',
           filters: { tab: 'system', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['AM Peak'], comparisonMode: true, comparisonStartDate: '2025-06-22', comparisonEndDate: '2025-07-31' },
+          charts: [
+            { id: 'sys-comp', type: 'bar', title: 'AM Period Comparison', data: [{ slot: '6–7 AM', current: 2100, earlier: 2400 }, { slot: '7–8 AM', current: 3400, earlier: 3600 }, { slot: '8–9 AM', current: 3800, earlier: 3200 }, { slot: '9–10 AM', current: 2200, earlier: 1800 }], xKey: 'slot', yKey: 'current', yKey2: 'earlier' },
+          ],
         },
       ],
     },
