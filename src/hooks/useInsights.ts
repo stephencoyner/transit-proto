@@ -34,6 +34,24 @@ const MOCK_INSIGHTS: InsightsResponse = {
         { label: 'Sep 1', value: 2580 },
         { label: 'Sep 15', value: 2640 },
       ],
+      walkthrough: [
+        {
+          narrative: 'Route 62 is seeing higher ridership than usual. Let\'s start with an overview of the full summer period.',
+          filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18' },
+        },
+        {
+          narrative: 'The crowding is concentrated during PM peak hours (3–7 PM). Notice the spike in the by-period chart.',
+          filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['PM Peak'] },
+        },
+        {
+          narrative: 'Weekdays are hit hardest, especially Tuesday through Thursday. Weekend ridership is normal.',
+          filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['PM Peak'], daysMode: 'custom', customDays: ['Tue', 'Wed', 'Thu'] },
+        },
+        {
+          narrative: 'Here\'s how current ridership compares to earlier this summer. The increase is clear.',
+          filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', comparisonMode: true, comparisonStartDate: '2025-06-22', comparisonEndDate: '2025-07-31' },
+        },
+      ],
     },
     {
       id: 'mock-2',
@@ -57,6 +75,20 @@ const MOCK_INSIGHTS: InsightsResponse = {
         { label: 'Aug 30', value: 750 },
         { label: 'Sep 6', value: 740 },
         { label: 'Sep 13', value: 730 },
+      ],
+      walkthrough: [
+        {
+          narrative: 'Route 13 weekend ridership has been declining. Here\'s the full picture over the past 6 weeks.',
+          filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18' },
+        },
+        {
+          narrative: 'The drop is specifically on weekends. Weekday ridership has stayed relatively stable.',
+          filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', daysMode: 'weekends' },
+        },
+        {
+          narrative: 'Saturday is worse than Sunday — down 18% versus 9%. Check the day-of-week breakdown.',
+          filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', daysMode: 'custom', customDays: ['Sat', 'Sun'] },
+        },
       ],
     },
     {
@@ -82,6 +114,20 @@ const MOCK_INSIGHTS: InsightsResponse = {
         { label: 'Sep 1', value: 3350 },
         { label: 'Sep 15', value: 3400 },
       ],
+      walkthrough: [
+        {
+          narrative: 'Route 44 has been climbing steadily since June. It\'s now averaging 3,400 daily boardings.',
+          filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-06-22', endDate: '2025-09-18' },
+        },
+        {
+          narrative: 'Growth is strongest during the AM peak. Morning commuters are driving most of the increase.',
+          filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-06-22', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['AM Peak'] },
+        },
+        {
+          narrative: 'Compared to June, current ridership is up 22%. Here\'s the side-by-side view.',
+          filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-08-18', endDate: '2025-09-18', comparisonMode: true, comparisonStartDate: '2025-06-22', comparisonEndDate: '2025-07-20' },
+        },
+      ],
     },
     {
       id: 'mock-4',
@@ -104,6 +150,20 @@ const MOCK_INSIGHTS: InsightsResponse = {
         { label: 'Tue 9/9', value: 1740 },
         { label: 'Tue 9/16', value: 1190 },
       ],
+      walkthrough: [
+        {
+          narrative: 'Route 70 saw an unusual 45% ridership spike last Tuesday. Let\'s look at the recent trend.',
+          filters: { tab: 'routes', routeId: '70', routeTab: 'Summary', startDate: '2025-09-01', endDate: '2025-09-18' },
+        },
+        {
+          narrative: 'The spike happened specifically on Tuesday. Other days were normal.',
+          filters: { tab: 'routes', routeId: '70', routeTab: 'Summary', startDate: '2025-09-01', endDate: '2025-09-18', daysMode: 'custom', customDays: ['Tue'] },
+        },
+        {
+          narrative: 'Here\'s the spike week compared to the prior month\'s Tuesday baseline.',
+          filters: { tab: 'routes', routeId: '70', routeTab: 'Summary', startDate: '2025-09-09', endDate: '2025-09-16', daysMode: 'custom', customDays: ['Tue'], comparisonMode: true, comparisonStartDate: '2025-08-12', comparisonEndDate: '2025-09-02' },
+        },
+      ],
     },
     {
       id: 'mock-5',
@@ -124,6 +184,20 @@ const MOCK_INSIGHTS: InsightsResponse = {
         { label: 'Jul', value: 8350 },
         { label: 'Aug', value: 8500 },
         { label: 'Sep', value: 8420 },
+      ],
+      walkthrough: [
+        {
+          narrative: 'Across all 10 routes, the AM peak is shifting later. Let\'s look at system-wide trends.',
+          filters: { tab: 'system', startDate: '2025-06-22', endDate: '2025-09-18' },
+        },
+        {
+          narrative: 'Early AM ridership (before 9 AM) is declining while late AM grows. Look at the period breakdown.',
+          filters: { tab: 'system', startDate: '2025-06-22', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['AM Peak'] },
+        },
+        {
+          narrative: 'The shift has accelerated since August. Compare August–September to the earlier summer months.',
+          filters: { tab: 'system', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['AM Peak'], comparisonMode: true, comparisonStartDate: '2025-06-22', comparisonEndDate: '2025-07-31' },
+        },
       ],
     },
   ],

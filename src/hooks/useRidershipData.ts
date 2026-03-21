@@ -42,7 +42,7 @@ function getCachedData<T>(key: string): T | null {
   return null;
 }
 
-function setCachedData(key: string, data: unknown): void {
+export function setCachedData(key: string, data: unknown): void {
   cache.set(key, { data, timestamp: Date.now() });
 }
 

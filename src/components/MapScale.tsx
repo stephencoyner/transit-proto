@@ -31,6 +31,7 @@ const MapScale: React.FC<MapScaleProps> = ({
     return (
       <div
         className="absolute"
+        data-map-scale
         style={{
           bottom: '12px',
           right: '12px',
@@ -172,6 +173,7 @@ const MapScale: React.FC<MapScaleProps> = ({
   return (
     <div
       className="absolute bg-bg-elevated"
+      data-map-scale
       style={{
         bottom: '12px',
         right: '12px',
