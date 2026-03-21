@@ -93,7 +93,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
     },
     {
       id: 'mock-3',
-      category: 'positive',
+      category: 'trend',
       severity: 'positive',
       title: 'Route 44 Hitting Record Highs',
       narrative: 'Route 44 (Ballard–UW) has seen a steady 22% ridership increase since summer began, now averaging 3,400 daily boardings — the highest in 3 years.',
