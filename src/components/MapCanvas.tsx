@@ -2490,6 +2490,7 @@ export default function MapCanvas() {
     comparisonMode: boolean;
     comparisonDateRange: { start: Date | null; end: Date | null };
     isFiltersPanelOpen: boolean;
+    selectedMetric: string;
   } | null>(null);
 
   // Measure legend size for story card alignment
@@ -2657,18 +2658,27 @@ export default function MapCanvas() {
         activeTab, selectedRouteId, selectedRouteTab, selectedStopId,
         appliedStartDate, appliedEndDate, appliedSeason, appliedQuickPick,
         appliedDaysMode, appliedCustomDays, appliedTimeMode, appliedTimePeriods,
-        comparisonMode, comparisonDateRange, isFiltersPanelOpen,
+        comparisonMode, comparisonDateRange, isFiltersPanelOpen, selectedMetric,
       };
-
-      setIsStoryMode(true);
-      setStoryModeInsight(insight);
-      setStoryModeStepIndex(0);
 
       // Prefetch all steps' data immediately
       prefetchWalkthroughData(insight.walkthrough!);
 
-      // Apply first step filters (route selection, dates, etc.) without changing tab
-      applyWalkthroughStep(insight.walkthrough[0].filters, { skipTab: true });
+      // Phase 1: fade out home content (150ms CSS transition)
+      setIsTabContentHidden(true);
+
+      setTimeout(() => {
+        // Phase 2: content is hidden — now swap to story mode (triggers 350ms panel width transition)
+        setIsStoryMode(true);
+        setStoryModeInsight(insight);
+        setStoryModeStepIndex(0);
+        applyWalkthroughStep(insight.walkthrough![0].filters, { skipTab: true });
+
+        // Phase 3: wait for panel width transition to finish, then fade in
+        setTimeout(() => {
+          setIsTabContentHidden(false);
+        }, 380);
+      }, 180);
       return;
     }
 
@@ -2752,6 +2762,7 @@ export default function MapCanvas() {
       setComparisonMode(saved.comparisonMode);
       setComparisonDateRange(saved.comparisonDateRange);
       setIsFiltersPanelOpen(saved.isFiltersPanelOpen);
+      setSelectedMetric(saved.selectedMetric);
       savedFilterStateRef.current = null;
     };
 
@@ -3375,8 +3386,8 @@ export default function MapCanvas() {
 
   // Determine what to show based on active tab
   // Keep routes/stops visible during tab transitions so they don't disappear mid-animation
-  const showRoutes = ((activeTab === 'system' || activeTab === 'routes') || isTabContentHidden || isTabTransitioning) && !selectedStopId;
-  const showStops = ((activeTab === 'stops' || selectedStopId || selectedRouteId) || isTabContentHidden) && activeTab !== 'components';
+  const showRoutes = ((activeTab === 'system' || activeTab === 'routes') || isTabContentHidden || isTabTransitioning || isStoryPanelVisible) && !selectedStopId;
+  const showStops = ((activeTab === 'stops' || selectedStopId || selectedRouteId) || isTabContentHidden || isStoryPanelVisible) && activeTab !== 'components';
 
   // Helper function to calculate bounding box from features (MultiLineString-safe)
   const calculateBounds = (features: RouteFeature[]) => {
@@ -5488,7 +5499,8 @@ export default function MapCanvas() {
         borderRadius: '28px',
         pointerEvents: 'none',
         zIndex: (isFullWidthPanel || isStoryPanelVisible) ? 1999 : 999,
-        transition: `width ${'350ms'} ease-in-out`,
+        transition: `width 350ms ease-in-out, opacity 150ms ease`,
+        opacity: isStoryPanelVisible ? 0 : 1,
       }} />
 
       {/* Nav Rail */}
@@ -8916,6 +8928,7 @@ export default function MapCanvas() {
         transition: `left ${'350ms'} ease-in-out, width ${'350ms'} ease-in-out`,
         border: '0.5px solid var(--border-default)',
         borderLeft: 'none',
+        boxShadow: 'none',
         display: 'flex',
         flexDirection: 'column'
       }}>
@@ -8984,6 +8997,7 @@ export default function MapCanvas() {
             }}
             onClose={handleStoryModeClose}
             isContentHidden={isTabContentHidden}
+            onMetricChange={(metric: string) => setSelectedMetric(metric)}
           />
         ) : isInsightsView ? (
           <InsightsPanel

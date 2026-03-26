@@ -62,10 +62,13 @@ export interface StoryChartSpec {
 
 export interface WalkthroughStep {
   narrative: string;
+  narrativeByMetric?: Record<string, string>;
   filters: WalkthroughFilterState;
   pageName?: string;
   charts?: StoryChartSpec[];
+  chartsByMetric?: Record<string, StoryChartSpec[]>;
   filterSummary?: string;
+  relevantMetrics?: string[];
 }
 
 export interface InsightsResponse {

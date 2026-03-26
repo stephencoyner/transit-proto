@@ -35,7 +35,7 @@ IMPORTANT GUIDELINES:
 - Focus on actionable findings — things a transit planner would want to act on
 - Prioritize: capacity/crowding issues > ridership declines > interesting patterns > positive trends
 - Be specific: cite exact numbers, routes, time periods, and dates
-- Generate 3-5 insights, no more
+- Generate exactly 1 insight — the single most important finding
 - Each insight should tell a story: what's happening, why it might be happening, and what to analyze further
 
 When you've gathered enough data, respond with your final insights as a JSON array. Your response MUST be valid JSON matching this exact schema:
@@ -62,9 +62,66 @@ When you've gathered enough data, respond with your final insights as a JSON arr
       { "label": "Mar", "value": 5200 },
       { "label": "Apr", "value": 5100 },
       { "label": "May", "value": 5300 }
-    ]
+    ],
+    "walkthrough": [...]  // ONLY for your #1 most important insight — see below
   }
 ]
+
+WALKTHROUGH STEPS (required for your TOP insight only):
+Your most important insight MUST include a "walkthrough" array of 3-5 steps that guide the user through the analysis. Each step is an object:
+
+{
+  "pageName": "Short page title (e.g. 'Route 62 Overview')",
+  "filterSummary": "Human-readable filter description (e.g. 'Aug 1 – Sep 18, 2025 · Weekdays · PM Peak')",
+  "narrative": "1-2 sentences explaining what this step shows and what to notice",
+  "filters": {
+    "tab": "routes",           // "system" | "routes" | "stops"
+    "routeId": "62",           // the SHORT route number as string, NOT the full ID
+    "routeTab": "Summary",     // "Summary" | "Trips" | "Grid"
+    "startDate": "2025-08-01",
+    "endDate": "2025-09-18",
+    "daysMode": "all",         // "all" | "weekdays" | "weekends" | "custom"
+    "customDays": ["Tue", "Wed", "Thu"],  // only if daysMode is "custom"
+    "timeMode": "all",         // "all" | "custom"
+    "timePeriods": ["PM Peak"],  // only if timeMode is "custom". Values: "Early AM", "AM Peak", "Midday", "PM Peak", "Evening", "Night"
+    "comparisonMode": false,
+    "comparisonStartDate": "2025-06-22",  // only if comparisonMode is true
+    "comparisonEndDate": "2025-07-31"     // only if comparisonMode is true
+  },
+  "relevantMetrics": ["Average daily boardings", "Average load", "Maxload"],
+  "charts": [
+    {
+      "id": "unique-chart-id",
+      "type": "area|bar|metric",
+      "title": "Chart title",
+      "data": [{"date": "Aug 1", "value": 2280}, ...],  // USE REAL DATA from your tool calls
+      "xKey": "date",
+      "yKey": "value",
+      "yKey2": "comparison",       // optional, for comparison charts
+      "metricValue": "2,487",      // only for type "metric"
+      "metricLabel": "Avg Daily Boardings"  // only for type "metric"
+    }
+  ],
+  "chartsByMetric": {
+    "Average daily boardings": [ ...charts array... ],
+    "Average load": [ ...charts array... ]
+  },
+  "narrativeByMetric": {
+    "Average daily boardings": "Metric-specific narrative for boardings...",
+    "Average load": "Metric-specific narrative for load..."
+  }
+}
+
+IMPORTANT WALKTHROUGH RULES:
+- Use REAL numbers from your tool call results in chart data — do NOT make up values
+- Include 2-3 relevantMetrics per step where applicable. Valid metric names: "Average daily boardings", "Average daily alightings", "Average daily activity", "Average load", "Maxload", "Total boardings"
+- chartsByMetric is optional but recommended for steps with 2+ relevantMetrics — it lets the user switch between different metric views
+- narrativeByMetric is optional but recommended when chartsByMetric is used — provide a tailored narrative for each metric so the text matches the visible chart
+- Each chart in chartsByMetric should have its own unique id
+- For "metric" type charts: metricValue should be a formatted string (e.g. "2,487" or "+12%" or "87%")
+- Structure the walkthrough as a narrative: start broad (overview), then drill into specifics
+- routeId in filters should be the SHORT route number (e.g. "62" not "100252")
+- Other insights (2-5) should NOT include walkthrough — just the basic card fields
 
 Return ONLY the JSON array, no markdown fencing, no extra text.`;
 
@@ -93,7 +150,7 @@ export async function runInsightsAgent(): Promise<AgentResult> {
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       tools: insightTools,
       messages,
@@ -184,6 +241,7 @@ function parseInsightsResponse(text: string): InsightCard[] {
     dateRange: (item.dateRange as { start: string; end: string }) || { start: '2025-03-21', end: '2025-09-30' },
     deepLink: item.deepLink as InsightCard['deepLink'],
     sparklineData: item.sparklineData as InsightCard['sparklineData'],
+    walkthrough: item.walkthrough as InsightCard['walkthrough'],
   }));
 }
 

@@ -12,29 +12,56 @@ interface SegmentedControlProps {
   value: string;
   onChange: (value: string) => void;
   style?: React.CSSProperties;
+  fullWidth?: boolean;
 }
 
-export function SegmentedControl({ options, value, onChange, style }: SegmentedControlProps) {
+export function SegmentedControl({ options, value, onChange, style, fullWidth }: SegmentedControlProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
+  const prevOptionsKey = useRef<string>('');
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const activeBtn = container.querySelector(`[data-value="${value}"]`) as HTMLElement | null;
-    if (!activeBtn) return;
-
-    setIndicator({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth });
-
-    // Enable transitions after first paint
-    if (!hasAnimated.current) {
-      requestAnimationFrame(() => {
-        hasAnimated.current = true;
-      });
+    // Reset animation when options change (e.g. different page with different metrics)
+    const optionsKey = options.map(o => o.label).join('|');
+    if (optionsKey !== prevOptionsKey.current) {
+      hasAnimated.current = false;
+      prevOptionsKey.current = optionsKey;
     }
-  }, [value]);
+
+    let settled = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const measure = () => {
+      const activeBtn = container.querySelector(`[data-value="${value}"]`) as HTMLElement | null;
+      if (!activeBtn) return;
+      setIndicator({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth });
+    };
+
+    // Wait for container width to stop changing before first measurement
+    const ro = new ResizeObserver(() => {
+      if (settled) return; // only use RO for initial settle
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        settled = true;
+        measure();
+        if (!hasAnimated.current) {
+          requestAnimationFrame(() => {
+            hasAnimated.current = true;
+          });
+        }
+      }, 100);
+    });
+    ro.observe(container);
+
+    return () => {
+      ro.disconnect();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [value, options]);
 
   return (
     <div
@@ -45,7 +72,7 @@ export function SegmentedControl({ options, value, onChange, style }: SegmentedC
         borderRadius: '24px',
         padding: '4px',
         position: 'relative',
-        width: 'fit-content',
+        width: fullWidth ? '100%' : 'fit-content',
         ...style,
       }}
     >
@@ -90,6 +117,8 @@ export function SegmentedControl({ options, value, onChange, style }: SegmentedC
             position: 'relative',
             zIndex: 1,
             whiteSpace: 'nowrap',
+            flex: fullWidth ? 1 : undefined,
+            textAlign: fullWidth ? 'center' : undefined,
           }}
         >
           {opt.label}
