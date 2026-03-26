@@ -26,6 +26,9 @@ import { StoryModePanel } from '@/components/insights/StoryModePanel';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 import { buildApiUrl, getCacheKey } from '@/lib/utils/filterBuilder';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
+import { calculateBounds as calculateBoundsUtil } from '@/lib/mapUtils';
+import { MapThumbnailCapture } from '@/components/insights/MapThumbnailCapture';
+import type { MapThumbnailCaptureHandle } from '@/components/insights/MapThumbnailCapture';
 import BookmarksModal from '@/components/BookmarksModal';
 import SaveBookmarkModal from '@/components/SaveBookmarkModal';
 
@@ -425,6 +428,7 @@ export default function MapCanvas() {
   const selectedStopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const selectedSegmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const mapRef = useRef<MapRef>(null);
+  const thumbnailCaptureRef = useRef<MapThumbnailCaptureHandle>(null);
   const [openFilter, setOpenFilter] = useState<'date' | 'days' | 'compare' | 'date2' | 'days2' | null>(null);
   // Track when restoring a bookmark to skip auto-reset effects
   const isRestoringBookmarkRef = useRef(false);
@@ -2458,7 +2462,32 @@ export default function MapCanvas() {
   const isFullWidthPanel = isGridView || isInsightsView;
 
   // AI Insights — only fetches when user clicks Generate
-  const { data: insightsData, isLoading: insightsLoading, error: insightsError, generate: generateInsights, refetch: refetchInsights } = useInsights();
+  const { data: insightsData, isLoading: insightsLoading, error: insightsError, generate: generateInsights, refetch: refetchInsights, updateInsightImage } = useInsights();
+
+  // Capture map thumbnails for insight cards after generation
+  useEffect(() => {
+    if (!insightsData?.insights?.length || !shapes.length) return;
+    console.log('[MapCanvas] Thumbnail capture effect fired', { insightsCount: insightsData.insights.length, shapesCount: shapes.length });
+    // Wait for the hidden thumbnail map to fully load before capturing
+    const capture = async () => {
+      const capturer = thumbnailCaptureRef.current;
+      if (!capturer) {
+        console.warn('[MapCanvas] ThumbnailCapture ref not available');
+        return;
+      }
+      for (const insight of insightsData.insights) {
+        if (insight.previewImage) continue; // already captured
+        if (!insight.routeIds?.[0]) continue;
+        const image = await capturer.captureRoute(insight, shapes);
+        if (image) {
+          updateInsightImage(insight.id, image);
+        }
+      }
+    };
+    // Longer delay to ensure the hidden Mapbox map has loaded tiles
+    const timer = setTimeout(capture, 2000);
+    return () => clearTimeout(timer);
+  }, [insightsData?.insights?.length, shapes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chat state — lifted so it persists across tab changes
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -3389,33 +3418,8 @@ export default function MapCanvas() {
   const showRoutes = ((activeTab === 'system' || activeTab === 'routes') || isTabContentHidden || isTabTransitioning || isStoryPanelVisible) && !selectedStopId;
   const showStops = ((activeTab === 'stops' || selectedStopId || selectedRouteId) || isTabContentHidden || isStoryPanelVisible) && activeTab !== 'components';
 
-  // Helper function to calculate bounding box from features (MultiLineString-safe)
-  const calculateBounds = (features: RouteFeature[]) => {
-    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
-
-    const pushCoord = ([lng, lat]: number[]) => {
-      if (Number.isFinite(lng) && Number.isFinite(lat)) {
-        minLng = Math.min(minLng, lng);
-        minLat = Math.min(minLat, lat);
-        maxLng = Math.max(maxLng, lng);
-        maxLat = Math.max(maxLat, lat);
-      }
-    };
-
-    for (const f of features) {
-      const g = f.geometry;
-      if (g.type === 'LineString') {
-        for (const c of g.coordinates) pushCoord(c as number[]);
-      } else if (g.type === 'MultiLineString') {
-        for (const line of g.coordinates as unknown as number[][][]) {
-          for (const c of line) pushCoord(c);
-        }
-      }
-    }
-
-    if (minLng === Infinity) return null;
-    return [[minLng, minLat], [maxLng, maxLat]] as LngLatBoundsLike;
-  };
+  // Use shared utility for bounding box calculation
+  const calculateBounds = calculateBoundsUtil;
 
   // Helper function to fit bounds using proper Mercator projection
   // Note: isFiltersPanelOpen is captured at call time via getUIPadding, not as a dependency
@@ -13207,6 +13211,8 @@ export default function MapCanvas() {
           }, 0);
         }}
       />
+      {/* Hidden off-screen map for capturing insight card thumbnails */}
+      <MapThumbnailCapture ref={thumbnailCaptureRef} />
     </div>
   );
 }

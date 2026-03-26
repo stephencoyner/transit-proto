@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import type { InsightsResponse } from '@/types/insights';
 
 // Set to true to use mock data instead of calling the API
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = true;
 
 // When true, only the first insight is AI-generated; the rest are mock data
 const HYBRID_MODE = true;
@@ -428,5 +428,17 @@ export function useInsights(): UseInsightsResult {
     fetchData(true);
   }, [fetchData]);
 
-  return { data, isLoading, error, generate, refetch };
+  const updateInsightImage = useCallback((insightId: string, previewImage: string) => {
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        insights: prev.insights.map(i =>
+          i.id === insightId ? { ...i, previewImage } : i
+        ),
+      };
+    });
+  }, []);
+
+  return { data, isLoading, error, generate, refetch, updateInsightImage };
 }

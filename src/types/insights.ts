@@ -26,6 +26,7 @@ export interface InsightCard {
     days?: number[];
   };
   sparklineData?: Array<{ label: string; value: number }>;
+  previewImage?: string;
   walkthrough?: WalkthroughStep[];
 }
 
