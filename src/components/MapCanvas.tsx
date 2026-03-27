@@ -6305,34 +6305,6 @@ export default function MapCanvas() {
             </>
           )}
 
-          {/* Close Filters Panel Button - only in AI mode (non-AI mode has hamburger toggle) */}
-          {aiMode && (
-            <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
-              <button
-                onClick={() => { hasUserClosedFiltersRef.current = true; setIsFiltersPanelOpen(false); }}
-                style={{
-                  width: '100%',
-                  background: 'none',
-                  border: 'var(--border-width) solid var(--border-default)',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: 'var(--text-tertiary)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                Close Filters
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
