@@ -2504,7 +2504,7 @@ export default function MapCanvas() {
   const [isStoryMode, setIsStoryMode] = useState(false);
   const [storyModeInsight, setStoryModeInsight] = useState<InsightCardType | null>(null);
   const [storyModeStepIndex, setStoryModeStepIndex] = useState(0);
-  const isStoryPanelVisible = isStoryMode && storyModeInsight !== null;
+  const isStoryPanelVisible = isStoryMode && storyModeInsight !== null && activeTab === 'home';
   const savedFilterStateRef = useRef<{
     activeTab: string;
     selectedRouteId: string | null;
@@ -2763,12 +2763,13 @@ export default function MapCanvas() {
   }, [storyModeInsight, storyModeStepIndex, applyWalkthroughStep]);
 
   const handleStoryModeClose = useCallback(() => {
-    setIsStoryMode(false);
-    setStoryModeInsight(null);
-    setStoryModeStepIndex(0);
-
     const saved = savedFilterStateRef.current;
-    if (!saved) return;
+    if (!saved) {
+      setIsStoryMode(false);
+      setStoryModeInsight(null);
+      setStoryModeStepIndex(0);
+      return;
+    }
 
     const restoreState = () => {
       setActiveTab(saved.activeTab as 'home' | 'system' | 'routes' | 'stops' | 'components');
@@ -2805,8 +2806,13 @@ export default function MapCanvas() {
       setTransitionToHome(true);
       setIsTabTransitioning(true);
       setIsTabContentHidden(true);
+      // Keep story state intact until after fade-out completes so the story
+      // panel fades out rather than the briefing content flashing in.
 
       setTimeout(() => {
+        setIsStoryMode(false);
+        setStoryModeInsight(null);
+        setStoryModeStepIndex(0);
         restoreState();
         setTimeout(() => {
           setIsTabTransitioning(false);
@@ -2816,6 +2822,9 @@ export default function MapCanvas() {
         }, animDuration);
       }, 150);
     } else {
+      setIsStoryMode(false);
+      setStoryModeInsight(null);
+      setStoryModeStepIndex(0);
       restoreState();
     }
   }, [aiMode]);
@@ -8935,6 +8944,8 @@ export default function MapCanvas() {
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
+              opacity: isTabContentHidden ? 0 : 1,
+              transition: 'opacity 150ms ease',
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="currentColor" style={{ position: 'absolute', left: '16px' }}>
@@ -8989,9 +9000,9 @@ export default function MapCanvas() {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: '8px',
               marginTop: '0px',
-              marginBottom: '4px',
+              marginBottom: '6px',
               cursor: 'pointer',
               flexShrink: 0,
               color: 'var(--text-secondary)'
@@ -9003,15 +9014,12 @@ export default function MapCanvas() {
               setSelectedBoardingStop(null);
               setHoveredSegment(null);
             }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
               </svg>
-              <div className="heading-3">
-                {formatTime12Hour(selectedTrip.start_time)}
+              <div className="data-small" style={{ color: 'var(--text-secondary)' }}>
+                {formatTime12Hour(selectedTrip.start_time)}{selectedTrip.headsign ? ` (${selectedTrip.headsign})` : ''}
               </div>
-            </div>
-            <div className="data-small" style={{ color: 'var(--text-tertiary)', marginLeft: '28px', marginTop: '-4px', fontWeight: 'normal' }}>
-              {selectedTrip.headsign}
             </div>
 
             {/* Summary/Trips/Grid Tabs - Show in trip detail view to allow navigation back */}

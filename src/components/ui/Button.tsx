@@ -11,12 +11,12 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'medium', className = '', children, ...props }, ref) => {
-    const baseClasses = 'rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer';
+    const baseClasses = `rounded-full transition-colors duration-200 disabled:cursor-not-allowed cursor-pointer${variant !== 'primary' ? ' disabled:opacity-50' : ''}`;
 
     const variantClasses = {
-      primary: 'bg-btn-primary text-text-on-primary hover:opacity-90',
+      primary: 'hover:opacity-90',
       secondary: 'bg-btn-secondary text-text-primary',
-      tertiary: 'bg-bg-elevated text-text-primary hover:bg-bg-primary',
+      tertiary: 'bg-bg-elevated hover:bg-bg-primary',
       elevated: 'bg-bg-elevated text-text-primary hover:bg-bg-primary',
     };
 
@@ -27,14 +27,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`.trim();
 
-    // Apply custom border for variants with borders
+    // Apply custom border for variants with borders, and color overrides
     const { style: propStyle, ...restProps } = props;
-    const style = (variant === 'secondary' || variant === 'tertiary' || variant === 'elevated')
-      ? {
-          ...propStyle,
-          border: '0.5px solid var(--border-default)'
-        }
-      : propStyle;
+    const primaryStyle = props.disabled
+      ? { backgroundColor: 'var(--bg-primary)', color: 'color-mix(in srgb, var(--text-primary) 40%, transparent)' }
+      : { backgroundColor: 'var(--accent-ui-text)', color: 'white' };
+    const style = variant === 'primary'
+      ? { ...primaryStyle, ...propStyle }
+      : (variant === 'secondary' || variant === 'tertiary' || variant === 'elevated')
+        ? {
+            ...propStyle,
+            border: '0.5px solid var(--border-default)',
+            ...(variant === 'tertiary' ? { color: 'var(--accent-ui-text)' } : {}),
+          }
+        : propStyle;
 
     return (
       <button ref={ref} className={classes} style={style} {...restProps}>

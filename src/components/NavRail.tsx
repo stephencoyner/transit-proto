@@ -21,9 +21,8 @@ interface NavRailProps {
 
 // Inline SVG components for nav icons
 const HomeIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 7.5L9 2.5L15 7.5V14.5C15 15.0523 14.5523 15.5 14 15.5H4C3.44772 15.5 3 15.0523 3 14.5V7.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7 15.5V9.5H11V15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor">
+    <path d="M268.5-451.5Q257-440 240-440H80q-17 0-28.5-11.5T40-480q0-17 11.5-28.5T80-520h160q17 0 28.5 11.5T280-480q0 17-11.5 28.5ZM338-622q-11 11-28 11t-28-11l-28-28q-11-11-11-28t11-28q11-11 28-11t28 11l28 28q11 11 11 28t-11 28Zm102-98v-160q0-17 11.5-28.5T480-920q17 0 28.5 11.5T520-880v160q0 17-11.5 28.5T480-680q-17 0-28.5-11.5T440-720Zm182 98q-11-11-11-28t11-28l28-28q11-11 28-11t28 11q11 11 11 28t-11 28l-28 28q-11 11-28 11t-28-11Zm69.5 113.5Q703-520 720-520h160q17 0 28.5 11.5T920-480q0 17-11.5 28.5T880-440H720q-17 0-28.5-11.5T680-480q0-17 11.5-28.5ZM395-395q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Zm227 57q11-11 28-11t28 11l28 28q11 11 11 28t-11 28q-11 11-28 11t-28-11l-28-28q-11-11-11-28t11-28Zm-284 0q11 11 11 28t-11 28l-28 28q-11 11-28 11t-28-11q-11-11-11-28t11-28l28-28q11-11 28-11t28 11Zm170.5 69.5Q520-257 520-240v160q0 17-11.5 28.5T480-40q-17 0-28.5-11.5T440-80v-160q0-17 11.5-28.5T480-280q17 0 28.5 11.5Z"/>
   </svg>
 );
 
@@ -145,6 +144,7 @@ const NavRail: React.FC<NavRailProps> = ({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isExperimentalFeaturesOpen, setIsExperimentalFeaturesOpen] = useState(false);
   const [profileMenuPosition, setProfileMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [navTooltip, setNavTooltip] = useState<{ label: string; top: number; left: number; isActive: boolean } | null>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -255,11 +255,16 @@ const NavRail: React.FC<NavRailProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => onTabChange(item.id)}
+                onClick={() => { onTabChange(item.id); setNavTooltip(null); }}
                 className="flex items-center justify-center"
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 style={{ marginBottom }}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setNavTooltip({ label: item.label, top: rect.top + rect.height / 2, left: rect.right + 20, isActive });
+                }}
+                onMouseLeave={() => setNavTooltip(null)}
               >
                 <div
                   className={`
@@ -346,6 +351,30 @@ const NavRail: React.FC<NavRailProps> = ({
           }}
         >
           Bookmark Saved
+        </div>,
+        document.body
+      )}
+
+      {/* Nav Tooltip - AI mode only */}
+      {navTooltip && createPortal(
+        <div
+          className="label"
+          style={{
+            position: 'fixed',
+            top: `${navTooltip.top}px`,
+            left: `${navTooltip.left}px`,
+            transform: 'translateY(-50%)',
+            backgroundColor: navTooltip.isActive ? 'var(--accent-ui-text)' : 'var(--btn-primary)',
+            color: navTooltip.isActive ? 'white' : 'var(--text-btn-primary)',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            whiteSpace: 'nowrap',
+            zIndex: 9999,
+            boxShadow: 'var(--shadow-lg)',
+            pointerEvents: 'none',
+          }}
+        >
+          {navTooltip.label}
         </div>,
         document.body
       )}
