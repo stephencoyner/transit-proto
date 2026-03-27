@@ -245,7 +245,7 @@ function parseInsightsResponse(text: string): { insights: InsightCard[]; summary
     throw new Error('Expected JSON object with insights array or a JSON array');
   }
 
-  const insights = insightsArray.map((item: Record<string, unknown>, index: number) => ({
+  const insights = (insightsArray as Record<string, unknown>[]).map((item, index) => ({
     id: (item.id as string) || `insight-${index}`,
     category: (item.category as InsightCard['category']) || 'trend',
     severity: (item.severity as InsightCard['severity']) || 'info',
