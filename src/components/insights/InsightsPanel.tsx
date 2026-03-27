@@ -524,7 +524,7 @@ export function InsightsPanel({
         >
           {/* Title */}
           <h1 style={{
-            fontSize: '20px',
+            fontSize: '18px',
             fontWeight: 700,
             fontFamily: 'var(--font-display)',
             color: 'var(--text-primary)',
@@ -798,7 +798,7 @@ export function InsightsPanel({
               borderRadius: '50%',
               border: 'none',
               cursor: chatInput.trim() && !isChatLoading ? 'pointer' : 'default',
-              backgroundColor: chatInput.trim() && !isChatLoading ? 'var(--accent-ui)' : 'var(--bg-primary)',
+              backgroundColor: chatInput.trim() && !isChatLoading ? 'var(--accent-ui-text)' : 'var(--bg-primary)',
               color: chatInput.trim() && !isChatLoading ? 'white' : 'var(--text-primary)',
               flexShrink: 0,
               display: 'flex',
