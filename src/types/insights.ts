@@ -27,6 +27,7 @@ export interface InsightCard {
   };
   sparklineData?: Array<{ label: string; value: number }>;
   previewImage?: string;
+  isAiGenerated?: boolean;
   walkthrough?: WalkthroughStep[];
 }
 
@@ -77,6 +78,7 @@ export interface InsightsResponse {
   dateRange: { start: string; end: string };
   insights: InsightCard[];
   toolCallCount: number;
+  summary?: string;
 }
 
 /** Streamed progress updates during AI analysis */

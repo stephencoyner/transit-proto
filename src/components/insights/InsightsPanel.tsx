@@ -4,9 +4,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { InsightCard as InsightCardType, InsightsResponse } from '@/types/insights';
 import { InsightCard } from './InsightCard';
-import { SegmentedControl } from '@/components/ui';
-import type { ChatMessage, ChatConversation } from '@/lib/chatHistory';
-import { getChatHistory, generateConversationId } from '@/lib/chatHistory';
+import type { ChatMessage } from '@/lib/chatHistory';
+import { generateConversationId } from '@/lib/chatHistory';
 
 interface InsightsPanelProps {
   data: InsightsResponse | null;
@@ -24,29 +23,7 @@ interface InsightsPanelProps {
   setChatConvoId: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const GREETINGS = [
-  'What would you like to explore?',
-  'Ready when you are.',
-  'Good to have you back!',
-  "Let's take a look at things.",
-  'What can I help you find?',
-  "Let's dig into the data.",
-  'What are you curious about?',
-  'Ready to explore the numbers.',
-  "How's the network looking?",
-  'What should we look at today?',
-  "Let's see what's happening.",
-  'Need help with anything?',
-  'Where should we start?',
-  "Let's find some patterns.",
-  'What routes are on your mind?',
-  'Ready to dive in.',
-  "What's on your radar today?",
-  'Happy to help you explore.',
-];
-
-// Pick a stable greeting per session (based on date so it doesn't change on re-render)
-const sessionGreeting = GREETINGS[Math.floor(Date.now() / 86400000) % GREETINGS.length];
+// Greetings removed — briefing layout doesn't use them
 
 export function InsightsPanel({
   data,
@@ -69,22 +46,34 @@ export function InsightsPanel({
   // Chat state (local only)
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [homeTab, setHomeTab] = useState<'home' | 'history'>('home');
+  // homeTab removed — history view removed
   const [isControlStuck, setIsControlStuck] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [chatHistory, setChatHistory] = useState<ChatConversation[]>([]);
+  // chatHistory removed — history tab removed
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const inChat = messages.length > 0 || isChatLoading;
 
-  // Load chat history when switching to history tab
+  // Chat history loading removed — history tab removed
+
+  // Cycling placeholder examples
+  const PLACEHOLDER_EXAMPLES = [
+    "What's happening on Route 44 this week?",
+    "Which routes are overcrowded?",
+    "Compare weekend vs weekday ridership",
+    "Show me boarding trends for Route 62",
+    "Are any routes losing riders?",
+  ];
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
   useEffect(() => {
-    if (homeTab === 'history') {
-      setChatHistory(getChatHistory());
-    }
-  }, [homeTab]);
+    if (inChat || chatInput) return; // Don't cycle when typing or in chat
+    const interval = setInterval(() => {
+      setPlaceholderIdx(prev => (prev + 1) % PLACEHOLDER_EXAMPLES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [inChat, chatInput]);
 
   // Auto-resize textarea (home mode input only)
   useEffect(() => {
@@ -177,13 +166,6 @@ export function InsightsPanel({
     setChatConvoId('');
   };
 
-  const openConversation = (convo: ChatConversation) => {
-    setChatConvoId(convo.id);
-    setChatTitle(convo.title);
-    setMessages(convo.messages);
-    setHomeTab('home');
-  };
-
   // ── Chat Mode ──
   if (inChat) {
     return (
@@ -205,7 +187,7 @@ export function InsightsPanel({
         >
           <div
             style={{
-              maxWidth: '700px',
+              maxWidth: '800px',
               margin: '0 auto',
               width: '100%',
               padding: '0 24px',
@@ -256,7 +238,7 @@ export function InsightsPanel({
         >
           <div
             style={{
-              maxWidth: '700px',
+              maxWidth: '800px',
               margin: '0 auto',
               width: '100%',
               padding: '0 24px',
@@ -362,7 +344,7 @@ export function InsightsPanel({
                 padding: '20px',
                 border: '0.5px solid var(--border-default)',
                 height: '72px',
-                boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
+                boxShadow: '0 1px 6px rgba(0, 0, 0, 0.03)',
               }}
             >
               <textarea
@@ -393,7 +375,7 @@ export function InsightsPanel({
                   border: 'none',
                   cursor: chatInput.trim() && !isChatLoading ? 'pointer' : 'default',
                   padding: '4px',
-                  color: chatInput.trim() && !isChatLoading ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  color: chatInput.trim() && !isChatLoading ? 'var(--accent, #ED7E22)' : 'var(--text-tertiary)',
                   opacity: chatInput.trim() && !isChatLoading ? 1 : 0.4,
                   flexShrink: 0,
                   transition: 'opacity 0.15s ease',
@@ -479,216 +461,56 @@ export function InsightsPanel({
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--bg-primary)',
+        position: 'relative',
       }}
     >
-      {/* Segmented Control - fixed above scroll */}
+      {/* Top fade gradient */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        paddingTop: '16px',
-        paddingBottom: '16px',
-        backgroundColor: 'var(--bg-primary)',
-        borderBottom: isControlStuck ? 'var(--border-width) solid var(--border-default)' : 'var(--border-width) solid transparent',
-        transition: 'border-color 150ms ease',
-      }}>
-        <SegmentedControl
-          options={[{ value: 'home', label: 'Home' }, { value: 'history', label: 'History' }]}
-          value={homeTab}
-          onChange={(v) => setHomeTab(v as 'home' | 'history')}
-        />
-      </div>
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '32px',
+        background: 'linear-gradient(to bottom, var(--bg-primary), transparent)',
+        zIndex: 1,
+        pointerEvents: 'none',
+      }} />
       {/* Scrollable Content */}
       <div
         ref={scrollContainerRef}
         style={{
           flex: 1,
           overflow: 'auto',
-          padding: '0 24px 40px',
+          padding: '0 28px 40px',
         }}
       >
-        <div style={{ height: '64px' }} />
-        {homeTab === 'history' ? (
-          <div
-            style={{
-              maxWidth: '700px',
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
-            {chatHistory.length === 0 ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '80px 40px',
-                  textAlign: 'center',
-                  color: 'var(--text-tertiary)',
-                }}
-              >
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '12px' }}>
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                <p style={{ fontSize: '15px', fontWeight: 500, margin: '0 0 4px' }}>No chat history yet</p>
-                <p style={{ fontSize: '13px', margin: 0 }}>Your conversations will appear here.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {(() => {
-                  const now = new Date();
-                  const yesterday = new Date(now);
-                  yesterday.setDate(yesterday.getDate() - 1);
-
-                  // Group conversations by date label
-                  let lastLabel = '';
-                  return chatHistory.map((convo, idx) => {
-                    const date = new Date(convo.updatedAt);
-                    const isToday = date.toDateString() === now.toDateString();
-                    const isYesterday = date.toDateString() === yesterday.toDateString();
-                    const label = isToday ? 'Today' : isYesterday ? 'Yesterday' : date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
-                    const showLabel = label !== lastLabel;
-                    lastLabel = label;
-
-                    const lastMsg = convo.messages[convo.messages.length - 1];
-                    const stripped = lastMsg ? lastMsg.content.replace(/[#*_`~\[\]()>|\\-]/g, '').replace(/\n+/g, ' ').trim() : '';
-                    const preview = stripped.slice(0, 140) + (stripped.length > 140 ? '...' : '');
-
-                    return (
-                      <React.Fragment key={convo.id}>
-                        {/* {showLabel && (
-                          <div style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: 'var(--text-tertiary)',
-                            padding: '20px 20px 8px',
-                          }}>
-                            {label}
-                          </div>
-                        )} */}
-                        <button
-                          onClick={() => openConversation(convo)}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                            padding: '12px 20px',
-                            background: 'none',
-                            border: 'none',
-                            borderRadius: '12px',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            width: '100%',
-                            transition: 'background 0.15s ease',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                        >
-                          <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                            {convo.title}
-                          </span>
-                          <span style={{ fontSize: '16px', color: 'var(--text-tertiary)', lineHeight: 1.4, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                            {preview}
-                          </span>
-                        </button>
-                        {idx < chatHistory.length - 1 && (
-                          <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '4px 20px' }} />
-                        )}
-                      </React.Fragment>
-                    );
-                  });
-                })()}
-              </div>
-            )}
-          </div>
-        ) : (<>
         <div
           style={{
-            maxWidth: '700px',
+            maxWidth: '800px',
             margin: '0 auto',
             width: '100%',
           }}
         >
-          <p
-            style={{
-              fontSize: '14px',
-              fontWeight: 400,
-              color: 'var(--text-tertiary)',
-              margin: '0 0 4px',
-            }}
-          >
-            Hi Stephen 👋
-          </p>
           {/* Title */}
-          <h1
-            style={{
-              fontSize: '32px',
-              fontWeight: 800,
-              color: 'var(--text-primary)',
-              margin: '0 0 6px',
-              lineHeight: 1.2,
-            }}
-          >
-            {sessionGreeting}
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
+            color: 'var(--text-primary)',
+            margin: '0 0 24px',
+            paddingTop: '24px',
+            textAlign: 'left',
+          }}>
+            Today&apos;s Briefing
           </h1>
-
-          {/* Chat Input */}
-          <div style={{ margin: '16px 0 0' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: 'var(--bg-elevated)',
-                borderRadius: '36px',
-                padding: '20px',
-                border: '0.5px solid var(--border-default)',
-                height: '64px',
-                boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
-              }}
-            >
-              <textarea
-                ref={inputRef}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask Hopthru..."
-                rows={1}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
-                  fontSize: '16px',
-                  lineHeight: '1.5',
-                  resize: 'none',
-                  fontFamily: 'Inter, sans-serif',
-                  marginLeft: '8px',
-                }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!chatInput.trim() || isChatLoading}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: chatInput.trim() && !isChatLoading ? 'pointer' : 'default',
-                  padding: '4px',
-                  color: chatInput.trim() && !isChatLoading ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  opacity: chatInput.trim() && !isChatLoading ? 1 : 0.4,
-                  flexShrink: 0,
-                  transition: 'opacity 0.15s ease',
-                }}
-                aria-label="Send message"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-              </button>
-            </div>
-          </div>
+          {/* Divider */}
+          <div style={{
+            width: '100%',
+            maxWidth: '800px',
+            height: '0.5px',
+            backgroundColor: 'var(--border-default)',
+            marginBottom: '32px',
+          }} />
 
           {/* Initial State — Generate Button */}
           {showInitialState && (
@@ -805,25 +627,39 @@ export function InsightsPanel({
             </div>
           )}
 
-        </div>
-
-          {/* Insight Cards */}
+          {/* Insight Cards — Hero + Card Row layout */}
           {hasData && (
             <>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '24px',
-                marginTop: '140px',
-              }}>
-                {data.insights.map((insight) => (
+              {/* Hero card — first insight */}
+              {data.insights.length > 0 && (
+                <div>
                   <InsightCard
-                    key={insight.id}
-                    insight={insight}
+                    key={data.insights[0].id}
+                    insight={data.insights[0]}
                     onAnalyze={onAnalyze}
+                    variant="hero"
                   />
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Secondary cards row */}
+              {data.insights.length > 1 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.min(data.insights.length - 1, 3)}, 1fr)`,
+                  gap: '16px',
+                  marginTop: '32px',
+                }}>
+                  {data.insights.slice(1, 4).map((insight) => (
+                    <InsightCard
+                      key={insight.id}
+                      insight={insight}
+                      onAnalyze={onAnalyze}
+                      variant="compact"
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -840,7 +676,87 @@ export function InsightsPanel({
               <p style={{ fontSize: '13px', margin: 0 }}>Try refreshing to run a new analysis.</p>
             </div>
           )}
-        </>)}
+        </div>
+        {/* Bottom spacer for fixed input */}
+        <div style={{ height: '120px' }} />
+      </div>
+
+      {/* Fixed bottom chat input */}
+      <div style={{
+        position: 'absolute',
+        bottom: '12px',
+        left: '28px',
+        right: '28px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            borderRadius: '36px',
+            padding: '16px 24px',
+            border: 'none',
+            outline: '0.5px solid rgba(0, 0, 0, 0.10)',
+            outlineOffset: '0px',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)',
+            maxWidth: '800px',
+            width: '100%',
+          }}
+        >
+          <textarea
+            ref={inputRef}
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={PLACEHOLDER_EXAMPLES[placeholderIdx]}
+            rows={1}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              fontSize: '16px',
+              lineHeight: '1.5',
+              resize: 'none',
+              fontFamily: 'Inter, sans-serif',
+              marginLeft: '8px',
+            }}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!chatInput.trim() || isChatLoading}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: chatInput.trim() && !isChatLoading ? 'pointer' : 'default',
+              padding: '4px',
+              color: chatInput.trim() && !isChatLoading ? 'var(--accent, #ED7E22)' : 'var(--text-tertiary)',
+              opacity: chatInput.trim() && !isChatLoading ? 1 : 0.4,
+              flexShrink: 0,
+              transition: 'opacity 0.15s ease',
+            }}
+            aria-label="Send message"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+        <p style={{
+          fontSize: '12px',
+          color: 'var(--text-tertiary)',
+          opacity: 0.5,
+          textAlign: 'center',
+          margin: '8px 0 0',
+        }}>Briefing is AI generated. Double check findings.</p>
       </div>
 
       {/* CSS animations */}

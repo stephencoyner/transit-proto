@@ -72,6 +72,35 @@ function buildSegmentGeoJSON(
   return { type: 'FeatureCollection', features };
 }
 
+/** Snap a point [lon, lat] to the nearest point on a LineString coordinate array */
+function snapToLine(point: [number, number], line: number[][]): [number, number] {
+  let minDist = Infinity;
+  let closest: [number, number] = point;
+
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i];
+    const b = line[i + 1];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const lenSq = dx * dx + dy * dy;
+
+    let t = 0;
+    if (lenSq > 0) {
+      t = Math.max(0, Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / lenSq));
+    }
+
+    const proj: [number, number] = [a[0] + t * dx, a[1] + t * dy];
+    const distSq = (point[0] - proj[0]) ** 2 + (point[1] - proj[1]) ** 2;
+
+    if (distSq < minDist) {
+      minDist = distSq;
+      closest = proj;
+    }
+  }
+
+  return closest;
+}
+
 export interface MapThumbnailCaptureHandle {
   captureRoute: (insight: InsightCard, shapes: RouteFeature[]) => Promise<string | null>;
 }
@@ -84,6 +113,23 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
     const handleMapLoad = useCallback(() => {
       const map = mapRef.current?.getMap();
       if (map) {
+        // Disable all labels from the basemap standard import
+        try {
+          map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+          map.setConfigProperty('basemap', 'showTransitLabels', false);
+          map.setConfigProperty('basemap', 'showPlaceLabels', false);
+          map.setConfigProperty('basemap', 'showRoadLabels', false);
+        } catch {
+          // Fallback: hide all symbol layers directly
+          const style = map.getStyle();
+          if (style?.layers) {
+            for (const layer of style.layers) {
+              if (layer.type === 'symbol') {
+                try { map.setLayoutProperty(layer.id, 'visibility', 'none'); } catch {}
+              }
+            }
+          }
+        }
         const onIdle = () => { map.off('idle', onIdle); setIsReady(true); };
         map.on('idle', onIdle);
       } else {
@@ -110,7 +156,151 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
 
           const { start, end } = insight.dateRange;
           const isComparison = insight.category === 'decline' || insight.category === 'comparison';
+          const isBoardingViz = insight.category === 'anomaly' || (insight.category === 'trend' && insight.severity === 'positive');
 
+          // ─── BOARDING VISUALIZATION MODE ───
+          if (isBoardingViz) {
+            // Fetch stop-level boarding data for one direction only
+            const stopsRes = await fetch(`/api/ridership/route/${fullRouteId}/stops?startDate=${start}&endDate=${end}&direction=0`);
+            if (stopsRes.ok) {
+              const stopsData = await stopsRes.json() as {
+                stops: Array<{ stopId: string; stopName: string; lat: number; lon: number; totalBoardings: number; avgDailyBoardings: number }>;
+                maxBoardings: number;
+              };
+
+              if (stopsData.stops.length > 0) {
+                // Use shape geometry
+                const allPaths = flattenPaths(allRouteShapes);
+                const shapeCoords = allPaths[0]?.path || [];
+
+                // Draw route as thin neutral line
+                const routeGeojson: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [{ type: 'Feature', properties: { color: '#A8A39C' }, geometry: { type: 'LineString', coordinates: shapeCoords } }],
+                };
+
+                const sourceId = 'thumb-route';
+                const layerId = 'thumb-route-line';
+                // Remove old route layer to ensure correct line-width
+                if (map.getLayer(layerId)) map.removeLayer(layerId);
+                if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+                map.addSource(sourceId, { type: 'geojson', data: routeGeojson });
+                map.addLayer({
+                  id: layerId, type: 'line', source: sourceId,
+                  paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 1 },
+                  layout: { 'line-cap': 'round', 'line-join': 'round' },
+                });
+
+                // Build graduated circle features for stops
+                const maxB = stopsData.maxBoardings || 1;
+                const stopFeatures: GeoJSON.Feature[] = stopsData.stops
+                  .filter(s => s.lat && s.lon && s.totalBoardings > 0)
+                  .map(s => {
+                    const snapped = snapToLine([s.lon, s.lat], shapeCoords);
+                    return {
+                      type: 'Feature' as const,
+                      properties: { boardings: s.totalBoardings },
+                      geometry: { type: 'Point' as const, coordinates: snapped },
+                    };
+                  });
+
+                const stopsGeojson: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: stopFeatures };
+
+                const stopsSourceId = 'thumb-stops';
+                const borderLayerId = 'thumb-stops-border';
+                const centerLayerId = 'thumb-stops-center';
+                // Remove old stop layers/source to ensure correct paint properties
+                if (map.getLayer('thumb-stops-dots')) map.removeLayer('thumb-stops-dots');
+                if (map.getLayer(borderLayerId)) map.removeLayer(borderLayerId);
+                if (map.getLayer(centerLayerId)) map.removeLayer(centerLayerId);
+                if (map.getSource(stopsSourceId)) map.removeSource(stopsSourceId);
+
+                map.addSource(stopsSourceId, { type: 'geojson', data: stopsGeojson });
+                // Outer ring — colored by boarding value, fixed size
+                map.addLayer({
+                  id: borderLayerId, type: 'circle', source: stopsSourceId,
+                  paint: {
+                    'circle-radius': 14,
+                    'circle-color': ['interpolate', ['linear'], ['get', 'boardings'],
+                      0, '#ED7E22',
+                      maxB * 0.25, '#E8683A',
+                      maxB * 0.5, '#D94E52',
+                      maxB * 0.75, '#B13C8C',
+                      maxB, '#7B2D8E',
+                    ],
+                    'circle-opacity': 0.85,
+                  },
+                });
+                // Inner center — white dot
+                map.addLayer({
+                  id: centerLayerId, type: 'circle', source: stopsSourceId,
+                  paint: {
+                    'circle-radius': 5,
+                    'circle-color': '#FFFFFF',
+                    'circle-opacity': 1,
+                  },
+                });
+
+                // Zoom to show the top 6 highest-boarding stops for good visual density
+                const topStops = [...stopsData.stops]
+                  .filter(s => s.lat && s.lon)
+                  .sort((a, b) => b.totalBoardings - a.totalBoardings)
+                  .slice(0, 6);
+
+                if (topStops.length > 0) {
+                  const lons = topStops.map(s => s.lon);
+                  const lats = topStops.map(s => s.lat);
+                  const stopBounds: [[number, number], [number, number]] = [
+                    [Math.min(...lons), Math.min(...lats)],
+                    [Math.max(...lons), Math.max(...lats)],
+                  ];
+                  map.fitBounds(stopBounds, { padding: 20, maxZoom: 40, minZoom: 15, animate: false });
+                } else {
+                  const routeBounds = computePathBounds(shapeCoords);
+                  if (routeBounds) map.fitBounds(routeBounds, { padding: 10, maxZoom: 40, minZoom: 16, animate: false });
+                }
+
+                // Wait for idle, hide labels, wait again, capture
+                await new Promise<void>((resolve) => {
+                  const onIdle = () => { map.off('idle', onIdle); resolve(); };
+                  map.on('idle', onIdle);
+                  setTimeout(() => { map.off('idle', onIdle); resolve(); }, 3000);
+                });
+
+                const allLayers = map.getStyle()?.layers || [];
+                const hiddenIds: string[] = [];
+                for (const layer of allLayers) {
+                  if (layer.type === 'symbol') {
+                    try { map.setLayoutProperty(layer.id, 'visibility', 'none'); hiddenIds.push(layer.id); } catch {}
+                  }
+                }
+
+                await new Promise<void>((resolve) => {
+                  const onIdle = () => { map.off('idle', onIdle); resolve(); };
+                  map.on('idle', onIdle);
+                  setTimeout(() => { map.off('idle', onIdle); resolve(); }, 1000);
+                });
+
+                const mapCanvas = map.getCanvas();
+                const compositeCanvas = document.createElement('canvas');
+                compositeCanvas.width = mapCanvas.width;
+                compositeCanvas.height = mapCanvas.height;
+                const ctx = compositeCanvas.getContext('2d');
+                if (!ctx) return null;
+                ctx.drawImage(mapCanvas, 0, 0);
+
+                for (const id of hiddenIds) {
+                  try { map.setLayoutProperty(id, 'visibility', 'visible'); } catch {}
+                }
+
+                return compositeCanvas.toDataURL('image/jpeg', 0.9);
+              }
+            }
+            // Fall through to segment visualization if boarding data fails
+          }
+
+          // ─── SEGMENT LOAD VISUALIZATION MODE ───
           // Fetch segments for both directions and pick the one that best shows the insight
           const [resDir0, resDir1] = await Promise.all([
             fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${start}&endDate=${end}&direction=0`),
@@ -178,24 +368,59 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
             const segMin = Math.min(...maxLoads);
             const segMax = Math.max(...maxLoads);
 
-            if (isComparison && insight.walkthrough?.length) {
-              const compStep = insight.walkthrough.find(s => s.filters.comparisonMode);
-              if (compStep?.filters.comparisonStartDate && compStep?.filters.comparisonEndDate) {
-                // Fetch baseline for same direction
+            // Build percentile rank map for guaranteed color variety
+            const sortedByLoad = [...loadSegments].sort((a, b) => a.maxLoad - b.maxLoad);
+            const percentileMap = new Map<string, number>();
+            sortedByLoad.forEach((seg, i) => {
+              const percentile = sortedByLoad.length > 1 ? i / (sortedByLoad.length - 1) : 0.5;
+              percentileMap.set(`${seg.fromStopId}-${seg.toStopId}`, percentile);
+            });
+
+            if (isComparison) {
+              // Find comparison dates from walkthrough, or auto-split the date range
+              let compStart: string | undefined;
+              let compEnd: string | undefined;
+
+              if (insight.walkthrough?.length) {
+                const compStep = insight.walkthrough.find(s => s.filters.comparisonMode);
+                compStart = compStep?.filters.comparisonStartDate;
+                compEnd = compStep?.filters.comparisonEndDate;
+              }
+
+              // Fallback: split date range — first half = baseline, second half = current
+              if (!compStart || !compEnd) {
+                const startMs = new Date(start).getTime();
+                const endMs = new Date(end).getTime();
+                const midMs = startMs + (endMs - startMs) / 2;
+                const midDate = new Date(midMs);
+                compStart = start;
+                compEnd = midDate.toISOString().slice(0, 10);
+              }
+
+              if (compStart && compEnd) {
                 const bestDir = bestSegData === dir0Data ? '0' : '1';
-                const baseRes = await fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${compStep.filters.comparisonStartDate}&endDate=${compStep.filters.comparisonEndDate}&direction=${bestDir}`);
-                if (baseRes.ok) {
+                // Fetch baseline (earlier period)
+                const baseRes = await fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${compStart}&endDate=${compEnd}&direction=${bestDir}`);
+                // Fetch current period (after baseline end to insight end)
+                const currentStart = new Date(new Date(compEnd).getTime() + 86400000).toISOString().slice(0, 10);
+                const currentRes = await fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${currentStart}&endDate=${end}&direction=${bestDir}`);
+
+                if (baseRes.ok && currentRes.ok) {
                   const baseData: RouteSegmentsResponse = await baseRes.json();
+                  const currentData: RouteSegmentsResponse = await currentRes.json();
                   const baselineMap = new Map<string, number>();
                   for (const seg of baseData.segments) {
                     baselineMap.set(`${seg.fromStopId}-${seg.toStopId}`, seg.avgLoad);
                   }
                   let minDiff = 0, maxDiff = 0;
                   const pctChanges = new Map<string, number>();
-                  for (const seg of bestSegData.segments) {
+                  const compareSegs = currentData.segments.length > 0 ? currentData.segments : bestSegData.segments;
+                  // For decline insights, flip sign so declining = red (negative)
+                  const sign = insight.category === 'decline' ? -1 : 1;
+                  for (const seg of compareSegs) {
                     const key = `${seg.fromStopId}-${seg.toStopId}`;
                     const baseline = baselineMap.get(key);
-                    const pct = baseline && baseline > 0 ? ((seg.avgLoad - baseline) / baseline) * 100 : 0;
+                    const pct = baseline && baseline > 0 ? sign * ((seg.avgLoad - baseline) / baseline) * 100 : 0;
                     pctChanges.set(key, pct);
                     minDiff = Math.min(minDiff, pct);
                     maxDiff = Math.max(maxDiff, pct);
@@ -205,19 +430,18 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
                     return rgbToHex(getComparisonColorRGB(pct, minDiff, maxDiff));
                   });
                 } else {
-                  geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) =>
-                    rgbToHex(valueToColor(seg.maxLoad, segMin, segMax))
-                  );
+                  geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) => {
+                    const p = percentileMap.get(`${seg.fromStopId}-${seg.toStopId}`) ?? 0.5;
+                    return rgbToHex(valueToColor(p, 0, 1));
+                  });
                 }
-              } else {
-                geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) =>
-                  rgbToHex(valueToColor(seg.maxLoad, segMin, segMax))
-                );
               }
             } else {
-              geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) =>
-                rgbToHex(valueToColor(seg.maxLoad, bestSegData!.minLoad, bestSegData!.maxLoad))
-              );
+              // Use percentile-based coloring for full color spread
+              geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) => {
+                const pct = percentileMap.get(`${seg.fromStopId}-${seg.toStopId}`) ?? 0.5;
+                return rgbToHex(valueToColor(pct, 0, 1));
+              });
             }
           } else {
             // Fallback: single-color route
@@ -227,13 +451,24 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
             };
           }
 
-          // Zoom to the most interesting 3-5 segments
+          // Zoom to a contiguous run of 5 segments centered on the hottest one
+          // This shows color variety since adjacent segments have different loads
           if (loadSegments.length > 5) {
-            const sorted = [...loadSegments].sort((a, b) => b.maxLoad - a.maxLoad);
-            const hotSegments = sorted.slice(0, 5);
-            const hotBounds = segmentBounds(hotSegments);
-            if (hotBounds) {
-              bounds = hotBounds;
+            // Find the index of the hottest segment in the original order
+            let hotIdx = 0;
+            let hotMax = -Infinity;
+            for (let i = 0; i < loadSegments.length; i++) {
+              if (loadSegments[i].maxLoad > hotMax) {
+                hotMax = loadSegments[i].maxLoad;
+                hotIdx = i;
+              }
+            }
+            // Take 5 contiguous segments centered on the hottest
+            const startIdx = Math.max(0, Math.min(hotIdx - 2, loadSegments.length - 5));
+            const windowSegments = loadSegments.slice(startIdx, startIdx + 5);
+            const windowBounds = segmentBounds(windowSegments);
+            if (windowBounds) {
+              bounds = windowBounds;
             }
           }
 
@@ -252,25 +487,25 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
           // Add or update source and layer
           const sourceId = 'thumb-route';
           const layerId = 'thumb-route-line';
-          if (map.getSource(sourceId)) {
-            (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
-          } else {
-            map.addSource(sourceId, { type: 'geojson', data: geojson });
-            map.addLayer({
-              id: layerId,
-              type: 'line',
-              source: sourceId,
-              paint: {
-                'line-color': ['get', 'color'],
-                'line-width': 6,
-                'line-opacity': 0.9,
-              },
-              layout: {
-                'line-cap': 'round',
-                'line-join': 'round',
-              },
-            });
-          }
+          // Remove old route layer to ensure correct paint properties
+          if (map.getLayer(layerId)) map.removeLayer(layerId);
+          if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+          map.addSource(sourceId, { type: 'geojson', data: geojson });
+          map.addLayer({
+            id: layerId,
+            type: 'line',
+            source: sourceId,
+            paint: {
+              'line-color': ['get', 'color'],
+              'line-width': 12,
+              'line-opacity': 1,
+            },
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+            },
+          });
 
           // Add stop dots layer from segment endpoints
           if (loadSegments.length > 0) {
@@ -282,50 +517,73 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
             for (const seg of loadSegments) {
               if (!seen.has(seg.fromStopId)) {
                 seen.add(seg.fromStopId);
+                const snapped = snapToLine([seg.fromLon, seg.fromLat], shapeCoords);
                 stopPoints.features.push({
                   type: 'Feature',
                   properties: {},
-                  geometry: { type: 'Point', coordinates: [seg.fromLon, seg.fromLat] },
+                  geometry: { type: 'Point', coordinates: snapped },
                 });
               }
               if (!seen.has(seg.toStopId)) {
                 seen.add(seg.toStopId);
+                const snapped = snapToLine([seg.toLon, seg.toLat], shapeCoords);
                 stopPoints.features.push({
                   type: 'Feature',
                   properties: {},
-                  geometry: { type: 'Point', coordinates: [seg.toLon, seg.toLat] },
+                  geometry: { type: 'Point', coordinates: snapped },
                 });
               }
             }
 
             const stopsSourceId = 'thumb-stops';
             const stopsLayerId = 'thumb-stops-dots';
-            if (map.getSource(stopsSourceId)) {
-              (map.getSource(stopsSourceId) as mapboxgl.GeoJSONSource).setData(stopPoints);
-            } else {
-              map.addSource(stopsSourceId, { type: 'geojson', data: stopPoints });
-              map.addLayer({
-                id: stopsLayerId,
-                type: 'circle',
-                source: stopsSourceId,
-                paint: {
-                  'circle-radius': 3,
-                  'circle-color': '#3D2817',
-                  'circle-stroke-width': 1,
-                  'circle-stroke-color': '#FFFFFF',
-                },
-              });
-            }
+            // Remove old stop layers to ensure correct paint properties
+            if (map.getLayer(stopsLayerId)) map.removeLayer(stopsLayerId);
+            if (map.getLayer('thumb-stops-border')) map.removeLayer('thumb-stops-border');
+            if (map.getLayer('thumb-stops-center')) map.removeLayer('thumb-stops-center');
+            if (map.getSource(stopsSourceId)) map.removeSource(stopsSourceId);
+
+            map.addSource(stopsSourceId, { type: 'geojson', data: stopPoints });
+            map.addLayer({
+              id: stopsLayerId,
+              type: 'circle',
+              source: stopsSourceId,
+              paint: {
+                'circle-radius': 5,
+                'circle-color': '#3D2817',
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#FFFFFF',
+              },
+            });
           }
 
           // Fit to bounds
-          map.fitBounds(bounds, { padding: 40, maxZoom: 40, animate: false });
+          map.fitBounds(bounds, { padding: 10, maxZoom: 40, minZoom: 16, animate: false });
 
-          // Wait for map idle
+          // Wait for map to finish rendering tiles
           await new Promise<void>((resolve) => {
             const onIdle = () => { map.off('idle', onIdle); resolve(); };
             map.on('idle', onIdle);
             setTimeout(() => { map.off('idle', onIdle); resolve(); }, 3000);
+          });
+
+          // Now hide ALL symbol layers (after tiles have loaded)
+          const allLayers = map.getStyle()?.layers || [];
+          const hiddenIds: string[] = [];
+          for (const layer of allLayers) {
+            if (layer.type === 'symbol') {
+              try {
+                map.setLayoutProperty(layer.id, 'visibility', 'none');
+                hiddenIds.push(layer.id);
+              } catch {}
+            }
+          }
+
+          // Wait for another idle so the hidden labels are actually gone from the canvas
+          await new Promise<void>((resolve) => {
+            const onIdle = () => { map.off('idle', onIdle); resolve(); };
+            map.on('idle', onIdle);
+            setTimeout(() => { map.off('idle', onIdle); resolve(); }, 1000);
           });
 
           // Capture
@@ -336,6 +594,11 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
           const ctx = compositeCanvas.getContext('2d');
           if (!ctx) return null;
           ctx.drawImage(mapCanvas, 0, 0);
+
+          // Restore labels for next capture
+          for (const id of hiddenIds) {
+            try { map.setLayoutProperty(id, 'visibility', 'visible'); } catch {}
+          }
 
           return compositeCanvas.toDataURL('image/jpeg', 0.9);
         } catch (err) {

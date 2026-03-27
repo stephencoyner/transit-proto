@@ -6123,7 +6123,7 @@ export default function MapCanvas() {
                             height: '40px',
                             borderRadius: 'var(--radius-large)',
                             backgroundColor: selectedRouteTab === view
-                              ? 'var(--btn-secondary)'
+                              ? 'rgba(237, 126, 34, 0.12)'
                               : (hoveredViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
                             color: 'var(--text-secondary)',
                             border: selectedRouteTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
@@ -6263,7 +6263,7 @@ export default function MapCanvas() {
                         height: '40px',
                         borderRadius: 'var(--radius-large)',
                         backgroundColor: selectedStopTab === view
-                          ? 'var(--btn-secondary)'
+                          ? 'rgba(237, 126, 34, 0.12)'
                           : (hoveredStopViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
                         color: 'var(--text-secondary)',
                         border: selectedStopTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',

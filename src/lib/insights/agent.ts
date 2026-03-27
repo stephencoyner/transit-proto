@@ -38,9 +38,11 @@ IMPORTANT GUIDELINES:
 - Generate exactly 1 insight — the single most important finding
 - Each insight should tell a story: what's happening, why it might be happening, and what to analyze further
 
-When you've gathered enough data, respond with your final insights as a JSON array. Your response MUST be valid JSON matching this exact schema:
+When you've gathered enough data, respond with your final insights as a JSON object. Your response MUST be valid JSON matching this exact schema:
 
-[
+{
+  "summary": "2-3 sentence greeting and summary of what you found. Start with a friendly greeting, then briefly describe the key findings across the system. Example: 'Good morning! I looked across all 10 routes and found some capacity concerns on Route 62 during PM peak, along with declining weekend ridership on Route 13. Overall system ridership is trending up 4% since July.'",
+  "insights": [
   {
     "id": "unique-id-string",
     "category": "crowding|decline|anomaly|trend|comparison|amenity",
@@ -65,7 +67,8 @@ When you've gathered enough data, respond with your final insights as a JSON arr
     ],
     "walkthrough": [...]  // ONLY for your #1 most important insight — see below
   }
-]
+  ]
+}
 
 WALKTHROUGH STEPS (required for your TOP insight only):
 Your most important insight MUST include a "walkthrough" array of 3-5 steps that guide the user through the analysis. Each step is an object:
@@ -128,6 +131,7 @@ Return ONLY the JSON array, no markdown fencing, no extra text.`;
 export interface AgentResult {
   insights: InsightCard[];
   toolCallCount: number;
+  summary?: string;
 }
 
 export async function runInsightsAgent(): Promise<AgentResult> {
@@ -196,8 +200,8 @@ export async function runInsightsAgent(): Promise<AgentResult> {
     ) as { type: 'text'; text: string } | undefined;
 
     if (textBlock) {
-      const insights = parseInsightsResponse(textBlock.text);
-      return { insights, toolCallCount };
+      const parsed = parseInsightsResponse(textBlock.text);
+      return { insights: parsed.insights, summary: parsed.summary, toolCallCount };
     }
 
     // No text block found, shouldn't happen
@@ -207,7 +211,7 @@ export async function runInsightsAgent(): Promise<AgentResult> {
   throw new Error('Agent exceeded maximum iterations without producing insights');
 }
 
-function parseInsightsResponse(text: string): InsightCard[] {
+function parseInsightsResponse(text: string): { insights: InsightCard[]; summary?: string } {
   let jsonStr = text.trim();
 
   // Try markdown fencing first
@@ -216,20 +220,32 @@ function parseInsightsResponse(text: string): InsightCard[] {
     jsonStr = fenceMatch[1].trim();
   }
 
-  // If it doesn't start with '[', try to find a JSON array in the text
-  if (!jsonStr.startsWith('[')) {
+  // If it doesn't start with '[' or '{', try to find JSON in the text
+  if (!jsonStr.startsWith('[') && !jsonStr.startsWith('{')) {
+    const objMatch = jsonStr.match(/\{[\s\S]*\}/);
     const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
+    if (objMatch) {
+      jsonStr = objMatch[0];
+    } else if (arrayMatch) {
       jsonStr = arrayMatch[0];
     }
   }
 
   const parsed = JSON.parse(jsonStr);
-  if (!Array.isArray(parsed)) {
-    throw new Error('Expected JSON array of insights');
+
+  // Support both object format { summary, insights: [...] } and legacy array format [...]
+  let summary: string | undefined;
+  let insightsArray: unknown[];
+  if (Array.isArray(parsed)) {
+    insightsArray = parsed;
+  } else if (parsed && Array.isArray(parsed.insights)) {
+    insightsArray = parsed.insights;
+    summary = parsed.summary as string | undefined;
+  } else {
+    throw new Error('Expected JSON object with insights array or a JSON array');
   }
 
-  return parsed.map((item: Record<string, unknown>, index: number) => ({
+  const insights = insightsArray.map((item: Record<string, unknown>, index: number) => ({
     id: (item.id as string) || `insight-${index}`,
     category: (item.category as InsightCard['category']) || 'trend',
     severity: (item.severity as InsightCard['severity']) || 'info',
@@ -243,6 +259,7 @@ function parseInsightsResponse(text: string): InsightCard[] {
     sparklineData: item.sparklineData as InsightCard['sparklineData'],
     walkthrough: item.walkthrough as InsightCard['walkthrough'],
   }));
+  return { insights, summary };
 }
 
 export function buildInsightsResponse(result: AgentResult): InsightsResponse {
@@ -251,5 +268,6 @@ export function buildInsightsResponse(result: AgentResult): InsightsResponse {
     dateRange: { start: '2025-03-21', end: '2025-09-30' },
     insights: result.insights,
     toolCallCount: result.toolCallCount,
+    summary: result.summary,
   };
 }
