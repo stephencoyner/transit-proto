@@ -363,6 +363,7 @@ interface UseInsightsResult {
   error: Error | null;
   generate: () => void;
   refetch: () => void;
+  updateInsightImage: (insightId: string, previewImage: string) => void;
 }
 
 export function useInsights(): UseInsightsResult {
