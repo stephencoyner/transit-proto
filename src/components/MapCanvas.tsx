@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
+import { accent, accent2, accentShimmer, ACCENT_UI_TEXT } from '@/lib/uiAccent';
 import { createPortal } from 'react-dom';
 import MapboxMap, { MapRef } from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
@@ -700,6 +701,7 @@ export default function MapCanvas() {
   const [isRouteFilterButtonHovered, setIsRouteFilterButtonHovered] = useState(false);
   const [isRouteSortButtonHovered, setIsRouteSortButtonHovered] = useState(false);
   const [isRoutesListScrolled, setIsRoutesListScrolled] = useState(false);
+  const [isSystemContentScrolled, setIsSystemContentScrolled] = useState(false);
   const routeFilterButtonRef = useRef<HTMLButtonElement>(null);
   const routeSortButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -3785,7 +3787,7 @@ export default function MapCanvas() {
         summer: 'Summer',
         fall: 'Fall'
       };
-      return `${seasonLabels[appliedSeason.season]} Service ${appliedSeason.year}`;
+      return `${seasonLabels[appliedSeason.season]} ${appliedSeason.year}`;
     }
     if (appliedStartDate && appliedEndDate) {
       return formatDateRange(appliedStartDate, appliedEndDate);
@@ -3836,7 +3838,7 @@ export default function MapCanvas() {
       }
     }
 
-    return `${daysText} • ${timeText}`;
+    return `${daysText} · ${timeText}`;
   };
 
   // Calculate comparison date range based on preset
@@ -4188,7 +4190,7 @@ export default function MapCanvas() {
         summer: 'Summer',
         fall: 'Fall'
       };
-      return `${seasonLabels[stagedSeason2.season]} Service ${stagedSeason2.year}`;
+      return `${seasonLabels[stagedSeason2.season]} ${stagedSeason2.year}`;
     }
     if (comparisonDateRange.start && comparisonDateRange.end) {
       return formatDateRange(comparisonDateRange.start, comparisonDateRange.end);
@@ -4227,7 +4229,7 @@ export default function MapCanvas() {
       }
     }
 
-    return `${daysText} • ${timeText}`;
+    return `${daysText} · ${timeText}`;
   };
 
   // When trip filter menu opens, capture current applied state as both original and staged
@@ -5620,10 +5622,10 @@ export default function MapCanvas() {
         }}>
         {/* Filter Section */}
         <div style={{
-          padding: '22px 16px 24px 16px',
+          padding: '20px 16px 24px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px',
+          gap: '18px',
           width: '256px',
           minWidth: '256px',
           height: '100%',
@@ -5631,12 +5633,34 @@ export default function MapCanvas() {
           opacity: isTabContentHidden ? 0 : 1,
           transition: 'opacity 150ms ease',
         }}>
+          {/* Filters heading */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="data-small" style={{ color: 'var(--text-secondary)' }}>Filters</div>
+            <button
+              type="button"
+              onClick={() => { hasUserClosedFiltersRef.current = true; setIsFiltersPanelOpen(false); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="currentColor">
+                <path d="M660-368v-224q0-14-12-19t-22 5l-98 98q-12 12-12 28t12 28l98 98q10 10 22 5t12-19ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>
+              </svg>
+            </button>
+          </div>
+
           {/* Date-time Section */}
           <div>
             {!comparisonMode ? (
               <>
                 {/* Normal Mode */}
-                <label className="label text-text-tertiary block mb-1">Date-time</label>
 
                 {/* Date Range Filter */}
                 <div ref={dateRef} style={{ marginBottom: '8px', position: 'relative' }}>
@@ -6026,7 +6050,6 @@ export default function MapCanvas() {
 
           {/* Metric Section */}
           <div>
-            <label className="label text-text-tertiary block mb-1">Metric</label>
             <Select
               value={selectedMetric}
               onChange={(value) => {
@@ -6077,16 +6100,9 @@ export default function MapCanvas() {
                 {/* Route Controls Section - Only show when experimental mode is on */}
                 {experimentalDetailViewNav && (
                   <div>
-                    <div style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '14px',
-                      fontWeight: routeControlsTitleSemibold ? 600 : 400,
-                      color: routeControlsTitleSemibold ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                      marginBottom: '16px'
-                    }}>
+                    <div className="data-small" style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
                       Route Controls
                     </div>
-                    <label className="label text-text-tertiary block mb-1">Analysis</label>
                     <div style={{
                       display: 'flex',
                       gap: '8px',
@@ -6123,9 +6139,9 @@ export default function MapCanvas() {
                             height: '40px',
                             borderRadius: 'var(--radius-large)',
                             backgroundColor: selectedRouteTab === view
-                              ? 'rgba(139, 111, 190, 0.12)'
+                              ? 'var(--accent-ui-subtle)'
                               : (hoveredViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
-                            color: selectedRouteTab === view ? '#3D2E6B' : 'var(--text-secondary)',
+                            color: selectedRouteTab === view ? 'var(--accent-ui-text)' : 'var(--text-secondary)',
                             border: selectedRouteTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
                             cursor: 'pointer',
                             transition: 'background-color 0.2s ease, border-color 0.2s ease',
@@ -6141,7 +6157,6 @@ export default function MapCanvas() {
 
                 {/* Route Filter */}
                 <div>
-                  <label className="label text-text-tertiary block mb-1">Route</label>
                   <Select
                     value={selectedRouteId}
                     onChange={(value) => {
@@ -6165,7 +6180,6 @@ export default function MapCanvas() {
                 {/* Pattern Filter - Hidden when trip is selected */}
                 {!selectedTrip && (
                   <div>
-                    <label className="label text-text-tertiary block mb-1">Pattern</label>
                     <Select
                       value={selectedPattern || 'all'}
                       onChange={(value) => setSelectedPattern(value === 'all' ? null : value)}
@@ -6236,16 +6250,9 @@ export default function MapCanvas() {
 
               {/* Stop Controls Section */}
               <div>
-                <div style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '14px',
-                  fontWeight: routeControlsTitleSemibold ? 600 : 400,
-                  color: routeControlsTitleSemibold ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                  marginBottom: '16px'
-                }}>
+                <div className="data-small" style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
                   Stop Controls
                 </div>
-                <label className="label text-text-tertiary block mb-1">Analysis</label>
                 <div style={{
                   display: 'flex',
                   gap: '8px',
@@ -6263,9 +6270,9 @@ export default function MapCanvas() {
                         height: '40px',
                         borderRadius: 'var(--radius-large)',
                         backgroundColor: selectedStopTab === view
-                          ? 'rgba(139, 111, 190, 0.12)'
+                          ? 'var(--accent-ui-subtle)'
                           : (hoveredStopViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
-                        color: selectedStopTab === view ? '#3D2E6B' : 'var(--text-secondary)',
+                        color: selectedStopTab === view ? 'var(--accent-ui-text)' : 'var(--text-secondary)',
                         border: selectedStopTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
                         cursor: 'pointer',
                         transition: 'background-color 0.2s ease, border-color 0.2s ease',
@@ -6280,7 +6287,6 @@ export default function MapCanvas() {
 
               {/* Stop Filter */}
               <div>
-                <label className="label text-text-tertiary block mb-1">Stop</label>
                 <SearchableSelect
                   value={selectedStopId}
                   onChange={(value) => {
@@ -6299,34 +6305,6 @@ export default function MapCanvas() {
             </>
           )}
 
-          {/* Close Filters Panel Button - only in AI mode (non-AI mode has hamburger toggle) */}
-          {aiMode && (
-            <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
-              <button
-                onClick={() => { hasUserClosedFiltersRef.current = true; setIsFiltersPanelOpen(false); }}
-                style={{
-                  width: '100%',
-                  background: 'none',
-                  border: 'var(--border-width) solid var(--border-default)',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: 'var(--text-tertiary)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                Close Filters
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -8936,49 +8914,34 @@ export default function MapCanvas() {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {/* Pinned Date Bar - shown when AI mode is on, filters panel is closed, and not in insights view */}
-        {aiMode && !isFiltersPanelOpen && !isInsightsView && !isStoryPanelVisible && (
-          <div
+        {/* Open Filters Pill - shown when filters panel is closed and not in insights/story view */}
+        {!isFiltersPanelOpen && !isInsightsView && !isStoryPanelVisible && (
+          <button
+            onClick={() => setIsFiltersPanelOpen(true)}
             style={{
               flexShrink: 0,
-              padding: '12px 16px',
-              margin: '0 -16px',
+              width: '100%',
+              height: '36px',
+              marginTop: '12px',
+              marginBottom: '4px',
+              backgroundColor: 'var(--accent-ui-subtle)',
+              color: 'var(--accent-ui-text)',
+              border: 'none',
+              borderRadius: '100px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
               display: 'flex',
-              flexDirection: 'row',
               alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'var(--bg-primary)',
-              borderBottom: '0.5px solid var(--border-default)',
+              justifyContent: 'center',
+              position: 'relative',
             }}
           >
-            <button
-              onClick={() => setIsFiltersPanelOpen(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '0',
-                cursor: 'pointer',
-                color: 'var(--text-tertiary)',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-                <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-                <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
-              </svg>
-            </button>
-            <span
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {getDateFilterText()}
-            </span>
-          </div>
+            <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="currentColor" style={{ position: 'absolute', left: '16px' }}>
+              <path d="M500-592v224q0 14 12 19t22-5l98-98q12-12 12-28t-12-28l-98-98q-10-10-22-5t-12 19ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>
+            </svg>
+            {getDateFilterText()} · {getDaysFilterText()}
+          </button>
         )}
 
         {/* Content wrapper with fade transition */}
@@ -9021,7 +8984,7 @@ export default function MapCanvas() {
           />
         ) : selectedTrip ? (
           /* Trip Detail View */
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '8px' }}>
             {/* Close Button and Header */}
             <div style={{
               display: 'flex',
@@ -9094,7 +9057,7 @@ export default function MapCanvas() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: 'var(--data-small-size)',
                         fontWeight: 'var(--data-small-weight)',
-                        color: tab === 'Trips' ? '#3D2E6B' : 'var(--text-disabled)',
+                        color: tab === 'Trips' ? 'var(--accent-ui-text)' : 'var(--text-disabled)',
                         lineHeight: 'var(--data-small-line-height)',
                         transition: 'color 0.2s ease'
                       }}
@@ -9563,14 +9526,14 @@ export default function MapCanvas() {
             const amenitiesList = STOP_AMENITIES.filter(amenity => selectedStopAmenities[amenity]);
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '8px' }}>
                 {/* Back Button and Header */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   marginTop: '0px',
-                  marginBottom: '4px',
+                  marginBottom: '6px',
                   flexShrink: 0,
                   position: 'relative'
                 }}>
@@ -9579,13 +9542,13 @@ export default function MapCanvas() {
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',
-                      gap: '12px',
+                      gap: '8px',
                       color: 'var(--text-secondary)'
                     }}
                   >
                     <svg
-                      width="16"
-                      height="16"
+                      width="14"
+                      height="14"
                       viewBox="0 0 16 16"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
@@ -9619,8 +9582,9 @@ export default function MapCanvas() {
                     </svg>
                     <div
                       ref={stopNameRef}
-                      className="heading-3"
+                      className="data-small"
                       style={{
+                        color: 'var(--text-secondary)',
                         cursor: !isFiltersPanelOpen ? 'pointer' : 'default'
                       }}
                       onClick={(e) => {
@@ -9945,7 +9909,7 @@ export default function MapCanvas() {
             const LABEL_WIDTH = config.labelWidth;
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '20px', position: 'relative' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '8px', position: 'relative' }}>
                 {/* Pattern headsign - positioned in header area, centered over grid section */}
                 {selectedRouteTab === 'Grid' && currentGridPatternHeadsign && (
               <div style={{
@@ -10081,7 +10045,7 @@ export default function MapCanvas() {
               alignItems: 'center',
               justifyContent: 'space-between',
               marginTop: '0px',
-              marginBottom: '4px',
+              marginBottom: '6px',
               flexShrink: 0
             }}>
               {/* Left side: Back button and Route name */}
@@ -10089,7 +10053,7 @@ export default function MapCanvas() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
+                  gap: '8px',
                   cursor: 'pointer',
                   color: 'var(--text-secondary)'
                 }}
@@ -10101,7 +10065,7 @@ export default function MapCanvas() {
                   setSelectedRouteId(null);
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor"/>
                 </svg>
                 <div
@@ -10113,8 +10077,9 @@ export default function MapCanvas() {
                   }}
                 >
                   <div
-                    className="heading-3"
+                    className="data-small"
                     style={{
+                      color: 'var(--text-secondary)',
                       cursor: !isFiltersPanelOpen && selectedRouteId ? 'pointer' : 'default'
                     }}
                     onClick={(e) => {
@@ -10281,7 +10246,7 @@ export default function MapCanvas() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: 'var(--data-small-size)',
                         fontWeight: 'var(--data-small-weight)',
-                        color: selectedRouteTab === tab ? '#3D2E6B' : 'var(--text-disabled)',
+                        color: selectedRouteTab === tab ? 'var(--accent-ui-text)' : 'var(--text-disabled)',
                         lineHeight: 'var(--data-small-line-height)',
                         transition: 'color 0.2s ease'
                       }}
@@ -10624,7 +10589,7 @@ export default function MapCanvas() {
                                 height: 20,
                                 width: 120,
                                 borderRadius: 2,
-                                background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                background: accentShimmer(),
                                 backgroundSize: '200% 100%',
                                 animation: 'shimmer 1.5s infinite ease-in-out',
                                 opacity: 0.5
@@ -10657,7 +10622,7 @@ export default function MapCanvas() {
                                     height: 10,
                                     width: 24,
                                     borderRadius: 2,
-                                    background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                    background: accentShimmer(),
                                     backgroundSize: '200% 100%',
                                     animation: 'shimmer 1.5s infinite ease-in-out',
                                     animationDelay: `${i * 0.1}s`,
@@ -10691,7 +10656,7 @@ export default function MapCanvas() {
                                     width: 52,
                                     borderRadius: 2,
                                     flexShrink: 0,
-                                    background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                    background: accentShimmer(),
                                     backgroundSize: '200% 100%',
                                     animation: 'shimmer 1.5s infinite ease-in-out',
                                     animationDelay: `${i * 0.05}s`,
@@ -10703,7 +10668,7 @@ export default function MapCanvas() {
                                       height: '100%',
                                       width: `${width * 100}%`,
                                       borderRadius: 4,
-                                      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                      background: accentShimmer(),
                                       backgroundSize: '200% 100%',
                                       animation: 'shimmer 1.5s infinite ease-in-out',
                                       animationDelay: `${i * 0.05}s`,
@@ -10927,7 +10892,7 @@ export default function MapCanvas() {
                                               height: '12px',
                                               width: barWidth1 === 0 ? '2px' : `${barWidth1}%`,
                                               minWidth: barWidth1 === 0 ? '2px' : '3px',
-                                              backgroundColor: DATETIME_1_COLOR,
+                                              backgroundColor: accent(0.4),
                                               borderRadius: barWidth1 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}
@@ -10938,7 +10903,7 @@ export default function MapCanvas() {
                                               height: '12px',
                                               width: barWidth2 === 0 ? '2px' : `${barWidth2}%`,
                                               minWidth: barWidth2 === 0 ? '2px' : '3px',
-                                              backgroundColor: DATETIME_2_COLOR,
+                                              backgroundColor: accent2(0.4),
                                               borderRadius: barWidth2 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}
@@ -10986,7 +10951,7 @@ export default function MapCanvas() {
                                               height: '100%',
                                               width: barWidth1 === 0 ? '2px' : `${barWidth1}%`,
                                               minWidth: barWidth1 === 0 ? '2px' : '3px',
-                                              backgroundColor: 'rgba(155, 139, 180, 0.35)',
+                                              backgroundColor: accent(0.35),
                                               borderRadius: barWidth1 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}
@@ -11110,7 +11075,7 @@ export default function MapCanvas() {
                                 height: 14,
                                 width: 80,
                                 borderRadius: 4,
-                                background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                background: accentShimmer(),
                                 backgroundSize: '200% 100%',
                                 animation: 'shimmer 1.5s infinite ease-in-out',
                                 opacity: 0.5
@@ -11135,7 +11100,7 @@ export default function MapCanvas() {
                                   height: 14,
                                   width: 50,
                                   borderRadius: 4,
-                                  background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                  background: accentShimmer(),
                                   backgroundSize: '200% 100%',
                                   animation: 'shimmer 1.5s infinite ease-in-out',
                                   animationDelay: `${i * 0.05}s`,
@@ -11171,7 +11136,7 @@ export default function MapCanvas() {
                                   height: 14,
                                   width: `${100 + (rowIndex % 5) * 20}px`,
                                   borderRadius: 4,
-                                  background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                  background: accentShimmer(),
                                   backgroundSize: '200% 100%',
                                   animation: 'shimmer 1.5s infinite ease-in-out',
                                   animationDelay: `${rowIndex * 0.03}s`,
@@ -11197,7 +11162,7 @@ export default function MapCanvas() {
                                     height: 16,
                                     width: 32,
                                     borderRadius: 4,
-                                    background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                                    background: accentShimmer(),
                                     backgroundSize: '200% 100%',
                                     animation: 'shimmer 1.5s infinite ease-in-out',
                                     animationDelay: `${(rowIndex * 16 + colIndex) * 0.01}s`,
@@ -11512,7 +11477,39 @@ export default function MapCanvas() {
       })()
     ) : activeTab === 'system' ? (
           /* System View - Aggregated Charts */
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '20px', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'hidden', position: 'relative' }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              paddingTop: isFiltersPanelOpen ? '20px' : '14px',
+              paddingBottom: '14px',
+              flexShrink: 0,
+              backgroundColor: 'var(--bg-primary)',
+              borderRadius: '0 28px 0 0',
+              zIndex: 20
+            }}>
+              <div className="data-small" style={{ color: 'var(--text-secondary)' }}>Full System</div>
+            </div>
+
+            {/* Divider - only shown when scrolled */}
+            <div style={{ position: 'relative', marginLeft: '-16px', marginRight: '-16px', flexShrink: 0 }}>
+              <div style={{
+                height: '0.5px',
+                backgroundColor: 'var(--border-default)',
+                marginLeft: '16px',
+                marginRight: '16px',
+                marginTop: '4px',
+                opacity: isSystemContentScrolled ? 1 : 0,
+                transition: 'opacity 0.1s ease'
+              }} />
+            </div>
+
+            {/* Scrollable charts */}
+            <div
+              style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: '24px', marginRight: '-8px', paddingRight: '8px' }}
+              onScroll={(e) => setIsSystemContentScrolled((e.target as HTMLDivElement).scrollTop > 0)}
+            >
             {/* Charts */}
             {comparisonMode ? (
               (() => {
@@ -11576,6 +11573,7 @@ export default function MapCanvas() {
               swapped={comparisonSwapped}
               loading={isSystemLoading}
             />
+            </div>{/* end scrollable charts */}
           </div>
         ) : activeTab === 'components' ? (
           /* Components View - Showcase */

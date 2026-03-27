@@ -9,6 +9,8 @@ import {
 } from 'recharts';
 import type { InsightCard as InsightCardType, StoryChartSpec } from '@/types/insights';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { ACCENT_UI } from '@/lib/uiAccent';
+import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface StoryModePanelProps {
   insight: InsightCardType;
@@ -25,11 +27,7 @@ interface ChatMessage {
 }
 
 // Non-comparison bar color matching data panel (ByDayChart default)
-const BAR_DEFAULT_COLOR = '#9B8BB4';
-
-// Comparison colors matching data panel
-const DATETIME_1_COLOR = '#D4CABA';
-const DATETIME_2_COLOR = '#5C4939';
+const BAR_DEFAULT_COLOR = ACCENT_UI;
 
 // Card container style matching data panel charts
 const chartCardStyle: React.CSSProperties = {

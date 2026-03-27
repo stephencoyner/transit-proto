@@ -1,3 +1,5 @@
+import { accentShimmer } from '@/lib/uiAccent';
+
 interface MetricCardProps {
   value: string | number;
   title?: string;
@@ -33,7 +35,7 @@ const MetricCardSkeleton = () => (
       width: 140,
       borderRadius: 2,
       marginBottom: 'var(--space-2)',
-      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+      background: accentShimmer(),
       backgroundSize: '200% 100%',
       animation: 'metricCardShimmer 1.5s infinite ease-in-out',
       opacity: 0.6
@@ -43,7 +45,7 @@ const MetricCardSkeleton = () => (
       height: 32,
       width: 100,
       borderRadius: 4,
-      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+      background: accentShimmer(),
       backgroundSize: '200% 100%',
       animation: 'metricCardShimmer 1.5s infinite ease-in-out',
       animationDelay: '0.1s',
@@ -60,7 +62,7 @@ const ValueSkeleton = () => (
       height: 24,
       width: 80,
       borderRadius: 4,
-      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+      background: accentShimmer(),
       backgroundSize: '200% 100%',
       animation: 'metricCardShimmer 1.5s infinite ease-in-out',
       opacity: 0.6

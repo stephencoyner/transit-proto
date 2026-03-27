@@ -269,7 +269,7 @@ const NavRail: React.FC<NavRailProps> = ({
                       : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                     }
                   `}
-                  style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: isActive ? 'rgba(139, 111, 190, 0.12)' : undefined, color: isActive ? '#3D2E6B' : undefined }}
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: isActive ? 'var(--accent-ui-subtle)' : undefined, color: isActive ? 'var(--accent-ui-text)' : undefined }}
                 >
                   <item.Icon />
                 </div>
@@ -294,11 +294,11 @@ const NavRail: React.FC<NavRailProps> = ({
                     : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                   }
                 `}
-                style={{ width: '40px', height: '32px', color: isActive ? '#3D2E6B' : undefined }}
+                style={{ width: '40px', height: '32px', color: isActive ? 'var(--accent-ui-text)' : undefined }}
               >
                 <item.Icon />
               </div>
-              <span className="nav-label" style={{ color: isActive ? '#3D2E6B' : undefined }}>
+              <span className="nav-label" style={{ color: isActive ? 'var(--accent-ui-text)' : undefined }}>
                 {item.label}
               </span>
             </button>

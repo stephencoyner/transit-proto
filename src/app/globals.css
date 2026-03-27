@@ -10,6 +10,15 @@
   /* Accent Color */
   --accent: #ED7E22;
 
+  /* UI Accent — nav indicators, segmented controls, charts (change ACCENT_UI in src/lib/uiAccent.ts) */
+  --accent-ui: #8880C4;
+  --accent-ui-rgb: 136, 128, 196;
+  --accent-ui-text: #3D2E6B;
+  --accent-ui-subtle: rgba(136, 128, 196, 0.12);
+  --accent-ui-2: #C4956A;
+  --accent-ui-2-rgb: 196, 149, 106;
+  --accent-ui-2-subtle: rgba(196, 149, 106, 0.12);
+
   /* Button Colors */
   --btn-primary: #3D2817;
   --btn-secondary: #E8E0D5;

@@ -2,6 +2,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
+import { ACCENT_UI, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent, accentShimmer } from '@/lib/uiAccent';
 
 interface ChartDataPoint {
   date: string;
@@ -126,7 +127,7 @@ const ByDateChartSkeleton = () => (
       width: 60,
       borderRadius: 2,
       marginBottom: 'var(--space-4)',
-      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+      background: accentShimmer(),
       backgroundSize: '200% 100%',
       animation: 'shimmer 1.5s infinite ease-in-out',
       opacity: 0.6
@@ -139,7 +140,7 @@ const ByDateChartSkeleton = () => (
             height: 8,
             width: 24,
             borderRadius: 2,
-            background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+            background: accentShimmer(),
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.5s infinite ease-in-out',
             animationDelay: `${i * 0.1}s`,
@@ -151,15 +152,15 @@ const ByDateChartSkeleton = () => (
       <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 26px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 300 174" preserveAspectRatio="none">
         <defs>
           <linearGradient id="skeletonGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#9B8BB4" stopOpacity={0.6} />
-            <stop offset="100%" stopColor="#9B8BB4" stopOpacity={0.1} />
+            <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.6} />
+            <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.1} />
           </linearGradient>
         </defs>
         {/* Horizontal grid lines */}
-        <line x1="0" y1="0" x2="300" y2="0" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="58" x2="300" y2="58" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="116" x2="300" y2="116" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="174" x2="300" y2="174" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+        <line x1="0" y1="0" x2="300" y2="0" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="58" x2="300" y2="58" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="116" x2="300" y2="116" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="174" x2="300" y2="174" stroke={accent(0.2)} strokeWidth="0.5" />
         {/* Wave area */}
         <path
           d="M0,140 Q50,100 100,120 T200,80 T300,100 L300,174 L0,174 Z"
@@ -168,7 +169,7 @@ const ByDateChartSkeleton = () => (
         <path
           d="M0,140 Q50,100 100,120 T200,80 T300,100"
           fill="none"
-          stroke="#9B8BB4"
+          stroke={ACCENT_UI}
           strokeWidth="2"
         />
       </svg>
@@ -249,8 +250,8 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 16 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#9B8BB4" stopOpacity={0.6} />
-              <stop offset="100%" stopColor="#9B8BB4" stopOpacity={0.05} />
+              <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.6} />
+              <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.05} />
             </linearGradient>
             <linearGradient id={`${gradientId}-primary`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
@@ -261,11 +262,11 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
               <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(155, 139, 180, 0.2)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
           <XAxis
             dataKey="date"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-            axisLine={{ stroke: 'rgba(155, 139, 180, 0.2)', strokeOpacity: 0.6 }}
+            axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
             tickLine={false}
             hide
           />
@@ -288,7 +289,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
                 type="monotone"
                 dataKey="value1"
                 name="Date-time 1"
-                stroke={DATETIME_1_COLOR}
+                stroke={ACCENT_UI_ON_WHITE}
                 strokeOpacity={1}
                 strokeWidth={4}
                 fill="none"
@@ -300,7 +301,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
                 type="monotone"
                 dataKey="value2"
                 name="Date-time 2"
-                stroke={DATETIME_2_COLOR}
+                stroke={ACCENT_UI_2_ON_WHITE}
                 strokeOpacity={1}
                 strokeWidth={4}
                 fill="none"
@@ -313,7 +314,7 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#9B8BB4"
+              stroke={ACCENT_UI}
               strokeOpacity={0.4}
               strokeWidth={2}
               fill={`url(#${gradientId})`}

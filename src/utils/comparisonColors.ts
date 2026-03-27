@@ -1,8 +1,9 @@
 // Comparison Mode Color Constants
+import { ACCENT_UI, ACCENT_UI_2 } from '@/lib/uiAccent';
 
-// Date-time range indicator colors
-export const DATETIME_1_COLOR = '#D4CABA';  // tan/beige for primary range
-export const DATETIME_2_COLOR = '#5C4939';  // brown for comparison range
+// Date-time range indicator colors — driven by accent tokens in src/lib/uiAccent.ts
+export const DATETIME_1_COLOR = ACCENT_UI;
+export const DATETIME_2_COLOR = ACCENT_UI_2;
 
 // Percentage change pill colors
 export const POSITIVE_PILL_BG = '#E3F4EF';

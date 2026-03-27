@@ -1,7 +1,8 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
+import { ACCENT_UI, accent, accent2, accentShimmer } from '@/lib/uiAccent';
 
 interface DayDataPoint {
   day: string;
@@ -71,7 +72,7 @@ const ByDayChartSkeleton = () => (
       width: 50,
       borderRadius: 2,
       marginBottom: 'var(--space-4)',
-      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+      background: accentShimmer(),
       backgroundSize: '200% 100%',
       animation: 'shimmer 1.5s infinite ease-in-out',
       opacity: 0.6
@@ -84,7 +85,7 @@ const ByDayChartSkeleton = () => (
             height: 8,
             width: 24,
             borderRadius: 2,
-            background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+            background: accentShimmer(),
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.5s infinite ease-in-out',
             animationDelay: `${i * 0.1}s`,
@@ -95,11 +96,11 @@ const ByDayChartSkeleton = () => (
       {/* Chart area with vertical bars */}
       <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 40px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 280 200" preserveAspectRatio="none">
         {/* Horizontal grid lines */}
-        <line x1="0" y1="0" x2="280" y2="0" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="50" x2="280" y2="50" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="100" x2="280" y2="100" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="150" x2="280" y2="150" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-        <line x1="0" y1="200" x2="280" y2="200" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+        <line x1="0" y1="0" x2="280" y2="0" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="50" x2="280" y2="50" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="100" x2="280" y2="100" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="150" x2="280" y2="150" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="200" x2="280" y2="200" stroke={accent(0.2)} strokeWidth="0.5" />
         {/* Vertical bars - 7 days */}
         {[0, 1, 2, 3, 4, 5, 6].map(i => {
           const barWidth = 24;
@@ -116,7 +117,7 @@ const ByDayChartSkeleton = () => (
               height={height}
               rx={4}
               ry={4}
-              fill="rgba(155, 139, 180, 0.15)"
+              fill={accent(0.15)}
             />
           );
         })}
@@ -128,7 +129,7 @@ const ByDayChartSkeleton = () => (
             width: 24,
             height: 12,
             borderRadius: 2,
-            background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+            background: accentShimmer(),
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.5s infinite ease-in-out',
             animationDelay: `${i * 0.05}s`,
@@ -141,16 +142,6 @@ const ByDayChartSkeleton = () => (
 );
 
 export default function ByDayChart({ data, comparisonData, metric, selectedDays, swapped = false, loading = false }: ByDayChartProps) {
-  // All hooks must be called before any early returns
-  const [borderDefault, setBorderDefault] = useState('#9B8BB4');
-
-  useEffect(() => {
-    // Get computed CSS variable values on client side
-    if (typeof window !== 'undefined') {
-      setBorderDefault('#9B8BB4');
-    }
-  }, []);
-
   // Filter data based on selected days
   const filteredData = selectedDays && selectedDays.length > 0 && selectedDays.length < 7
     ? data.filter(d => selectedDays.includes(dayNameMap[d.day] || d.day))
@@ -205,29 +196,21 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(155, 139, 180, 0.2)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
           <defs>
             <linearGradient id="barCursor" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
-              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+              <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
+              <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
             </linearGradient>
             <linearGradient id="barGradientDay" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.2} />
-              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.2} />
-            </linearGradient>
-            <linearGradient id="barGradientDay1" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={1} />
-              <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
-            </linearGradient>
-            <linearGradient id="barGradientDay2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={1} />
-              <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
+              <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
             </linearGradient>
           </defs>
           <XAxis
             dataKey="day"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-            axisLine={{ stroke: 'rgba(155, 139, 180, 0.2)', strokeOpacity: 0.6 }}
+            axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
             tickLine={false}
           />
           <YAxis
@@ -247,7 +230,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
               <Bar
                 dataKey="value1"
                 name="Date-time 1"
-                fill="url(#barGradientDay1)"
+                fill={accent(0.4)}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
@@ -256,7 +239,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
               <Bar
                 dataKey="value2"
                 name="Date-time 2"
-                fill="url(#barGradientDay2)"
+                fill={accent2(0.4)}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
