@@ -357,7 +357,7 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
           if (!bounds) return null;
 
           // Build colored GeoJSON
-          let geojson: GeoJSON.FeatureCollection;
+          let geojson: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
           let loadSegments: SegmentBreakdown[] = [];
 
           if (bestSegData && bestSegData.segments.length > 0) {
