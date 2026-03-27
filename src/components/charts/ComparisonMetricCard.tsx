@@ -1,4 +1,5 @@
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, calculatePercentChange, formatPercentChange, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
+import { accentShimmer } from '@/lib/uiAccent';
 
 interface ComparisonMetricCardProps {
   value1: number;
@@ -28,9 +29,10 @@ export default function ComparisonMetricCard({
       style={{
         width,
         height: '20px',
-        backgroundColor: 'var(--bg-secondary)',
+        background: accentShimmer(),
+        backgroundSize: '200% 100%',
         borderRadius: '4px',
-        animation: 'pulse 1.5s ease-in-out infinite',
+        animation: 'shimmer 1.5s ease-in-out infinite',
       }}
     />
   );
@@ -45,9 +47,9 @@ export default function ComparisonMetricCard({
         marginBottom: '8px'
       }}>
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
       `}</style>
       <div style={{
