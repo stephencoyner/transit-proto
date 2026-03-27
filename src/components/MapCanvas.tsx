@@ -9533,7 +9533,7 @@ export default function MapCanvas() {
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   marginTop: '0px',
-                  marginBottom: '4px',
+                  marginBottom: '6px',
                   flexShrink: 0,
                   position: 'relative'
                 }}>
@@ -10045,7 +10045,7 @@ export default function MapCanvas() {
               alignItems: 'center',
               justifyContent: 'space-between',
               marginTop: '0px',
-              marginBottom: '4px',
+              marginBottom: '6px',
               flexShrink: 0
             }}>
               {/* Left side: Back button and Route name */}
