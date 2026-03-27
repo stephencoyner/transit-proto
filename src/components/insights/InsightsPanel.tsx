@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { InsightCard as InsightCardType, InsightsResponse } from '@/types/insights';
 import { InsightCard } from './InsightCard';
+import { CityGridBackground } from './CityGridBackground';
 import type { ChatMessage } from '@/lib/chatHistory';
 import { generateConversationId } from '@/lib/chatHistory';
 
@@ -78,8 +79,13 @@ export function InsightsPanel({
   // Auto-resize textarea (home mode input only)
   useEffect(() => {
     if (!inChat && inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+      if (!chatInput) {
+        // Reset to single row when empty
+        inputRef.current.style.height = '';
+      } else {
+        inputRef.current.style.height = 'auto';
+        inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+      }
     }
   }, [chatInput, inChat]);
 
@@ -464,6 +470,8 @@ export function InsightsPanel({
         position: 'relative',
       }}
     >
+      {/* City grid background with animated vehicles */}
+      <CityGridBackground />
       {/* Top fade gradient */}
       <div style={{
         position: 'absolute',
@@ -472,7 +480,7 @@ export function InsightsPanel({
         right: 0,
         height: '32px',
         background: 'linear-gradient(to bottom, var(--bg-primary), transparent)',
-        zIndex: 1,
+        zIndex: 10,
         pointerEvents: 'none',
       }} />
       {/* Scrollable Content */}
@@ -482,6 +490,10 @@ export function InsightsPanel({
           flex: 1,
           overflow: 'auto',
           padding: '0 28px 40px',
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <div
@@ -489,17 +501,21 @@ export function InsightsPanel({
             maxWidth: '800px',
             margin: '0 auto',
             width: '100%',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           {/* Title */}
           <h1 style={{
-            fontSize: '32px',
+            fontSize: '20px',
             fontWeight: 700,
             fontFamily: 'var(--font-display)',
             color: 'var(--text-primary)',
             margin: '0 0 24px',
             paddingTop: '24px',
-            textAlign: 'left',
+            textAlign: 'center',
+            flexShrink: 0,
           }}>
             Today&apos;s Briefing
           </h1>
@@ -507,10 +523,12 @@ export function InsightsPanel({
           <div style={{
             width: '100%',
             maxWidth: '800px',
-            height: '0.5px',
-            backgroundColor: 'var(--border-default)',
-            marginBottom: '32px',
+            height: '0px',
+            flexShrink: 0,
           }} />
+
+          {/* Cards wrapper — vertically centered in remaining space */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '20px' }}>
 
           {/* Initial State — Generate Button */}
           {showInitialState && (
@@ -632,14 +650,12 @@ export function InsightsPanel({
             <>
               {/* Hero card — first insight */}
               {data.insights.length > 0 && (
-                <div>
-                  <InsightCard
-                    key={data.insights[0].id}
-                    insight={data.insights[0]}
-                    onAnalyze={onAnalyze}
-                    variant="hero"
-                  />
-                </div>
+                <InsightCard
+                  key={data.insights[0].id}
+                  insight={data.insights[0]}
+                  onAnalyze={onAnalyze}
+                  variant="hero"
+                />
               )}
 
               {/* Secondary cards row */}
@@ -648,7 +664,7 @@ export function InsightsPanel({
                   display: 'grid',
                   gridTemplateColumns: `repeat(${Math.min(data.insights.length - 1, 3)}, 1fr)`,
                   gap: '16px',
-                  marginTop: '32px',
+                  marginTop: '24px',
                 }}>
                   {data.insights.slice(1, 4).map((insight) => (
                     <InsightCard
@@ -676,9 +692,11 @@ export function InsightsPanel({
               <p style={{ fontSize: '13px', margin: 0 }}>Try refreshing to run a new analysis.</p>
             </div>
           )}
+
+          </div>{/* end cards wrapper */}
         </div>
         {/* Bottom spacer for fixed input */}
-        <div style={{ height: '120px' }} />
+        <div style={{ height: '120px', flexShrink: 0 }} />
       </div>
 
       {/* Fixed bottom chat input */}

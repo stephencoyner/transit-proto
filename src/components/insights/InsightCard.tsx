@@ -98,22 +98,31 @@ function CardFooter({ insight, onAnalyze, showSparkle }: { insight: InsightCardT
 function HeroCard({ insight, onAnalyze }: InsightCardProps) {
   return (
     <>
-      <style>{`.insight-card-hero:hover .hero-thumbnail { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }`}</style>
+      <style>{`
+        .insight-card-hero { border-color: var(--border-default); transition: border-color 150ms ease, box-shadow 150ms ease; }
+        .insight-card-hero:hover { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+        .insight-card-hero:hover .hero-thumbnail { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+        .insight-card-hero:hover h3, .insight-card-hero:hover p { color: var(--text-tertiary) !important; transition: color 150ms ease; }
+        .insight-card-hero h3, .insight-card-hero p { transition: color 150ms ease; }
+      `}</style>
       <div
         className="insight-card-hero"
         onClick={() => onAnalyze?.(insight)}
         style={{
           cursor: 'pointer',
+          background: 'var(--bg-elevated)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: '20px',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'row',
-          gap: '32px',
         }}
       >
         {/* Text side */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', padding: '20px' }}>
           <h3 style={{
             color: 'var(--text-primary)', margin: '0 0 16px',
-            fontSize: '24px', fontWeight: 700, lineHeight: 1.2,
+            fontSize: '24px', fontWeight: 700, lineHeight: 1.2, fontFamily: 'var(--font-display)',
           }}>
             {insight.title}
           </h3>
@@ -125,13 +134,13 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
           </p>
           <CardFooter insight={insight} onAnalyze={onAnalyze} showSparkle={insight.isAiGenerated} />
         </div>
-        {/* Map side */}
-        <div style={{ width: '48%', minHeight: '240px', flexShrink: 0 }}>
-          <div className="hero-thumbnail" style={{ width: '100%', height: '100%', overflow: 'hidden', borderRadius: '20px', transition: 'box-shadow 150ms ease' }}>
+        {/* Map side — edge-to-edge, left corners 0 (clipped by card overflow) */}
+        <div style={{ width: '44%', minHeight: '200px', flexShrink: 0 }}>
+          <div className="hero-thumbnail" style={{ width: '100%', height: '100%', overflow: 'hidden', transition: 'box-shadow 150ms ease' }}>
             {insight.previewImage ? (
               <img src={insight.previewImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             ) : (
-              <div style={{ width: '100%', height: '100%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '20px' }}>
+              <div style={{ width: '100%', height: '100%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3 }}>
                   <path d="M3 7L9 4L15 7L21 4V17L15 20L9 17L3 20V7Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                 </svg>
@@ -148,16 +157,23 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
 function CompactCard({ insight, onAnalyze }: InsightCardProps) {
   return (
     <>
-      <style>{`.insight-card-compact:hover .compact-card-body { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }`}</style>
+      <style>{`
+        .insight-card-compact:hover .compact-card-body { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+        .insight-card-compact:hover h3 { color: var(--text-tertiary) !important; }
+        .insight-card-compact h3 { transition: color 150ms ease; }
+      `}</style>
       <div
         className="insight-card-compact"
         onClick={() => onAnalyze?.(insight)}
         style={{
           cursor: 'pointer',
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
         }}
       >
-        <div style={{ borderRadius: '20px 20px 0 0', overflow: 'hidden' }}>
+        <div style={{ borderRadius: '20px 20px 0 0', overflow: 'hidden', flexShrink: 0 }}>
           <MapThumbnail src={insight.previewImage} height="140px" edgeToEdge />
         </div>
         <div className="compact-card-body" style={{
@@ -169,10 +185,17 @@ function CompactCard({ insight, onAnalyze }: InsightCardProps) {
           borderTop: 'none',
           borderRadius: '0 0 20px 20px',
           transition: 'border-color 150ms ease, box-shadow 150ms ease',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           <h3 style={{
             color: 'var(--text-primary)', margin: '0 0 4px',
-            fontSize: '16px', fontWeight: 400, lineHeight: '24px',
+            fontSize: '16px', fontWeight: 700, lineHeight: '24px', fontFamily: 'var(--font-display)',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
           }}>
             {insight.title}
           </h3>
@@ -188,7 +211,11 @@ function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
   const config = severityConfig[insight.severity];
   return (
     <>
-      <style>{`.insight-card:hover { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }`}</style>
+      <style>{`
+        .insight-card:hover { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+        .insight-card:hover h3 { color: var(--text-tertiary) !important; }
+        .insight-card h3 { transition: color 150ms ease; }
+      `}</style>
       <div
         className="insight-card"
         style={{
@@ -208,7 +235,7 @@ function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
           </div>
           <h3 className="heading-small" style={{
             color: 'var(--text-primary)', margin: 0,
-            fontSize: '16px', fontWeight: 600, lineHeight: 1.3,
+            fontSize: '16px', fontWeight: 700, lineHeight: 1.3, fontFamily: 'var(--font-display)',
           }}>
             {insight.title}
           </h3>
