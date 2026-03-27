@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import PortalTooltipContent from './PortalTooltip';
+import { ACCENT_UI, accent, accentShimmer } from '@/lib/uiAccent';
 
 interface RouteDataPoint {
   routeId: string;
@@ -60,7 +61,7 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
         width: 70,
         borderRadius: 2,
         marginBottom: 'var(--space-4)',
-        background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+        background: accentShimmer(),
         backgroundSize: '200% 100%',
         animation: 'shimmer 1.5s infinite ease-in-out',
         opacity: 0.6
@@ -75,7 +76,7 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
                   height: 10,
                   width: 20,
                   borderRadius: 2,
-                  background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                  background: accentShimmer(),
                   backgroundSize: '200% 100%',
                   animation: 'shimmer 1.5s infinite ease-in-out',
                   animationDelay: `${i * 0.1}s`,
@@ -100,7 +101,7 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
                     height={barHeight}
                     rx={4}
                     ry={4}
-                    fill="rgba(155, 139, 180, 0.15)"
+                    fill={accent(0.15)}
                   />
                 );
               })}
@@ -115,7 +116,7 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
                   height: 8,
                   width: 24,
                   borderRadius: 2,
-                  background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                  background: accentShimmer(),
                   backgroundSize: '200% 100%',
                   animation: 'shimmer 1.5s infinite ease-in-out',
                   animationDelay: `${i * 0.1}s`,
@@ -125,13 +126,13 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
             </div>
             {/* Chart area with vertical bars */}
             <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 40px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 100 120" preserveAspectRatio="none">
-              <line x1="0" y1="0" x2="100" y2="0" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-              <line x1="0" y1="60" x2="100" y2="60" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
-              <line x1="0" y1="120" x2="100" y2="120" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+              <line x1="0" y1="0" x2="100" y2="0" stroke={accent(0.2)} strokeWidth="0.5" />
+              <line x1="0" y1="60" x2="100" y2="60" stroke={accent(0.2)} strokeWidth="0.5" />
+              <line x1="0" y1="120" x2="100" y2="120" stroke={accent(0.2)} strokeWidth="0.5" />
               {/* Bar 1 - centered at 33% */}
-              <rect x="8" y="20" width="35" height="100" rx="4" ry="4" fill="rgba(155, 139, 180, 0.15)" />
+              <rect x="8" y="20" width="35" height="100" rx="4" ry="4" fill={accent(0.15)} />
               {/* Bar 2 - centered at 67% */}
-              <rect x="57" y="40" width="35" height="80" rx="4" ry="4" fill="rgba(155, 139, 180, 0.15)" />
+              <rect x="57" y="40" width="35" height="80" rx="4" ry="4" fill={accent(0.15)} />
             </svg>
             {/* X-axis labels - positioned to match SVG bars */}
             <div style={{ position: 'absolute', left: 40, bottom: 0, width: 'calc(100% - 50px)', height: 12 }}>
@@ -142,7 +143,7 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
                 width: '35%',
                 height: 12,
                 borderRadius: 2,
-                background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                background: accentShimmer(),
                 backgroundSize: '200% 100%',
                 animation: 'shimmer 1.5s infinite ease-in-out',
                 opacity: 0.6
@@ -154,7 +155,7 @@ const ByRouteChartSkeleton = ({ routeCount }: { routeCount: number }) => {
                 width: '35%',
                 height: 12,
                 borderRadius: 2,
-                background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
+                background: accentShimmer(),
                 backgroundSize: '200% 100%',
                 animation: 'shimmer 1.5s infinite ease-in-out',
                 animationDelay: '0.05s',
@@ -230,15 +231,8 @@ const CustomYAxisTick = ({ y, payload, visibleTicksCount }: any) => {
 };
 
 export default function ByRouteChart({ data, metric, loading = false, onRouteClick, selectedRoute }: ByRouteChartProps) {
-  const [borderDefault, setBorderDefault] = useState('#9B8BB4');
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(300); // Default fallback
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setBorderDefault('#9B8BB4');
-    }
-  }, []);
 
   // Measure container width for dynamic label truncation
   useEffect(() => {
@@ -331,22 +325,22 @@ export default function ByRouteChart({ data, metric, loading = false, onRouteCli
         {isHorizontal ? (
           // Horizontal bar chart for many routes
           <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(155, 139, 180, 0.2)" strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
             <defs>
               <linearGradient id="barCursorRouteH" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="barGradientRouteH" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
               </linearGradient>
             </defs>
             <YAxis
               dataKey="displayName"
               type="category"
               tick={<CustomYAxisTick />}
-              axisLine={{ stroke: 'rgba(155, 139, 180, 0.2)', strokeOpacity: 0.6 }}
+              axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
               tickLine={false}
               width={30}
             />
@@ -377,21 +371,21 @@ export default function ByRouteChart({ data, metric, loading = false, onRouteCli
         ) : (
           // Vertical bar chart for 2 routes
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(155, 139, 180, 0.2)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
             <defs>
               <linearGradient id="barCursorRouteV" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
+                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="barGradientRouteV" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={borderDefault} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={borderDefault} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
               </linearGradient>
             </defs>
             <XAxis
               dataKey="displayName"
               tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-              axisLine={{ stroke: 'rgba(155, 139, 180, 0.2)', strokeOpacity: 0.6 }}
+              axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
               tickLine={false}
               interval={0}
             />
