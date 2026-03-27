@@ -6,6 +6,9 @@ import type { InsightsResponse } from '@/types/insights';
 // Set to true to use mock data instead of calling the API
 const USE_MOCK_DATA = true;
 
+// When true, only the first insight is AI-generated; the rest are mock data
+const HYBRID_MODE = true;
+
 const MOCK_INSIGHTS: InsightsResponse = {
   generatedAt: new Date().toISOString(),
   dateRange: { start: '2025-06-22', end: '2025-09-18' },
@@ -39,21 +42,56 @@ const MOCK_INSIGHTS: InsightsResponse = {
           pageName: 'Route 62 Overview',
           filterSummary: 'Aug 1 – Sep 18, 2025 · All days · All periods',
           narrative: 'Route 62 is seeing higher ridership than usual. Let\'s start with an overview of the full summer period.',
+          narrativeByMetric: {
+            'Average daily boardings': 'Route 62 averaged 2,487 daily boardings over this period — a 15% increase over the prior summer. The trend has been climbing steadily since early August.',
+            'Average daily alightings': 'Daily alightings averaged 2,394, tracking closely with boardings. The consistent ratio suggests most riders are completing full trips on this route.',
+            'Average daily activity': 'Total daily activity (boardings + alightings) averaged 4,861 per day. This combined view shows the full demand picture for Route 62.',
+          },
           filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18' },
+          relevantMetrics: ['Average daily boardings', 'Average daily alightings', 'Average daily activity'],
           charts: [
             { id: 'r62-trend', type: 'area', title: 'Daily Ridership Trend', data: [{ date: 'Aug 1', value: 2280 }, { date: 'Aug 8', value: 2320 }, { date: 'Aug 15', value: 2450 }, { date: 'Aug 22', value: 2480 }, { date: 'Aug 29', value: 2520 }, { date: 'Sep 5', value: 2580 }, { date: 'Sep 12', value: 2640 }], xKey: 'date', yKey: 'value' },
             { id: 'r62-avg', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '2,487', metricLabel: 'Avg Daily Boardings' },
           ],
+          chartsByMetric: {
+            'Average daily boardings': [
+              { id: 'r62-trend-b', type: 'area', title: 'Daily Boarding Trend', data: [{ date: 'Aug 1', value: 2280 }, { date: 'Aug 8', value: 2320 }, { date: 'Aug 15', value: 2450 }, { date: 'Aug 22', value: 2480 }, { date: 'Aug 29', value: 2520 }, { date: 'Sep 5', value: 2580 }, { date: 'Sep 12', value: 2640 }], xKey: 'date', yKey: 'value' },
+              { id: 'r62-avg-b', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '2,487', metricLabel: 'Avg Daily Boardings' },
+            ],
+            'Average daily alightings': [
+              { id: 'r62-trend-a', type: 'area', title: 'Daily Alighting Trend', data: [{ date: 'Aug 1', value: 2190 }, { date: 'Aug 8', value: 2240 }, { date: 'Aug 15', value: 2380 }, { date: 'Aug 22', value: 2410 }, { date: 'Aug 29', value: 2460 }, { date: 'Sep 5', value: 2510 }, { date: 'Sep 12', value: 2570 }], xKey: 'date', yKey: 'value' },
+              { id: 'r62-avg-a', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '2,394', metricLabel: 'Avg Daily Alightings' },
+            ],
+            'Average daily activity': [
+              { id: 'r62-trend-act', type: 'area', title: 'Daily Activity Trend', data: [{ date: 'Aug 1', value: 4470 }, { date: 'Aug 8', value: 4560 }, { date: 'Aug 15', value: 4830 }, { date: 'Aug 22', value: 4890 }, { date: 'Aug 29', value: 4980 }, { date: 'Sep 5', value: 5090 }, { date: 'Sep 12', value: 5210 }], xKey: 'date', yKey: 'value' },
+              { id: 'r62-avg-act', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '4,861', metricLabel: 'Avg Daily Activity' },
+            ],
+          },
         },
         {
           pageName: 'PM Peak Concentration',
           filterSummary: 'Aug 1 – Sep 18, 2025 · All days · PM Peak',
           narrative: 'The crowding is concentrated during PM peak hours (3–7 PM). Notice the spike in the by-period chart.',
           filters: { tab: 'routes', routeId: '62', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18', timeMode: 'custom', timePeriods: ['PM Peak'] },
+          relevantMetrics: ['Average daily boardings', 'Average load', 'Maxload'],
           charts: [
             { id: 'r62-period', type: 'bar', title: 'Boardings by Period', data: [{ period: 'Early AM', value: 320 }, { period: 'AM Peak', value: 680 }, { period: 'Midday', value: 450 }, { period: 'PM Peak', value: 890 }, { period: 'Evening', value: 210 }], xKey: 'period', yKey: 'value' },
             { id: 'r62-load', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '87%', metricLabel: 'PM Peak Avg Load Factor' },
           ],
+          chartsByMetric: {
+            'Average daily boardings': [
+              { id: 'r62-period-b', type: 'bar', title: 'Boardings by Period', data: [{ period: 'Early AM', value: 320 }, { period: 'AM Peak', value: 680 }, { period: 'Midday', value: 450 }, { period: 'PM Peak', value: 890 }, { period: 'Evening', value: 210 }], xKey: 'period', yKey: 'value' },
+              { id: 'r62-board-m', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '2,550', metricLabel: 'PM Peak Avg Daily Boardings' },
+            ],
+            'Average load': [
+              { id: 'r62-period-l', type: 'bar', title: 'Avg Load by Period', data: [{ period: 'Early AM', value: 42 }, { period: 'AM Peak', value: 71 }, { period: 'Midday', value: 55 }, { period: 'PM Peak', value: 87 }, { period: 'Evening', value: 38 }], xKey: 'period', yKey: 'value' },
+              { id: 'r62-load-m', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '87%', metricLabel: 'PM Peak Avg Load Factor' },
+            ],
+            'Maxload': [
+              { id: 'r62-period-mx', type: 'bar', title: 'Max Load by Period', data: [{ period: 'Early AM', value: 58 }, { period: 'AM Peak', value: 89 }, { period: 'Midday', value: 72 }, { period: 'PM Peak', value: 104 }, { period: 'Evening', value: 51 }], xKey: 'period', yKey: 'value' },
+              { id: 'r62-maxload-m', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '104%', metricLabel: 'PM Peak Max Load' },
+            ],
+          },
         },
         {
           pageName: 'Weekday Breakdown',
@@ -105,9 +143,22 @@ const MOCK_INSIGHTS: InsightsResponse = {
           filterSummary: 'Aug 1 – Sep 18, 2025 · All days',
           narrative: 'Route 13 weekend ridership has been declining. Here\'s the full picture over the past 6 weeks.',
           filters: { tab: 'routes', routeId: '13', routeTab: 'Summary', startDate: '2025-08-01', endDate: '2025-09-18' },
+          relevantMetrics: ['Average daily boardings', 'Total boardings', 'Average daily alightings'],
           charts: [
             { id: 'r13-trend', type: 'area', title: 'Weekend Ridership Trend', data: [{ week: 'Aug 2', value: 890 }, { week: 'Aug 9', value: 860 }, { week: 'Aug 16', value: 820 }, { week: 'Aug 23', value: 780 }, { week: 'Aug 30', value: 750 }, { week: 'Sep 6', value: 740 }, { week: 'Sep 13', value: 730 }], xKey: 'week', yKey: 'value' },
           ],
+          chartsByMetric: {
+            'Average daily boardings': [
+              { id: 'r13-trend-b', type: 'area', title: 'Weekend Avg Daily Boardings', data: [{ week: 'Aug 2', value: 890 }, { week: 'Aug 9', value: 860 }, { week: 'Aug 16', value: 820 }, { week: 'Aug 23', value: 780 }, { week: 'Aug 30', value: 750 }, { week: 'Sep 6', value: 740 }, { week: 'Sep 13', value: 730 }], xKey: 'week', yKey: 'value' },
+            ],
+            'Total boardings': [
+              { id: 'r13-trend-t', type: 'area', title: 'Weekend Total Boardings', data: [{ week: 'Aug 2', value: 1780 }, { week: 'Aug 9', value: 1720 }, { week: 'Aug 16', value: 1640 }, { week: 'Aug 23', value: 1560 }, { week: 'Aug 30', value: 1500 }, { week: 'Sep 6', value: 1480 }, { week: 'Sep 13', value: 1460 }], xKey: 'week', yKey: 'value' },
+              { id: 'r13-total-m', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '10,140', metricLabel: 'Total Weekend Boardings' },
+            ],
+            'Average daily alightings': [
+              { id: 'r13-trend-a', type: 'area', title: 'Weekend Avg Daily Alightings', data: [{ week: 'Aug 2', value: 870 }, { week: 'Aug 9', value: 840 }, { week: 'Aug 16', value: 800 }, { week: 'Aug 23', value: 760 }, { week: 'Aug 30', value: 730 }, { week: 'Sep 6', value: 720 }, { week: 'Sep 13', value: 710 }], xKey: 'week', yKey: 'value' },
+            ],
+          },
         },
         {
           pageName: 'Weekend Focus',
@@ -159,10 +210,25 @@ const MOCK_INSIGHTS: InsightsResponse = {
           filterSummary: 'Jun 22 – Sep 18, 2025 · All days',
           narrative: 'Route 44 has been climbing steadily since June. It\'s now averaging 3,400 daily boardings.',
           filters: { tab: 'routes', routeId: '44', routeTab: 'Summary', startDate: '2025-06-22', endDate: '2025-09-18' },
+          relevantMetrics: ['Average daily boardings', 'Average daily activity', 'Average load'],
           charts: [
             { id: 'r44-trend', type: 'area', title: 'Daily Ridership', data: [{ date: 'Jun 22', value: 2780 }, { date: 'Jul 6', value: 2900 }, { date: 'Jul 20', value: 3050 }, { date: 'Aug 3', value: 3180 }, { date: 'Aug 17', value: 3280 }, { date: 'Sep 1', value: 3350 }, { date: 'Sep 15', value: 3400 }], xKey: 'date', yKey: 'value' },
             { id: 'r44-high', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '3,400', metricLabel: 'Current Avg Daily Boardings' },
           ],
+          chartsByMetric: {
+            'Average daily boardings': [
+              { id: 'r44-trend-b', type: 'area', title: 'Daily Boardings', data: [{ date: 'Jun 22', value: 2780 }, { date: 'Jul 6', value: 2900 }, { date: 'Jul 20', value: 3050 }, { date: 'Aug 3', value: 3180 }, { date: 'Aug 17', value: 3280 }, { date: 'Sep 1', value: 3350 }, { date: 'Sep 15', value: 3400 }], xKey: 'date', yKey: 'value' },
+              { id: 'r44-high-b', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '3,400', metricLabel: 'Current Avg Daily Boardings' },
+            ],
+            'Average daily activity': [
+              { id: 'r44-trend-act', type: 'area', title: 'Daily Activity', data: [{ date: 'Jun 22', value: 5420 }, { date: 'Jul 6', value: 5660 }, { date: 'Jul 20', value: 5950 }, { date: 'Aug 3', value: 6210 }, { date: 'Aug 17', value: 6400 }, { date: 'Sep 1', value: 6530 }, { date: 'Sep 15', value: 6630 }], xKey: 'date', yKey: 'value' },
+              { id: 'r44-high-act', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '6,630', metricLabel: 'Current Avg Daily Activity' },
+            ],
+            'Average load': [
+              { id: 'r44-trend-l', type: 'area', title: 'Avg Load Factor', data: [{ date: 'Jun 22', value: 52 }, { date: 'Jul 6', value: 55 }, { date: 'Jul 20', value: 58 }, { date: 'Aug 3', value: 61 }, { date: 'Aug 17', value: 63 }, { date: 'Sep 1', value: 65 }, { date: 'Sep 15', value: 66 }], xKey: 'date', yKey: 'value' },
+              { id: 'r44-high-l', type: 'metric', title: '', data: [], xKey: '', yKey: '', metricValue: '66%', metricLabel: 'Current Avg Load Factor' },
+            ],
+          },
         },
         {
           pageName: 'AM Peak Growth',
@@ -297,6 +363,7 @@ interface UseInsightsResult {
   error: Error | null;
   generate: () => void;
   refetch: () => void;
+  updateInsightImage: (insightId: string, previewImage: string) => void;
 }
 
 export function useInsights(): UseInsightsResult {
@@ -332,7 +399,20 @@ export function useInsights(): UseInsightsResult {
       }
 
       const result: InsightsResponse = await response.json();
-      setData(result);
+
+      if (HYBRID_MODE) {
+        // Take only the first AI-generated insight, pad rest with mock data
+        const aiInsight = result.insights[0];
+        const mockPadding = MOCK_INSIGHTS.insights.filter(
+          m => !aiInsight || m.routeIds?.[0] !== aiInsight.routeIds?.[0]
+        ).slice(0, 4);
+        setData({
+          ...result,
+          insights: aiInsight ? [aiInsight, ...mockPadding] : mockPadding,
+        });
+      } else {
+        setData(result);
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err : new Error('Unknown error'));
@@ -349,5 +429,17 @@ export function useInsights(): UseInsightsResult {
     fetchData(true);
   }, [fetchData]);
 
-  return { data, isLoading, error, generate, refetch };
+  const updateInsightImage = useCallback((insightId: string, previewImage: string) => {
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        insights: prev.insights.map(i =>
+          i.id === insightId ? { ...i, previewImage } : i
+        ),
+      };
+    });
+  }, []);
+
+  return { data, isLoading, error, generate, refetch, updateInsightImage };
 }

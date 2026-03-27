@@ -32,6 +32,38 @@ export function InsightCard({ insight, onAnalyze }: InsightCardProps) {
         transition: 'background 150ms ease',
       }}
     >
+      {/* Map Thumbnail */}
+      {insight.previewImage ? (
+        <div style={{ width: '100%', height: '140px', overflow: 'hidden' }}>
+          <img
+            src={insight.previewImage}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        </div>
+      ) : (
+        <div
+          style={{
+            width: '100%',
+            height: '140px',
+            background: 'var(--bg-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3 }}>
+            <path d="M3 7L9 4L15 7L21 4V17L15 20L9 17L3 20V7Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M9 4V17M15 7V20" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ padding: '20px 24px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>

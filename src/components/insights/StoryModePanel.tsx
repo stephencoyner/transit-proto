@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { InsightCard as InsightCardType, StoryChartSpec } from '@/types/insights';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
 interface StoryModePanelProps {
   insight: InsightCardType;
@@ -15,6 +16,7 @@ interface StoryModePanelProps {
   onStepChange: (index: number) => void;
   onClose: () => void;
   isContentHidden?: boolean;
+  onMetricChange?: (metric: string) => void;
 }
 
 interface ChatMessage {
@@ -180,12 +182,36 @@ export function StoryModePanel({
   onStepChange,
   onClose,
   isContentHidden,
+  onMetricChange,
 }: StoryModePanelProps) {
   const steps = insight.walkthrough ?? [];
   const currentStep = steps[stepIndex];
   const totalSteps = steps.length;
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === totalSteps - 1;
+
+  // Metric short labels for segmented control
+  const metricShortLabel: Record<string, string> = {
+    'Average daily boardings': 'Boardings',
+    'Average daily alightings': 'Alightings',
+    'Average daily activity': 'Activity',
+    'Average load': 'Load',
+    'Maxload': 'Maxload',
+    'Total boardings': 'Total',
+  };
+
+  // Metric state
+  const hasMetrics = (currentStep?.relevantMetrics?.length ?? 0) >= 2;
+  const [storyMetric, setStoryMetric] = useState<string>(
+    currentStep?.relevantMetrics?.[0] ?? 'Average daily boardings'
+  );
+
+  // Reset metric when step changes
+  useEffect(() => {
+    const firstMetric = currentStep?.relevantMetrics?.[0] ?? 'Average daily boardings';
+    setStoryMetric(firstMetric);
+    onMetricChange?.(firstMetric);
+  }, [stepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // View state
   const [view, setView] = useState<'page' | 'conversation'>('page');
@@ -606,61 +632,95 @@ export function StoryModePanel({
           >
             {insight.title}
           </h2>
-
-          {/* Step controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button
-              onClick={() => onStepChange(stepIndex - 1)}
-              disabled={isFirst}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '4px',
-                cursor: isFirst ? 'default' : 'pointer',
-                opacity: isFirst ? 0.25 : 1,
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'opacity 150ms ease',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <span
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--text-tertiary)',
-                minWidth: '28px',
-                textAlign: 'center',
-              }}
-            >
-              {stepIndex + 1}/{totalSteps}
-            </span>
-            <button
-              onClick={() => onStepChange(stepIndex + 1)}
-              disabled={isLast}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '4px',
-                cursor: isLast ? 'default' : 'pointer',
-                opacity: isLast ? 0.25 : 1,
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'opacity 150ms ease',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
+
+      {/* Page Navigation */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: '16px',
+            fontWeight: 400,
+            color: 'var(--text-primary)',
+          }}
+        >
+          {stepIndex + 1} of {totalSteps}
+        </span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => onStepChange(stepIndex - 1)}
+            disabled={isFirst}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: '0.5px solid var(--border-default)',
+              backgroundColor: isFirst ? '#F5F5F5' : 'var(--bg-elevated)',
+              cursor: isFirst ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              opacity: isFirst ? 0.5 : 1,
+              color: 'var(--text-primary)',
+              transition: 'opacity 150ms ease',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            onClick={() => onStepChange(stepIndex + 1)}
+            disabled={isLast}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: '0.5px solid var(--border-default)',
+              backgroundColor: isLast ? '#F5F5F5' : 'var(--bg-elevated)',
+              cursor: isLast ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              opacity: isLast ? 0.5 : 1,
+              color: 'var(--text-primary)',
+              transition: 'opacity 150ms ease',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Divider + Metric Filter */}
+      <div style={{ padding: '0 16px', flexShrink: 0 }}>
+        <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)' }} />
+      </div>
+      {hasMetrics && (
+        <div style={{ padding: '8px 16px', flexShrink: 0 }}>
+          <SegmentedControl
+            value={storyMetric}
+            onChange={(value) => {
+              setStoryMetric(value);
+              onMetricChange?.(value);
+            }}
+            options={currentStep.relevantMetrics!.map((m) => ({ value: m, label: metricShortLabel[m] ?? m }))}
+            fullWidth
+          />
+        </div>
+      )}
 
       {/* Scrollable Content */}
       <div
@@ -671,32 +731,61 @@ export function StoryModePanel({
         }}
       >
         {/* Filter Summary */}
-        {currentStep.filterSummary && (
-          <div style={{ padding: '16px 0 0', marginBottom: '12px' }}>
-            {currentStep.filters.comparisonMode && currentStep.filterSummary.includes('vs') ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {currentStep.filterSummary.split(' vs ').map((part, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: i === 0 ? DATETIME_1_COLOR : DATETIME_2_COLOR,
-                      flexShrink: 0,
-                    }} />
-                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                      {part.trim()}
-                    </span>
-                  </div>
-                ))}
+        {(() => {
+          const { filters } = currentStep;
+          const isComparison = filters.comparisonMode && filters.comparisonStartDate && filters.comparisonEndDate;
+
+          const formatRange = (start?: string, end?: string) => {
+            if (!start || !end) return '';
+            const s = new Date(start + 'T00:00:00');
+            const e = new Date(end + 'T00:00:00');
+            const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+            return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
+          };
+
+          // Build day/time suffix from filters
+          const parts: string[] = [];
+          if (filters.daysMode === 'weekdays') parts.push('Weekdays');
+          else if (filters.daysMode === 'weekends') parts.push('Weekends');
+          else if (filters.daysMode === 'custom' && filters.customDays?.length) parts.push(filters.customDays.join(', '));
+          else parts.push('All days');
+          if (filters.timeMode === 'custom' && filters.timePeriods?.length) parts.push(filters.timePeriods.join(', '));
+          const suffix = parts.join(' · ');
+
+          if (isComparison) {
+            const rangeA = `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
+            const rangeB = `${formatRange(filters.comparisonStartDate, filters.comparisonEndDate)} · ${suffix}`;
+            return (
+              <div style={{ padding: '16px 0 0', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {[rangeA, rangeB].map((range, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: i === 0 ? DATETIME_1_COLOR : DATETIME_2_COLOR,
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                        {range}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
+            );
+          }
+
+          const summary = currentStep.filterSummary || `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
+          return summary ? (
+            <div style={{ padding: '16px 0 0', marginBottom: '12px' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block' }}>
-                {currentStep.filterSummary}
+                {summary}
               </span>
-            )}
-          </div>
-        )}
+            </div>
+          ) : null;
+        })()}
 
         {/* Narrative Card + Charts */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -721,12 +810,12 @@ export function StoryModePanel({
                 margin: 0,
               }}
             >
-              {currentStep.narrative}
+              {currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}
             </p>
           </div>
 
-          {/* Charts */}
-          {currentStep.charts?.map((chart) => (
+          {/* Charts — use metric-specific charts when available */}
+          {(currentStep.chartsByMetric?.[storyMetric] ?? currentStep.charts)?.map((chart) => (
             <StoryChart key={chart.id} spec={chart} />
           ))}
         </div>
@@ -768,7 +857,6 @@ export function StoryModePanel({
               borderRadius: '36px',
               padding: '16px 20px',
               border: '0.5px solid var(--border-default)',
-              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
             }}
           >
             <textarea
