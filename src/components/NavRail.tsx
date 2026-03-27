@@ -218,10 +218,13 @@ const NavRail: React.FC<NavRailProps> = ({
     };
   }, [isProfileMenuOpen]);
 
-  // Determine NavRail background: when differentiated is on, use secondary when filter panel is open, primary when closed
-  const navRailBackground = differentiatedPanelBackgrounds
-    ? (isFiltersPanelOpen ? 'var(--bg-secondary)' : 'var(--bg-primary)')
-    : 'var(--bg-primary)';
+  // Determine NavRail background: secondary when on home tab or when differentiated + filters open
+  const isHomeView = activeTab === 'home' && aiMode;
+  const navRailBackground = isHomeView
+    ? 'var(--bg-secondary)'
+    : differentiatedPanelBackgrounds
+      ? (isFiltersPanelOpen ? 'var(--bg-secondary)' : 'var(--bg-primary)')
+      : 'var(--bg-primary)';
 
   return (
     <div className="flex flex-col items-center h-full px-2 relative" style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', backgroundColor: navRailBackground, transition: 'background-color 300ms ease-in-out' }}>
@@ -241,7 +244,7 @@ const NavRail: React.FC<NavRailProps> = ({
       )}
 
       {/* Navigation Items */}
-      <nav className={`flex flex-col ${aiMode ? 'items-center' : ''} w-full flex-1`} aria-label="Main navigation">
+      <nav className={`flex flex-col ${aiMode ? 'items-center' : ''} w-full flex-1`} style={{ marginTop: '4px' }} aria-label="Main navigation">
         {navItems.map((item, index) => {
           const isActive = activeTab === item.id;
           const isHome = item.id === 'home';
@@ -260,13 +263,13 @@ const NavRail: React.FC<NavRailProps> = ({
               >
                 <div
                   className={`
-                    flex items-center justify-center rounded-default transition-colors
+                    flex items-center justify-center transition-colors
                     ${isActive
-                      ? 'bg-btn-secondary text-text-tertiary'
+                      ? ''
                       : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                     }
                   `}
-                  style={{ width: '40px', height: '32px' }}
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: isActive ? 'rgba(139, 111, 190, 0.12)' : undefined, color: isActive ? '#3D2E6B' : undefined }}
                 >
                   <item.Icon />
                 </div>
@@ -287,15 +290,15 @@ const NavRail: React.FC<NavRailProps> = ({
                 className={`
                   flex items-center justify-center rounded-default transition-colors
                   ${isActive
-                    ? 'bg-btn-secondary text-text-tertiary'
+                    ? 'bg-btn-secondary'
                     : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                   }
                 `}
-                style={{ width: '40px', height: '32px' }}
+                style={{ width: '40px', height: '32px', color: isActive ? '#3D2E6B' : undefined }}
               >
                 <item.Icon />
               </div>
-              <span className="nav-label text-text-tertiary">
+              <span className="nav-label" style={{ color: isActive ? '#3D2E6B' : undefined }}>
                 {item.label}
               </span>
             </button>

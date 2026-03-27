@@ -13,6 +13,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
   generatedAt: new Date().toISOString(),
   dateRange: { start: '2025-06-22', end: '2025-09-18' },
   toolCallCount: 11,
+  summary: 'Good morning! I looked across all 10 routes over the past 3 months and found a few things worth your attention. Route 62 is hitting capacity during PM peak, and Route 13 weekend ridership is trending down. Overall system ridership is up 4% since July.',
   insights: [
     {
       id: 'mock-1',

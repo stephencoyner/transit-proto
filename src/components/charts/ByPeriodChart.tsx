@@ -63,7 +63,7 @@ const ByPeriodChartSkeleton = () => (
       width: 70,
       borderRadius: 2,
       marginBottom: 'var(--space-4)',
-      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
       backgroundSize: '200% 100%',
       animation: 'shimmer 1.5s infinite ease-in-out',
       opacity: 0.6
@@ -76,7 +76,7 @@ const ByPeriodChartSkeleton = () => (
             height: 10,
             width: 50,
             borderRadius: 2,
-            background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+            background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.5s infinite ease-in-out',
             animationDelay: `${i * 0.1}s`,
@@ -87,11 +87,11 @@ const ByPeriodChartSkeleton = () => (
       {/* Chart area with horizontal bars */}
       <svg style={{ position: 'absolute', left: 70, top: 10, width: 'calc(100% - 80px)', height: 'calc(100% - 20px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 200 220" preserveAspectRatio="none">
         {/* Vertical grid lines */}
-        <line x1="0" y1="0" x2="0" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
-        <line x1="50" y1="0" x2="50" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
-        <line x1="100" y1="0" x2="100" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
-        <line x1="150" y1="0" x2="150" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
-        <line x1="200" y1="0" x2="200" y2="220" stroke="var(--border-default)" strokeWidth="0.5" />
+        <line x1="0" y1="0" x2="0" y2="220" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+        <line x1="50" y1="0" x2="50" y2="220" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+        <line x1="100" y1="0" x2="100" y2="220" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+        <line x1="150" y1="0" x2="150" y2="220" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
+        <line x1="200" y1="0" x2="200" y2="220" stroke="rgba(155, 139, 180, 0.2)" strokeWidth="0.5" />
         {/* Horizontal bars - 6 time periods */}
         {[0, 1, 2, 3, 4, 5].map(i => {
           const barHeight = 24;
@@ -108,7 +108,7 @@ const ByPeriodChartSkeleton = () => (
               height={barHeight}
               rx={4}
               ry={4}
-              fill="var(--border-hover)"
+              fill="rgba(155, 139, 180, 0.15)"
             />
           );
         })}
@@ -132,12 +132,12 @@ export default function ByPeriodChart({
   loading = false
 }: ByPeriodChartProps) {
   // All hooks must be called before any early returns
-  const [borderDefault, setBorderDefault] = useState('#D4C9BA');
+  const [borderDefault, setBorderDefault] = useState('#9B8BB4');
 
   useEffect(() => {
     // Get computed CSS variable values on client side
     if (typeof window !== 'undefined') {
-      setBorderDefault(getComputedStyle(document.documentElement).getPropertyValue('--border-default').trim());
+      setBorderDefault('#9B8BB4');
     }
   }, []);
 
@@ -195,15 +195,15 @@ export default function ByPeriodChart({
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(155, 139, 180, 0.2)" strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
           <defs>
             <linearGradient id="barCursorPeriod" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={borderDefault} stopOpacity={0.18} />
               <stop offset="100%" stopColor={borderDefault} stopOpacity={0.08} />
             </linearGradient>
             <linearGradient id="barGradientPeriod" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={borderDefault} stopOpacity={1} />
+              <stop offset="0%" stopColor={borderDefault} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={borderDefault} stopOpacity={0.2} />
             </linearGradient>
             <linearGradient id="barGradientPeriod1" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
@@ -218,7 +218,7 @@ export default function ByPeriodChart({
             dataKey="period"
             type="category"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-            axisLine={{ stroke: 'var(--border-default)', strokeOpacity: 0.6 }}
+            axisLine={{ stroke: 'rgba(155, 139, 180, 0.2)', strokeOpacity: 0.6 }}
             tickLine={false}
             width={70}
           />

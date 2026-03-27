@@ -6123,9 +6123,9 @@ export default function MapCanvas() {
                             height: '40px',
                             borderRadius: 'var(--radius-large)',
                             backgroundColor: selectedRouteTab === view
-                              ? 'var(--btn-secondary)'
+                              ? 'rgba(139, 111, 190, 0.12)'
                               : (hoveredViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
-                            color: 'var(--text-secondary)',
+                            color: selectedRouteTab === view ? '#3D2E6B' : 'var(--text-secondary)',
                             border: selectedRouteTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
                             cursor: 'pointer',
                             transition: 'background-color 0.2s ease, border-color 0.2s ease',
@@ -6263,9 +6263,9 @@ export default function MapCanvas() {
                         height: '40px',
                         borderRadius: 'var(--radius-large)',
                         backgroundColor: selectedStopTab === view
-                          ? 'var(--btn-secondary)'
+                          ? 'rgba(139, 111, 190, 0.12)'
                           : (hoveredStopViewButton === view ? 'var(--bg-elevated)' : 'transparent'),
-                        color: 'var(--text-secondary)',
+                        color: selectedStopTab === view ? '#3D2E6B' : 'var(--text-secondary)',
                         border: selectedStopTab === view ? '0.5px solid transparent' : '0.5px solid var(--border-default)',
                         cursor: 'pointer',
                         transition: 'background-color 0.2s ease, border-color 0.2s ease',
@@ -9094,7 +9094,7 @@ export default function MapCanvas() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: 'var(--data-small-size)',
                         fontWeight: 'var(--data-small-weight)',
-                        color: tab === 'Trips' ? 'var(--text-secondary)' : 'var(--text-disabled)',
+                        color: tab === 'Trips' ? '#3D2E6B' : 'var(--text-disabled)',
                         lineHeight: 'var(--data-small-line-height)',
                         transition: 'color 0.2s ease'
                       }}
@@ -10281,7 +10281,7 @@ export default function MapCanvas() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: 'var(--data-small-size)',
                         fontWeight: 'var(--data-small-weight)',
-                        color: selectedRouteTab === tab ? 'var(--text-secondary)' : 'var(--text-disabled)',
+                        color: selectedRouteTab === tab ? '#3D2E6B' : 'var(--text-disabled)',
                         lineHeight: 'var(--data-small-line-height)',
                         transition: 'color 0.2s ease'
                       }}
@@ -10624,7 +10624,7 @@ export default function MapCanvas() {
                                 height: 20,
                                 width: 120,
                                 borderRadius: 2,
-                                background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                 backgroundSize: '200% 100%',
                                 animation: 'shimmer 1.5s infinite ease-in-out',
                                 opacity: 0.5
@@ -10657,7 +10657,7 @@ export default function MapCanvas() {
                                     height: 10,
                                     width: 24,
                                     borderRadius: 2,
-                                    background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                    background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                     backgroundSize: '200% 100%',
                                     animation: 'shimmer 1.5s infinite ease-in-out',
                                     animationDelay: `${i * 0.1}s`,
@@ -10691,7 +10691,7 @@ export default function MapCanvas() {
                                     width: 52,
                                     borderRadius: 2,
                                     flexShrink: 0,
-                                    background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                    background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                     backgroundSize: '200% 100%',
                                     animation: 'shimmer 1.5s infinite ease-in-out',
                                     animationDelay: `${i * 0.05}s`,
@@ -10703,7 +10703,7 @@ export default function MapCanvas() {
                                       height: '100%',
                                       width: `${width * 100}%`,
                                       borderRadius: 4,
-                                      background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                      background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                       backgroundSize: '200% 100%',
                                       animation: 'shimmer 1.5s infinite ease-in-out',
                                       animationDelay: `${i * 0.05}s`,
@@ -10986,7 +10986,7 @@ export default function MapCanvas() {
                                               height: '100%',
                                               width: barWidth1 === 0 ? '2px' : `${barWidth1}%`,
                                               minWidth: barWidth1 === 0 ? '2px' : '3px',
-                                              backgroundColor: 'var(--border-hover)',
+                                              backgroundColor: 'rgba(155, 139, 180, 0.35)',
                                               borderRadius: barWidth1 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}
@@ -11110,7 +11110,7 @@ export default function MapCanvas() {
                                 height: 14,
                                 width: 80,
                                 borderRadius: 4,
-                                background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                 backgroundSize: '200% 100%',
                                 animation: 'shimmer 1.5s infinite ease-in-out',
                                 opacity: 0.5
@@ -11135,7 +11135,7 @@ export default function MapCanvas() {
                                   height: 14,
                                   width: 50,
                                   borderRadius: 4,
-                                  background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                  background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                   backgroundSize: '200% 100%',
                                   animation: 'shimmer 1.5s infinite ease-in-out',
                                   animationDelay: `${i * 0.05}s`,
@@ -11171,7 +11171,7 @@ export default function MapCanvas() {
                                   height: 14,
                                   width: `${100 + (rowIndex % 5) * 20}px`,
                                   borderRadius: 4,
-                                  background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                  background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                   backgroundSize: '200% 100%',
                                   animation: 'shimmer 1.5s infinite ease-in-out',
                                   animationDelay: `${rowIndex * 0.03}s`,
@@ -11197,7 +11197,7 @@ export default function MapCanvas() {
                                     height: 16,
                                     width: 32,
                                     borderRadius: 4,
-                                    background: 'linear-gradient(90deg, var(--border-default) 25%, var(--border-hover) 50%, var(--border-default) 75%)',
+                                    background: 'linear-gradient(90deg, rgba(155, 139, 180, 0.08) 25%, rgba(155, 139, 180, 0.15) 50%, rgba(155, 139, 180, 0.08) 75%)',
                                     backgroundSize: '200% 100%',
                                     animation: 'shimmer 1.5s infinite ease-in-out',
                                     animationDelay: `${(rowIndex * 16 + colIndex) * 0.01}s`,
