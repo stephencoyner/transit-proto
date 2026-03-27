@@ -46,6 +46,7 @@ export function InsightsPanel({
 
   // Chat state (local only)
   const [chatInput, setChatInput] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   // homeTab removed — history view removed
   const [isControlStuck, setIsControlStuck] = useState(false);
@@ -68,13 +69,28 @@ export function InsightsPanel({
     "Are any routes losing riders?",
   ];
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [streamedPlaceholder, setStreamedPlaceholder] = useState('');
   useEffect(() => {
     if (inChat || chatInput) return; // Don't cycle when typing or in chat
     const interval = setInterval(() => {
       setPlaceholderIdx(prev => (prev + 1) % PLACEHOLDER_EXAMPLES.length);
-    }, 4000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [inChat, chatInput]);
+
+  // Stream in placeholder text character by character when index changes
+  useEffect(() => {
+    if (inChat || chatInput) return;
+    const target = PLACEHOLDER_EXAMPLES[placeholderIdx];
+    setStreamedPlaceholder('');
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      setStreamedPlaceholder(target.slice(0, i));
+      if (i >= target.length) clearInterval(timer);
+    }, 28);
+    return () => clearInterval(timer);
+  }, [placeholderIdx, inChat, chatInput]);
 
   // Auto-resize textarea (home mode input only)
   useEffect(() => {
@@ -708,6 +724,7 @@ export function InsightsPanel({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        zIndex: 2,
       }}>
         <div
           style={{
@@ -718,7 +735,7 @@ export function InsightsPanel({
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             borderRadius: '36px',
-            padding: '16px 24px',
+            padding: '16px 24px 16px 20px',
             border: 'none',
             outline: '0.5px solid rgba(0, 0, 0, 0.10)',
             outlineOffset: '0px',
@@ -727,44 +744,73 @@ export function InsightsPanel({
             width: '100%',
           }}
         >
-          <textarea
-            ref={inputRef}
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={PLACEHOLDER_EXAMPLES[placeholderIdx]}
-            rows={1}
-            style={{
-              flex: 1,
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              fontSize: '16px',
-              lineHeight: '1.5',
-              resize: 'none',
-              fontFamily: 'Inter, sans-serif',
-              marginLeft: '8px',
-            }}
-          />
+<div style={{ flex: 1, position: 'relative', cursor: 'text', display: 'flex', alignItems: 'center' }} onClick={() => inputRef.current?.focus()}>
+            {!chatInput && !isInputFocused && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                left: 0,
+                right: 0,
+                fontSize: '16px',
+                lineHeight: '1.5',
+                fontFamily: 'Inter, sans-serif',
+                color: 'var(--text-tertiary)',
+                opacity: 0.5,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+              }}>
+                {streamedPlaceholder}
+              </div>
+            )}
+            <textarea
+              ref={inputRef}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
+              placeholder=""
+              rows={1}
+              style={{
+                width: '100%',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                color: 'var(--text-primary)',
+                fontSize: '16px',
+                lineHeight: '1.5',
+                resize: 'none',
+                fontFamily: 'Inter, sans-serif',
+                padding: 0,
+                position: 'relative',
+                zIndex: 1,
+              }}
+            />
+          </div>
           <button
             onClick={sendMessage}
             disabled={!chatInput.trim() || isChatLoading}
             style={{
-              background: 'none',
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
               border: 'none',
               cursor: chatInput.trim() && !isChatLoading ? 'pointer' : 'default',
-              padding: '4px',
-              color: chatInput.trim() && !isChatLoading ? 'var(--accent, #ED7E22)' : 'var(--text-tertiary)',
-              opacity: chatInput.trim() && !isChatLoading ? 1 : 0.4,
+              backgroundColor: chatInput.trim() && !isChatLoading ? 'var(--accent-ui)' : 'var(--bg-primary)',
+              color: chatInput.trim() && !isChatLoading ? 'white' : 'var(--text-primary)',
               flexShrink: 0,
-              transition: 'opacity 0.15s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '-12px -16px -12px 0',
+              transition: 'background-color 0.15s ease, color 0.15s ease',
             }}
             aria-label="Send message"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            <svg width="20" height="20" viewBox="0 -960 960 960" fill="currentColor" style={{ opacity: chatInput.trim() && !isChatLoading ? 1 : 0.4 }}>
+              <path d="M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q-12 12-28.5 12T715-452L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z"/>
             </svg>
           </button>
         </div>
