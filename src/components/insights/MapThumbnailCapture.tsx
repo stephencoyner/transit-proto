@@ -241,7 +241,7 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
           if (geojson.features.length === 0) {
             geojson = {
               type: 'FeatureCollection',
-              features: paths.map((p, i) => ({
+              features: allPaths.map((p, i) => ({
                 type: 'Feature' as const,
                 properties: { id: i, color: '#ED7E22' },
                 geometry: { type: 'LineString' as const, coordinates: p.path },
