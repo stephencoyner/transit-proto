@@ -132,14 +132,14 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', padding: '20px 20px 16px 20px' }}>
           <h3 style={{
             color: 'var(--text-primary)', margin: '0 0 16px',
-            fontSize: '24px', fontWeight: 700, lineHeight: 1.2, fontFamily: 'var(--font-display)',
+            fontSize: '24px', fontWeight: 700, lineHeight: 1.2, fontFamily: '"Playfair Display", Georgia, serif',
           }}>
             {insight.title}
           </h3>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <p style={{
               color: 'var(--text-primary)', margin: '0 0 4px',
-              fontSize: '16px', fontWeight: 400, lineHeight: '24px', fontFamily: 'var(--font-display)',
+              fontSize: '16px', fontWeight: 400, lineHeight: '24px', fontFamily: '"Playfair Display", Georgia, serif',
               display: '-webkit-box',
               WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical',
@@ -209,7 +209,7 @@ function CompactCard({ insight, onAnalyze }: InsightCardProps) {
         }}>
           <h3 style={{
             color: 'var(--text-primary)', margin: '0 0 4px',
-            fontSize: '16px', fontWeight: 700, lineHeight: '24px', fontFamily: 'var(--font-display)',
+            fontSize: '16px', fontWeight: 700, lineHeight: '24px', fontFamily: '"Playfair Display", Georgia, serif',
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -253,7 +253,7 @@ function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
           </div>
           <h3 className="heading-small" style={{
             color: 'var(--text-primary)', margin: 0,
-            fontSize: '16px', fontWeight: 700, lineHeight: 1.3, fontFamily: 'var(--font-display)',
+            fontSize: '16px', fontWeight: 700, lineHeight: 1.3, fontFamily: '"Playfair Display", Georgia, serif',
           }}>
             {insight.title}
           </h3>

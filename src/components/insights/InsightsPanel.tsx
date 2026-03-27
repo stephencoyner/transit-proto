@@ -526,7 +526,7 @@ export function InsightsPanel({
           <h1 style={{
             fontSize: '18px',
             fontWeight: 700,
-            fontFamily: 'var(--font-display)',
+            fontFamily: '"Playfair Display", Georgia, serif',
             color: 'var(--text-primary)',
             margin: '0 0 24px',
             paddingTop: '24px',

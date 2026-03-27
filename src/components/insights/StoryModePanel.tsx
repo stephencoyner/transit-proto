@@ -591,13 +591,14 @@ export function StoryModePanel({
       {/* Title Bar */}
       <div
         style={{
-          padding: '20px 16px 16px',
+          padding: '20px 16px 10px',
           flexShrink: 0,
           borderBottom: '0.5px solid var(--border-default)',
           margin: '0 -0.5px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Row 1: X + title */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
           <button
             onClick={onClose}
             style={{
@@ -605,7 +606,7 @@ export function StoryModePanel({
               border: 'none',
               padding: '4px',
               cursor: 'pointer',
-              color: 'var(--text-tertiary)',
+              color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               flexShrink: 0,
@@ -615,289 +616,97 @@ export function StoryModePanel({
               <path d="M3.80773 13.7071C3.41721 14.0976 2.78419 14.0976 2.39367 13.7071C2.00323 13.3166 2.00318 12.6835 2.39367 12.293L6.63684 8.05086L2.39367 3.80769C2.00328 3.41716 2.00319 2.78411 2.39367 2.39363C2.78416 2.00323 3.41723 2.00326 3.80773 2.39363L8.0509 6.6368L12.2931 2.39363C12.6836 2.00325 13.3167 2.00323 13.7071 2.39363C14.0976 2.78412 14.0976 3.41716 13.7071 3.80769L9.46496 8.05086L13.7071 12.293C14.0976 12.6835 14.0976 13.3166 13.7071 13.7071C13.3166 14.0976 12.6836 14.0976 12.2931 13.7071L8.0509 9.46492L3.80773 13.7071Z" fill="currentColor" />
             </svg>
           </button>
-          <h2
-            style={{
-              fontSize: '16px',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              margin: 0,
-              lineHeight: 1.3,
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <h2 style={{
+            fontSize: '16px',
+            fontWeight: 700,
+            fontFamily: '"Playfair Display", Georgia, serif',
+            color: 'var(--text-secondary)',
+            margin: 0,
+            lineHeight: 1.3,
+            flex: 1,
+          }}>
             {insight.title}
           </h2>
         </div>
       </div>
-
-      {/* Page Navigation */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 16px',
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            fontSize: '16px',
-            fontWeight: 400,
-            color: 'var(--text-primary)',
-          }}
-        >
-          {stepIndex + 1} of {totalSteps}
-        </span>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            onClick={() => onStepChange(stepIndex - 1)}
-            disabled={isFirst}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              border: '0.5px solid var(--border-default)',
-              backgroundColor: isFirst ? '#F5F5F5' : 'var(--bg-elevated)',
-              cursor: isFirst ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 0,
-              opacity: isFirst ? 0.5 : 1,
-              color: 'var(--text-primary)',
-              transition: 'opacity 150ms ease',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onStepChange(stepIndex + 1)}
-            disabled={isLast}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              border: '0.5px solid var(--border-default)',
-              backgroundColor: isLast ? '#F5F5F5' : 'var(--bg-elevated)',
-              cursor: isLast ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 0,
-              opacity: isLast ? 0.5 : 1,
-              color: 'var(--text-primary)',
-              transition: 'opacity 150ms ease',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Divider + Metric Filter */}
-      <div style={{ padding: '0 16px', flexShrink: 0 }}>
-        <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)' }} />
-      </div>
-      {hasMetrics && (
-        <div style={{ padding: '8px 16px', flexShrink: 0 }}>
-          <SegmentedControl
-            value={storyMetric}
-            onChange={(value) => {
-              setStoryMetric(value);
-              onMetricChange?.(value);
-            }}
-            options={currentStep.relevantMetrics!.map((m) => ({ value: m, label: metricShortLabel[m] ?? m }))}
-            fullWidth
-          />
-        </div>
-      )}
 
       {/* Scrollable Content */}
       <div
         style={{
           flex: 1,
           overflow: 'auto',
-          padding: '0 16px 120px',
+          padding: '16px 16px 24px',
         }}
       >
-        {/* Filter Summary */}
-        {(() => {
-          const { filters } = currentStep;
-          const isComparison = filters.comparisonMode && filters.comparisonStartDate && filters.comparisonEndDate;
-
-          const formatRange = (start?: string, end?: string) => {
-            if (!start || !end) return '';
-            const s = new Date(start + 'T00:00:00');
-            const e = new Date(end + 'T00:00:00');
-            const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-            return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
-          };
-
-          // Build day/time suffix from filters
-          const parts: string[] = [];
-          if (filters.daysMode === 'weekdays') parts.push('Weekdays');
-          else if (filters.daysMode === 'weekends') parts.push('Weekends');
-          else if (filters.daysMode === 'custom' && filters.customDays?.length) parts.push(filters.customDays.join(', '));
-          else parts.push('All days');
-          if (filters.timeMode === 'custom' && filters.timePeriods?.length) parts.push(filters.timePeriods.join(', '));
-          const suffix = parts.join(' · ');
-
-          if (isComparison) {
-            const rangeA = `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
-            const rangeB = `${formatRange(filters.comparisonStartDate, filters.comparisonEndDate)} · ${suffix}`;
-            return (
-              <div style={{ padding: '16px 0 0', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {[rangeA, rangeB].map((range, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: i === 0 ? DATETIME_1_COLOR : DATETIME_2_COLOR,
-                        flexShrink: 0,
-                      }} />
-                      <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                        {range}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          }
-
-          const summary = currentStep.filterSummary || `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
-          return summary ? (
-            <div style={{ padding: '16px 0 0', marginBottom: '12px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block' }}>
-                {summary}
-              </span>
-            </div>
-          ) : null;
-        })()}
-
-        {/* Narrative Card + Charts */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Narrative Card */}
+          {/* Combined card: page title + dates + narrative + segmented control */}
           <div style={chartCardStyle}>
-            <span
-              style={{
-                fontSize: '15px',
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                display: 'block',
-                marginBottom: '6px',
-              }}
-            >
+            {/* Page title */}
+            <div style={{ fontSize: '16px', fontWeight: 400, color: 'var(--text-primary)', marginBottom: '4px' }}>
               {currentStep.pageName || `Page ${stepIndex + 1}`}
-            </span>
-            <p
-              style={{
-                fontSize: '14px',
-                lineHeight: 1.6,
-                color: 'var(--text-secondary)',
-                margin: 0,
-              }}
-            >
+            </div>
+            {/* Dates */}
+            {(() => {
+              const { filters } = currentStep;
+              const formatRange = (start?: string, end?: string) => {
+                if (!start || !end) return '';
+                const s = new Date(start + 'T00:00:00');
+                const e = new Date(end + 'T00:00:00');
+                const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+                return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
+              };
+              const parts: string[] = [];
+              if (filters.daysMode === 'weekdays') parts.push('Weekdays');
+              else if (filters.daysMode === 'weekends') parts.push('Weekends');
+              else if (filters.daysMode === 'custom' && filters.customDays?.length) parts.push(filters.customDays.join(', '));
+              else parts.push('All days');
+              if (filters.timeMode === 'custom' && filters.timePeriods?.length) parts.push(filters.timePeriods.join(', '));
+              const suffix = parts.join(' · ');
+              const isComparison = filters.comparisonMode && filters.comparisonStartDate && filters.comparisonEndDate;
+              if (isComparison) {
+                const rangeA = `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
+                const rangeB = `${formatRange(filters.comparisonStartDate, filters.comparisonEndDate)} · ${suffix}`;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '12px' }}>
+                    {[rangeA, rangeB].map((range, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: i === 0 ? DATETIME_1_COLOR : DATETIME_2_COLOR, flexShrink: 0 }} />
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{range}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              const summary = currentStep.filterSummary || `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
+              return summary ? <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>{summary}</div> : null;
+            })()}
+            {/* Narrative */}
+            <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
               {currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}
             </p>
+            {/* Segmented control */}
+            {hasMetrics && (
+              <div style={{ marginTop: '12px' }}>
+                <SegmentedControl
+                  value={storyMetric}
+                  onChange={(value) => {
+                    setStoryMetric(value);
+                    onMetricChange?.(value);
+                  }}
+                  options={currentStep.relevantMetrics!.map((m) => ({ value: m, label: metricShortLabel[m] ?? m }))}
+                  fullWidth
+                />
+              </div>
+            )}
           </div>
 
-          {/* Charts — use metric-specific charts when available */}
+          {/* Charts */}
           {(currentStep.chartsByMetric?.[storyMetric] ?? currentStep.charts)?.map((chart) => (
             <StoryChart key={chart.id} spec={chart} />
           ))}
         </div>
       </div>
 
-      {/* Bottom Input */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          pointerEvents: 'none',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '80px',
-            backgroundColor: 'var(--bg-primary)',
-          }}
-        />
-        <div
-          style={{
-            position: 'relative',
-            padding: '0 16px 12px',
-            pointerEvents: 'auto',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'var(--bg-elevated)',
-              borderRadius: '36px',
-              padding: '16px 20px',
-              border: '0.5px solid var(--border-default)',
-            }}
-          >
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about this analysis..."
-              rows={1}
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                color: 'var(--text-primary)',
-                fontSize: '15px',
-                lineHeight: '1.5',
-                resize: 'none',
-                fontFamily: 'Inter, sans-serif',
-              }}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!chatInput.trim() || isChatLoading}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: chatInput.trim() && !isChatLoading ? 'pointer' : 'default',
-                padding: '4px',
-                color: chatInput.trim() && !isChatLoading ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                opacity: chatInput.trim() && !isChatLoading ? 1 : 0.4,
-                flexShrink: 0,
-                transition: 'opacity 0.15s ease',
-              }}
-              aria-label="Send message"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
