@@ -72,6 +72,16 @@ function BookmarkIcon() {
   );
 }
 
+function formatDateRange(start: string, end: string): string {
+  const s = new Date(start + 'T00:00:00');
+  const e = new Date(end + 'T00:00:00');
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const yearOpts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+  return s.getFullYear() === e.getFullYear()
+    ? `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', yearOpts)}`
+    : `${s.toLocaleDateString('en-US', yearOpts)} – ${e.toLocaleDateString('en-US', yearOpts)}`;
+}
+
 function CardFooter({ insight, onAnalyze, showSparkle }: { insight: InsightCardType; onAnalyze?: (i: InsightCardType) => void; showSparkle?: boolean }) {
   return (
     <div style={{
@@ -83,7 +93,7 @@ function CardFooter({ insight, onAnalyze, showSparkle }: { insight: InsightCardT
         .card-footer-icon:hover { opacity: 1; color: var(--text-primary); }
       `}</style>
       <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-        Sep-Oct, 2025
+        {insight.dateRange ? formatDateRange(insight.dateRange.start, insight.dateRange.end) : null}
       </span>
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <span className="card-footer-icon"><BookmarkIcon /></span>
