@@ -25,7 +25,7 @@ interface ChatMessage {
 }
 
 // Non-comparison bar color matching data panel (ByDayChart default)
-const BAR_DEFAULT_COLOR = '#D4C9BA';
+const BAR_DEFAULT_COLOR = '#9B8BB4';
 
 // Comparison colors matching data panel
 const DATETIME_1_COLOR = '#D4CABA';

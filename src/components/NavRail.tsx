@@ -265,11 +265,11 @@ const NavRail: React.FC<NavRailProps> = ({
                   className={`
                     flex items-center justify-center transition-colors
                     ${isActive
-                      ? 'text-text-tertiary'
+                      ? ''
                       : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                     }
                   `}
-                  style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: isActive ? 'rgba(237, 126, 34, 0.12)' : undefined }}
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: isActive ? 'rgba(139, 111, 190, 0.12)' : undefined, color: isActive ? '#3D2E6B' : undefined }}
                 >
                   <item.Icon />
                 </div>
@@ -290,15 +290,15 @@ const NavRail: React.FC<NavRailProps> = ({
                 className={`
                   flex items-center justify-center rounded-default transition-colors
                   ${isActive
-                    ? 'bg-btn-secondary text-text-tertiary'
+                    ? 'bg-btn-secondary'
                     : 'bg-transparent text-text-tertiary hover:bg-btn-secondary/50'
                   }
                 `}
-                style={{ width: '40px', height: '32px' }}
+                style={{ width: '40px', height: '32px', color: isActive ? '#3D2E6B' : undefined }}
               >
                 <item.Icon />
               </div>
-              <span className="nav-label text-text-tertiary">
+              <span className="nav-label" style={{ color: isActive ? '#3D2E6B' : undefined }}>
                 {item.label}
               </span>
             </button>
