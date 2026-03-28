@@ -39,10 +39,14 @@ const chartCardStyle: React.CSSProperties = {
 };
 
 // ── Chart renderer ──
-function StoryChart({ spec }: { spec: StoryChartSpec }) {
+function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
+  const wrapper = bare
+    ? { paddingTop: '16px' }
+    : chartCardStyle;
+
   if (spec.type === 'metric') {
     return (
-      <div style={chartCardStyle}>
+      <div style={wrapper}>
         <span
           style={{
             fontSize: '12px',
@@ -77,7 +81,7 @@ function StoryChart({ spec }: { spec: StoryChartSpec }) {
   };
 
   return (
-    <div style={chartCardStyle}>
+    <div style={wrapper}>
       {spec.title && (
         <h4
           style={{
@@ -593,8 +597,6 @@ export function StoryModePanel({
         style={{
           padding: '20px 16px 10px',
           flexShrink: 0,
-          borderBottom: '0.5px solid var(--border-default)',
-          margin: '0 -0.5px',
         }}
       >
         {/* Row 1: X + title */}
@@ -629,6 +631,61 @@ export function StoryModePanel({
           </h2>
         </div>
       </div>
+      <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '0 16px', flexShrink: 0 }} />
+
+      {/* Page Navigation */}
+      <div style={{ padding: '12px 16px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+        <button
+          onClick={() => onStepChange(stepIndex - 1)}
+          disabled={isFirst}
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            border: '0.5px solid var(--border-default)',
+            backgroundColor: 'var(--bg-elevated)',
+            cursor: isFirst ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            opacity: isFirst ? 0.5 : 1,
+            color: 'var(--text-primary)',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+          {stepIndex + 1} of {totalSteps}
+        </span>
+        <button
+          onClick={() => onStepChange(stepIndex + 1)}
+          disabled={isLast}
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            border: '0.5px solid var(--border-default)',
+            backgroundColor: 'var(--bg-elevated)',
+            cursor: isLast ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            opacity: isLast ? 0.5 : 1,
+            color: 'var(--text-primary)',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+      <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', flexShrink: 0 }} />
 
       {/* Scrollable Content */}
       <div
@@ -639,7 +696,7 @@ export function StoryModePanel({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Combined card: page title + dates + narrative + segmented control */}
+          {/* Narrative card: page title + dates + narrative */}
           <div style={chartCardStyle}>
             {/* Page title */}
             <div style={{ fontSize: '16px', fontWeight: 400, color: 'var(--text-primary)', marginBottom: '4px' }}>
@@ -680,30 +737,41 @@ export function StoryModePanel({
               const summary = currentStep.filterSummary || `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
               return summary ? <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>{summary}</div> : null;
             })()}
+            {/* Divider below dates */}
+            <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '0 0 12px' }} />
             {/* Narrative */}
             <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
               {currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}
             </p>
-            {/* Segmented control */}
-            {hasMetrics && (
-              <div style={{ marginTop: '12px' }}>
-                <SegmentedControl
-                  value={storyMetric}
-                  onChange={(value) => {
-                    setStoryMetric(value);
-                    onMetricChange?.(value);
-                  }}
-                  options={currentStep.relevantMetrics!.map((m) => ({ value: m, label: metricShortLabel[m] ?? m }))}
-                  fullWidth
-                />
-              </div>
-            )}
           </div>
 
-          {/* Charts */}
-          {(currentStep.chartsByMetric?.[storyMetric] ?? currentStep.charts)?.map((chart) => (
-            <StoryChart key={chart.id} spec={chart} />
-          ))}
+          {/* Charts: combined card with segmented control on top when metrics exist */}
+          {hasMetrics ? (
+            <div style={chartCardStyle}>
+              <SegmentedControl
+                value={storyMetric}
+                onChange={(value) => {
+                  setStoryMetric(value);
+                  onMetricChange?.(value);
+                }}
+                options={currentStep.relevantMetrics!.map((m) => ({ value: m, label: metricShortLabel[m] ?? m }))}
+                fullWidth
+              />
+              <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '16px 0 0' }} />
+              {(currentStep.chartsByMetric?.[storyMetric] ?? currentStep.charts)?.map((chart, i) => (
+                <React.Fragment key={chart.id}>
+                  {i > 0 && (
+                    <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '16px 0 0' }} />
+                  )}
+                  <StoryChart spec={chart} bare />
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            (currentStep.charts)?.map((chart) => (
+              <StoryChart key={chart.id} spec={chart} />
+            ))
+          )}
         </div>
       </div>
 
