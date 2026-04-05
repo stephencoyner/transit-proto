@@ -5768,29 +5768,6 @@ export default function MapCanvas() {
                         animation: 'compare-border-spin 7s linear infinite',
                       }} />
                     </div>
-                    {/* Layer 2: Blurred outer glow — identical gradient for alignment */}
-                    <div style={{
-                      position: 'absolute',
-                      inset: '-8px',
-                      borderRadius: '9999px',
-                      opacity: isCompareHovered ? 0.35 : 0,
-                      transition: 'opacity 0.3s ease',
-                      pointerEvents: 'none',
-                      overflow: 'hidden',
-                    }}>
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        width: '200px',
-                        height: '200px',
-                        marginTop: '-100px',
-                        marginLeft: '-100px',
-                        background: 'conic-gradient(#EC503A 0deg, #EC503A 30deg, #F06848 40deg, #F06848 65deg, #F48060 75deg, #F48060 100deg, #F0C030 110deg, #F0C030 140deg, #60E0B0 150deg, #60E0B0 180deg, #45C898 190deg, #45C898 220deg, #35B088 230deg, #35B088 260deg, #F0C030 270deg, #F0C030 310deg, #EC503A 330deg, #EC503A 360deg)',
-                        animation: 'compare-border-spin 7s linear infinite',
-                        filter: 'blur(6px)',
-                      }} />
-                    </div>
                     <button
                       className="rounded-full transition-colors duration-200 cursor-pointer bg-bg-elevated text-text-primary hover:bg-bg-primary button-small h-7 px-4"
                       onClick={() => {
