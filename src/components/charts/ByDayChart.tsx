@@ -2,7 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, accent, accent2, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, accent, accent2, accentShimmer } from '@/lib/uiAccent';
 
 interface DayDataPoint {
   day: string;
@@ -96,11 +96,11 @@ const ByDayChartSkeleton = () => (
       {/* Chart area with vertical bars */}
       <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 40px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 280 200" preserveAspectRatio="none">
         {/* Horizontal grid lines */}
-        <line x1="0" y1="0" x2="280" y2="0" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="50" x2="280" y2="50" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="100" x2="280" y2="100" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="150" x2="280" y2="150" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="200" x2="280" y2="200" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="0" x2="280" y2="0" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="50" x2="280" y2="50" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="100" x2="280" y2="100" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="150" x2="280" y2="150" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="200" x2="280" y2="200" stroke={accent(0.3)} strokeWidth="0.5" />
         {/* Vertical bars - 7 days */}
         {[0, 1, 2, 3, 4, 5, 6].map(i => {
           const barWidth = 24;
@@ -196,21 +196,21 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
           <defs>
             <linearGradient id="barCursor" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
               <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
             </linearGradient>
             <linearGradient id="barGradientDay" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
-              <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+              <stop offset="0%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
             </linearGradient>
           </defs>
           <XAxis
             dataKey="day"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-            axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
+            axisLine={{ stroke: accent(0.3), strokeOpacity: 0.6 }}
             tickLine={false}
           />
           <YAxis

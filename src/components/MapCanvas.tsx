@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
-import { accent, accent2, accentShimmer, ACCENT_UI_TEXT } from '@/lib/uiAccent';
+import { accent, accent2, accentShimmer, ACCENT_UI_TEXT, ACCENT_UI_BAR } from '@/lib/uiAccent';
 import { createPortal } from 'react-dom';
 import MapboxMap, { MapRef } from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
@@ -10794,9 +10794,8 @@ export default function MapCanvas() {
                                   top: 0,
                                   left: 'calc(-52px - 16px - 16px)', // Extend to left edge (time label width + gap + container padding)
                                   right: '-16px', // Extend to right edge (container padding)
-                                  height: '0.5px',
-                                  backgroundColor: 'var(--border-default)',
-                                  opacity: 0.5
+                                  height: '0',
+                                  borderTop: '0.5px dashed rgba(136, 128, 196, 0.3)'
                                 }}
                               />
                               {[0, 25, 50, 75].map((percent, i) => (
@@ -10807,9 +10806,8 @@ export default function MapCanvas() {
                                     left: `${percent}%`,
                                     top: 0,
                                     bottom: 0,
-                                    width: '0.5px',
-                                    backgroundColor: 'var(--border-default)',
-                                    opacity: 0.5
+                                    width: '0',
+                                    borderLeft: '0.5px dashed rgba(136, 128, 196, 0.3)'
                                   }}
                                 />
                               ))}
@@ -10954,7 +10952,7 @@ export default function MapCanvas() {
                                               height: '100%',
                                               width: barWidth1 === 0 ? '2px' : `${barWidth1}%`,
                                               minWidth: barWidth1 === 0 ? '2px' : '3px',
-                                              backgroundColor: accent(0.35),
+                                              backgroundColor: ACCENT_UI_BAR,
                                               borderRadius: barWidth1 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}

@@ -2,7 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useState, useEffect, useMemo, useRef } from 'react';
 import PortalTooltipContent from './PortalTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, accent, accent2, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, accent, accent2, accentShimmer } from '@/lib/uiAccent';
 
 interface PatternDataPoint {
   headsign: string;
@@ -128,9 +128,9 @@ const ByPatternChartSkeleton = ({ patternCount }: { patternCount: number }) => {
             </div>
             {/* Chart area with vertical bars */}
             <svg style={{ position: 'absolute', left: 40, top: 10, width: 'calc(100% - 50px)', height: 'calc(100% - 40px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 100 120" preserveAspectRatio="none">
-              <line x1="0" y1="0" x2="100" y2="0" stroke={accent(0.2)} strokeWidth="0.5" />
-              <line x1="0" y1="60" x2="100" y2="60" stroke={accent(0.2)} strokeWidth="0.5" />
-              <line x1="0" y1="120" x2="100" y2="120" stroke={accent(0.2)} strokeWidth="0.5" />
+              <line x1="0" y1="0" x2="100" y2="0" stroke={accent(0.3)} strokeWidth="0.5" />
+              <line x1="0" y1="60" x2="100" y2="60" stroke={accent(0.3)} strokeWidth="0.5" />
+              <line x1="0" y1="120" x2="100" y2="120" stroke={accent(0.3)} strokeWidth="0.5" />
               {/* Bar 1 - centered at 33% */}
               <rect x="8" y="20" width="35" height="100" rx="4" ry="4" fill={accent(0.15)} />
               {/* Bar 2 - centered at 67% */}
@@ -347,22 +347,22 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
         {isHorizontal ? (
           // Horizontal bar chart for many patterns
           <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} horizontal={false} />
             <defs>
               <linearGradient id="barCursorPatternH" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
                 <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="barGradientPatternH" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
+                <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
               </linearGradient>
             </defs>
             <YAxis
               dataKey="displayName"
               type="category"
               tick={<CustomYAxisTick />}
-              axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
+              axisLine={{ stroke: accent(0.3), strokeOpacity: 0.6 }}
               tickLine={false}
               width={80}
             />
@@ -420,21 +420,21 @@ export default function ByPatternChart({ data, comparisonData, metric, loading =
         ) : (
           // Vertical bar chart for 2 patterns
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
             <defs>
               <linearGradient id="barCursorPatternV" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
                 <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="barGradientPatternV" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
+                <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
               </linearGradient>
             </defs>
             <XAxis
               dataKey="displayName"
               tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-              axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
+              axisLine={{ stroke: accent(0.3), strokeOpacity: 0.6 }}
               tickLine={false}
               interval={0}
             />
