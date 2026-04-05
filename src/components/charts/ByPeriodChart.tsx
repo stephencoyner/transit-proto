@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, ACCENT_UI_BAR, accent, accent2, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_2_BAR_CMP, accent, accent2, accentShimmer } from '@/lib/uiAccent';
 
 interface PeriodDataPoint {
   period: string;
@@ -222,7 +222,7 @@ export default function ByPeriodChart({
               <Bar
                 dataKey="value1"
                 name="Date-time 1"
-                fill={accent(0.4)}
+                fill={ACCENT_UI_BAR_CMP}
                 radius={[0, 4, 4, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
@@ -231,7 +231,7 @@ export default function ByPeriodChart({
               <Bar
                 dataKey="value2"
                 name="Date-time 2"
-                fill={accent2(0.4)}
+                fill={ACCENT_UI_2_BAR_CMP}
                 radius={[0, 4, 4, 0]}
                 isAnimationActive={false}
                 animationDuration={400}

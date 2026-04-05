@@ -101,8 +101,8 @@ export default function CustomTooltip({ active, payload, label, isComparisonMode
   return (
     <div
       style={{
-        backgroundColor: 'var(--btn-primary)',
-        color: 'var(--text-btn-primary)',
+        backgroundColor: 'var(--accent-ui-text)',
+        color: 'white',
         borderRadius: 'var(--radius-sm)',
         fontSize: '0.75rem',
         fontWeight: 500,

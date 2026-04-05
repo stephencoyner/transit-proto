@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
-import { accent, accent2, accentShimmer, ACCENT_UI_TEXT, ACCENT_UI_BAR } from '@/lib/uiAccent';
+import { accent, accent2, accentShimmer, ACCENT_UI_TEXT, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_2_BAR_CMP } from '@/lib/uiAccent';
 import { createPortal } from 'react-dom';
 import MapboxMap, { MapRef } from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
@@ -10893,7 +10893,7 @@ export default function MapCanvas() {
                                               height: '12px',
                                               width: barWidth1 === 0 ? '2px' : `${barWidth1}%`,
                                               minWidth: barWidth1 === 0 ? '2px' : '3px',
-                                              backgroundColor: accent(0.4),
+                                              backgroundColor: ACCENT_UI_BAR_CMP,
                                               borderRadius: barWidth1 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}
@@ -10904,7 +10904,7 @@ export default function MapCanvas() {
                                               height: '12px',
                                               width: barWidth2 === 0 ? '2px' : `${barWidth2}%`,
                                               minWidth: barWidth2 === 0 ? '2px' : '3px',
-                                              backgroundColor: accent2(0.4),
+                                              backgroundColor: ACCENT_UI_2_BAR_CMP,
                                               borderRadius: barWidth2 === 0 ? '1px' : '4px',
                                               transition: 'width 0.3s ease'
                                             }}
@@ -12773,8 +12773,8 @@ export default function MapCanvas() {
               left: `${tripTooltip.x}px`,
               top: `${tripTooltip.y - 8}px`,
               transform: 'translate(0, -100%)',
-              backgroundColor: 'var(--btn-primary)',
-              color: 'var(--text-btn-primary)',
+              backgroundColor: 'var(--accent-ui-text)',
+              color: 'white',
               padding: '8px 12px',
               borderRadius: 'var(--radius-sm)',
               whiteSpace: 'nowrap',

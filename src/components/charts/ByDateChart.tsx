@@ -2,7 +2,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_BAR_CMP_LIGHT, ACCENT_UI_2_BAR_CMP, ACCENT_UI_2_BAR_CMP_LIGHT, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent, accentShimmer } from '@/lib/uiAccent';
 
 interface ChartDataPoint {
   date: string;
@@ -254,12 +254,12 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
               <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={0.15} />
             </linearGradient>
             <linearGradient id={`${gradientId}-primary`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.05} />
+              <stop offset="0%" stopColor={ACCENT_UI_BAR_CMP} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_BAR_CMP_LIGHT} stopOpacity={1} />
             </linearGradient>
             <linearGradient id={`${gradientId}-comparison`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
+              <stop offset="0%" stopColor={ACCENT_UI_2_BAR_CMP} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_2_BAR_CMP_LIGHT} stopOpacity={1} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />

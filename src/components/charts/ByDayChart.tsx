@@ -2,7 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, ACCENT_UI_BAR, accent, accent2, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_2_BAR_CMP, accent, accent2, accentShimmer } from '@/lib/uiAccent';
 
 interface DayDataPoint {
   day: string;
@@ -230,7 +230,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
               <Bar
                 dataKey="value1"
                 name="Date-time 1"
-                fill={accent(0.4)}
+                fill={ACCENT_UI_BAR_CMP}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
@@ -239,7 +239,7 @@ export default function ByDayChart({ data, comparisonData, metric, selectedDays,
               <Bar
                 dataKey="value2"
                 name="Date-time 2"
-                fill={accent2(0.4)}
+                fill={ACCENT_UI_2_BAR_CMP}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
