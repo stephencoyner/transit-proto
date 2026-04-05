@@ -4810,8 +4810,25 @@ export default function MapCanvas() {
     } else if (!selectedRouteId && !selectedStopId) {
       // Reset the previous stop ref when deselecting
       prevSelectedStopIdRef.current = null;
-      // Reset to the originally fitted system view, not the hardcoded Gas Works view
-      setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
+      // Recalculate fit to account for current panel state (filters open/closed)
+      if (shapes.length > 0) {
+        const el = mapContainerRef.current;
+        const width = el?.clientWidth ?? window.innerWidth;
+        const height = el?.clientHeight ?? window.innerHeight;
+        const bounds = calculateBounds(shapes);
+        if (bounds) {
+          const newView = fitToBounds(bounds, { width, height });
+          if (newView) {
+            setViewState(newView);
+          } else {
+            setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
+          }
+        } else {
+          setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
+        }
+      } else {
+        setViewState(initialFittedViewRef.current ?? INITIAL_VIEW_STATE);
+      }
     }
   }, [selectedRouteId, selectedStopId, shapes, stops, fitToBounds, isFiltersPanelOpen]);
 
