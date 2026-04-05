@@ -2,7 +2,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMemo } from 'react';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_BAR_CMP_LIGHT, ACCENT_UI_2_BAR_CMP, ACCENT_UI_2_BAR_CMP_LIGHT, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent, accentShimmer } from '@/lib/uiAccent';
 
 interface ChartDataPoint {
   date: string;
@@ -157,10 +157,10 @@ const ByDateChartSkeleton = () => (
           </linearGradient>
         </defs>
         {/* Horizontal grid lines */}
-        <line x1="0" y1="0" x2="300" y2="0" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="58" x2="300" y2="58" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="116" x2="300" y2="116" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="0" y1="174" x2="300" y2="174" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="0" x2="300" y2="0" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="58" x2="300" y2="58" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="116" x2="300" y2="116" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="0" y1="174" x2="300" y2="174" stroke={accent(0.3)} strokeWidth="0.5" />
         {/* Wave area */}
         <path
           d="M0,140 Q50,100 100,120 T200,80 T300,100 L300,174 L0,174 Z"
@@ -250,23 +250,23 @@ export default function ByDateChart({ data, comparisonData, gradientId, metric, 
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 16 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.6} />
-              <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.05} />
+              <stop offset="0%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={0.15} />
             </linearGradient>
             <linearGradient id={`${gradientId}-primary`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.05} />
+              <stop offset="0%" stopColor={ACCENT_UI_BAR_CMP} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_BAR_CMP_LIGHT} stopOpacity={1} />
             </linearGradient>
             <linearGradient id={`${gradientId}-comparison`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
+              <stop offset="0%" stopColor={ACCENT_UI_2_BAR_CMP} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_2_BAR_CMP_LIGHT} stopOpacity={1} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
           <XAxis
             dataKey="date"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-            axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
+            axisLine={{ stroke: accent(0.3), strokeOpacity: 0.6 }}
             tickLine={false}
             hide
           />

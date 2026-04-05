@@ -18,6 +18,11 @@ export const ACCENT_UI_2_RGB = '196, 149, 106';
  */
 export const ACCENT_UI_ON_WHITE = '#C4C0E2';   // #8880C4 @ 50% on white
 export const ACCENT_UI_2_ON_WHITE = '#E2CAB5'; // #C4956A @ 50% on white
+export const ACCENT_UI_BAR = '#D5D3EA';        // #8880C4 @ 35% on white — opaque bar/area fill
+export const ACCENT_UI_BAR_CMP = '#CFCCE7';    // #8880C4 @ 40% on white — opaque comparison bar/area fill
+export const ACCENT_UI_2_BAR_CMP = '#E7D5C3';  // #C4956A @ 40% on white — opaque comparison bar/area fill
+export const ACCENT_UI_BAR_CMP_LIGHT = '#F9F9FC'; // #8880C4 @ 5% on white — opaque comparison area bottom
+export const ACCENT_UI_2_BAR_CMP_LIGHT = '#FCFAF6'; // #C4956A @ 5% on white — opaque comparison area bottom
 
 /** Returns rgba string at the given opacity, e.g. accent(0.12) */
 export const accent = (opacity: number) => `rgba(${ACCENT_UI_RGB}, ${opacity})`;

@@ -32,27 +32,28 @@ export function SegmentedControl({ options, value, onChange, style, fullWidth }:
       prevOptionsKey.current = optionsKey;
     }
 
-    let settled = false;
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
     const measure = () => {
       const activeBtn = container.querySelector(`[data-value="${value}"]`) as HTMLElement | null;
       if (!activeBtn) return;
       setIndicator({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth });
     };
 
-    // Wait for container width to stop changing before first measurement
+    if (hasAnimated.current) {
+      // Already settled — measure immediately for instant indicator movement
+      measure();
+      return;
+    }
+
+    // First mount: wait for container width to stop changing before measuring
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const ro = new ResizeObserver(() => {
-      if (settled) return; // only use RO for initial settle
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        settled = true;
         measure();
-        if (!hasAnimated.current) {
-          requestAnimationFrame(() => {
-            hasAnimated.current = true;
-          });
-        }
+        requestAnimationFrame(() => {
+          hasAnimated.current = true;
+        });
       }, 100);
     });
     ro.observe(container);

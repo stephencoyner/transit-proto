@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CustomTooltip from './CustomTooltip';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
-import { ACCENT_UI, accent, accent2, accentShimmer } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_2_BAR_CMP, accent, accent2, accentShimmer } from '@/lib/uiAccent';
 
 interface PeriodDataPoint {
   period: string;
@@ -88,11 +88,11 @@ const ByPeriodChartSkeleton = () => (
       {/* Chart area with horizontal bars */}
       <svg style={{ position: 'absolute', left: 70, top: 10, width: 'calc(100% - 80px)', height: 'calc(100% - 20px)', animation: 'shimmerSvg 1.5s infinite ease-in-out' }} viewBox="0 0 200 220" preserveAspectRatio="none">
         {/* Vertical grid lines */}
-        <line x1="0" y1="0" x2="0" y2="220" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="50" y1="0" x2="50" y2="220" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="100" y1="0" x2="100" y2="220" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="150" y1="0" x2="150" y2="220" stroke={accent(0.2)} strokeWidth="0.5" />
-        <line x1="200" y1="0" x2="200" y2="220" stroke={accent(0.2)} strokeWidth="0.5" />
+        <line x1="0" y1="0" x2="0" y2="220" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="50" y1="0" x2="50" y2="220" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="100" y1="0" x2="100" y2="220" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="150" y1="0" x2="150" y2="220" stroke={accent(0.3)} strokeWidth="0.5" />
+        <line x1="200" y1="0" x2="200" y2="220" stroke={accent(0.3)} strokeWidth="0.5" />
         {/* Horizontal bars - 6 time periods */}
         {[0, 1, 2, 3, 4, 5].map(i => {
           const barHeight = 24;
@@ -186,22 +186,22 @@ export default function ByPeriodChart({
       </div>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.2)} strokeWidth={0.5} strokeOpacity={0.6} horizontal={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} horizontal={false} />
           <defs>
             <linearGradient id="barCursorPeriod" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
               <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
             </linearGradient>
             <linearGradient id="barGradientPeriod" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.2} />
-              <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.2} />
+              <stop offset="0%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
+              <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
             </linearGradient>
           </defs>
           <YAxis
             dataKey="period"
             type="category"
             tick={{ fontSize: 'var(--caption-size)', fill: 'var(--text-secondary)', fontWeight: 500 }}
-            axisLine={{ stroke: accent(0.2), strokeOpacity: 0.6 }}
+            axisLine={{ stroke: accent(0.3), strokeOpacity: 0.6 }}
             tickLine={false}
             width={70}
           />
@@ -222,7 +222,7 @@ export default function ByPeriodChart({
               <Bar
                 dataKey="value1"
                 name="Date-time 1"
-                fill={accent(0.4)}
+                fill={ACCENT_UI_BAR_CMP}
                 radius={[0, 4, 4, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
@@ -231,7 +231,7 @@ export default function ByPeriodChart({
               <Bar
                 dataKey="value2"
                 name="Date-time 2"
-                fill={accent2(0.4)}
+                fill={ACCENT_UI_2_BAR_CMP}
                 radius={[0, 4, 4, 0]}
                 isAnimationActive={false}
                 animationDuration={400}
