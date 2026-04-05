@@ -221,7 +221,7 @@ const NavRail: React.FC<NavRailProps> = ({
   // Determine NavRail background: secondary when on home tab or when differentiated + filters open
   const isHomeView = activeTab === 'home' && aiMode;
   const navRailBackground = isHomeView
-    ? 'var(--bg-secondary)'
+    ? 'var(--bg-primary)'
     : differentiatedPanelBackgrounds
       ? (isFiltersPanelOpen ? 'var(--bg-secondary)' : 'var(--bg-primary)')
       : 'var(--bg-primary)';

@@ -47,7 +47,7 @@ export interface WalkthroughFilterState {
   comparisonEndDate?: string;
 }
 
-export type StoryChartType = 'area' | 'bar' | 'metric';
+export type StoryChartType = 'area' | 'bar' | 'metric' | 'comparison-metric';
 
 export interface StoryChartSpec {
   id: string;
@@ -59,6 +59,7 @@ export interface StoryChartSpec {
   yKey2?: string;
   color?: string;
   metricValue?: string | number;
+  metricValue2?: string | number;
   metricLabel?: string;
 }
 

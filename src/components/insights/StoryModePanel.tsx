@@ -8,8 +8,10 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { InsightCard as InsightCardType, StoryChartSpec } from '@/types/insights';
+import CustomTooltip from '@/components/charts/CustomTooltip';
+import ComparisonMetricCard from '@/components/charts/ComparisonMetricCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { ACCENT_UI } from '@/lib/uiAccent';
+import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_BAR_CMP_LIGHT, ACCENT_UI_2_BAR_CMP, ACCENT_UI_2_BAR_CMP_LIGHT, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent } from '@/lib/uiAccent';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface StoryModePanelProps {
@@ -26,8 +28,6 @@ interface ChatMessage {
   content: string;
 }
 
-// Non-comparison bar color matching data panel (ByDayChart default)
-const BAR_DEFAULT_COLOR = ACCENT_UI;
 
 // Card container style matching data panel charts
 const chartCardStyle: React.CSSProperties = {
@@ -72,13 +72,17 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
     );
   }
 
+  if (spec.type === 'comparison-metric') {
+    return (
+      <ComparisonMetricCard
+        title={spec.metricLabel || ''}
+        value1={typeof spec.metricValue === 'number' ? spec.metricValue : parseInt(String(spec.metricValue).replace(/,/g, ''), 10) || 0}
+        value2={typeof spec.metricValue2 === 'number' ? spec.metricValue2 : parseInt(String(spec.metricValue2).replace(/,/g, ''), 10) || 0}
+      />
+    );
+  }
+
   const isComparison = !!spec.yKey2;
-  const tooltipStyle = {
-    background: 'var(--bg-elevated)',
-    border: 'var(--border-width) solid var(--border-default)',
-    borderRadius: 'var(--radius-default)',
-    fontSize: '13px',
-  };
 
   return (
     <div style={wrapper}>
@@ -97,7 +101,7 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
       <ResponsiveContainer width="100%" height={180}>
         {spec.type === 'area' ? (
           <AreaChart data={spec.data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
             <XAxis
               dataKey={spec.xKey}
               tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
@@ -109,33 +113,43 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip contentStyle={tooltipStyle} />
+            <Tooltip content={<CustomTooltip isComparisonMode={isComparison} />} cursor={{ fill: `url(#cursor-${spec.id})` }} />
             <defs>
+              <linearGradient id={`cursor-${spec.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
+              </linearGradient>
               <linearGradient id={`gradient-${spec.id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--border-hover)" stopOpacity={0.6} />
-                <stop offset="100%" stopColor="var(--border-hover)" stopOpacity={0.05} />
+                <stop offset="0%" stopColor={ACCENT_UI_BAR} stopOpacity={1} />
+                <stop offset="100%" stopColor={ACCENT_UI_BAR} stopOpacity={0.15} />
               </linearGradient>
               <linearGradient id={`gradient-${spec.id}-1`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
-                <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.05} />
+                <stop offset="0%" stopColor={ACCENT_UI_BAR_CMP} stopOpacity={1} />
+                <stop offset="100%" stopColor={ACCENT_UI_BAR_CMP_LIGHT} stopOpacity={1} />
               </linearGradient>
               <linearGradient id={`gradient-${spec.id}-2`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
-                <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.05} />
+                <stop offset="0%" stopColor={ACCENT_UI_2_BAR_CMP} stopOpacity={1} />
+                <stop offset="100%" stopColor={ACCENT_UI_2_BAR_CMP_LIGHT} stopOpacity={1} />
               </linearGradient>
             </defs>
             {isComparison ? (
               <>
-                <Area type="monotone" dataKey={spec.yKey} name="Date-time 1" stroke={DATETIME_1_COLOR} strokeWidth={4} fill="none" isAnimationActive={false} />
-                <Area type="monotone" dataKey={spec.yKey2!} name="Date-time 2" stroke={DATETIME_2_COLOR} strokeWidth={4} fill="none" isAnimationActive={false} />
+                <Area type="monotone" dataKey={spec.yKey} name="Date-time 1" stroke={ACCENT_UI_ON_WHITE} strokeWidth={4} fill={`url(#gradient-${spec.id}-1)`} isAnimationActive={false} />
+                <Area type="monotone" dataKey={spec.yKey2!} name="Date-time 2" stroke={ACCENT_UI_2_ON_WHITE} strokeWidth={4} fill={`url(#gradient-${spec.id}-2)`} isAnimationActive={false} />
               </>
             ) : (
-              <Area type="monotone" dataKey={spec.yKey} stroke="var(--border-hover)" strokeWidth={2} fill={`url(#gradient-${spec.id})`} isAnimationActive={false} />
+              <Area type="monotone" dataKey={spec.yKey} stroke={ACCENT_UI} strokeOpacity={0.4} strokeWidth={2} fill={`url(#gradient-${spec.id})`} isAnimationActive={false} />
             )}
           </AreaChart>
         ) : (
           <BarChart data={spec.data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.6} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
+            <defs>
+              <linearGradient id={`barCursor-${spec.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={ACCENT_UI} stopOpacity={0.08} />
+              </linearGradient>
+            </defs>
             <XAxis
               dataKey={spec.xKey}
               tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
@@ -147,28 +161,14 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip contentStyle={tooltipStyle} />
-            <defs>
-              <linearGradient id={`barGradient-${spec.id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={BAR_DEFAULT_COLOR} stopOpacity={1} />
-                <stop offset="100%" stopColor={BAR_DEFAULT_COLOR} stopOpacity={0.4} />
-              </linearGradient>
-              <linearGradient id={`barGradient-${spec.id}-1`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={DATETIME_1_COLOR} stopOpacity={1} />
-                <stop offset="100%" stopColor={DATETIME_1_COLOR} stopOpacity={0.4} />
-              </linearGradient>
-              <linearGradient id={`barGradient-${spec.id}-2`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={DATETIME_2_COLOR} stopOpacity={1} />
-                <stop offset="100%" stopColor={DATETIME_2_COLOR} stopOpacity={0.4} />
-              </linearGradient>
-            </defs>
+            <Tooltip content={<CustomTooltip isComparisonMode={isComparison} />} cursor={{ fill: `url(#barCursor-${spec.id})` }} />
             {isComparison ? (
               <>
-                <Bar dataKey={spec.yKey} name="Date-time 1" fill={`url(#barGradient-${spec.id}-1)`} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                <Bar dataKey={spec.yKey2!} name="Date-time 2" fill={`url(#barGradient-${spec.id}-2)`} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey={spec.yKey} name="Date-time 1" fill={ACCENT_UI_BAR_CMP} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey={spec.yKey2!} name="Date-time 2" fill={ACCENT_UI_2_BAR_CMP} radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </>
             ) : (
-              <Bar dataKey={spec.yKey} fill={`url(#barGradient-${spec.id})`} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey={spec.yKey} fill={ACCENT_UI_BAR} radius={[4, 4, 0, 0]} isAnimationActive={false} />
             )}
           </BarChart>
         )}
@@ -740,9 +740,9 @@ export function StoryModePanel({
             {/* Divider below dates */}
             <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '0 0 12px' }} />
             {/* Narrative */}
-            <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
-              {currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}
-            </p>
+            <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)' }} className="story-narrative">
+              <ReactMarkdown>{currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}</ReactMarkdown>
+            </div>
           </div>
 
           {/* Charts: combined card with segmented control on top when metrics exist */}
