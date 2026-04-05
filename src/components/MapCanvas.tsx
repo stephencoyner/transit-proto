@@ -8909,10 +8909,10 @@ export default function MapCanvas() {
               flexShrink: 0,
               width: '100%',
               height: '36px',
-              marginTop: '12px',
+              marginTop: '16px',
               marginBottom: '4px',
-              backgroundColor: 'var(--accent-ui-subtle)',
-              color: 'var(--accent-ui-text)',
+              backgroundColor: 'var(--bg-secondary)',
+              color: 'var(--text-secondary)',
               border: 'none',
               borderRadius: '100px',
               cursor: 'pointer',
@@ -8973,7 +8973,7 @@ export default function MapCanvas() {
           />
         ) : selectedTrip ? (
           /* Trip Detail View */
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '14px' }}>
             {/* Close Button and Header */}
             <div style={{
               display: 'flex',
@@ -9512,7 +9512,7 @@ export default function MapCanvas() {
             const amenitiesList = STOP_AMENITIES.filter(amenity => selectedStopAmenities[amenity]);
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '14px' }}>
                 {/* Back Button and Header */}
                 <div style={{
                   display: 'flex',
@@ -9895,7 +9895,7 @@ export default function MapCanvas() {
             const LABEL_WIDTH = config.labelWidth;
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '8px', position: 'relative' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: isFiltersPanelOpen ? '20px' : '14px', position: 'relative' }}>
                 {/* Pattern headsign - positioned in header area, centered over grid section */}
                 {selectedRouteTab === 'Grid' && currentGridPatternHeadsign && (
               <div style={{
@@ -11669,7 +11669,7 @@ export default function MapCanvas() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  paddingTop: '14px',
+                  paddingTop: isFiltersPanelOpen ? '14px' : '8px',
                   paddingBottom: '8px',
                   paddingLeft: '0px',
                   paddingRight: '0px',
@@ -11846,7 +11846,7 @@ export default function MapCanvas() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  paddingTop: '14px',
+                  paddingTop: isFiltersPanelOpen ? '14px' : '8px',
                   paddingBottom: '8px',
                   paddingLeft: '0px',
                   paddingRight: '0px',
