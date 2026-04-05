@@ -6064,6 +6064,7 @@ export default function MapCanvas() {
                 { value: 'Maxload', label: 'Maxload', disabled: isStopLevelView }
               ]}
               background={differentiatedPanelBackgrounds ? 'var(--bg-secondary)' : 'var(--bg-primary)'}
+              menuExtraWidth={16}
             />
           </div>
 

@@ -36,10 +36,12 @@ export interface SelectProps {
   multiCheck?: string[]; // Additional values to show checkmarks for (for multi-state selections)
   /** Background color token for the trigger button (e.g., 'var(--bg-secondary)') */
   background?: string;
+  /** Extra width added to the dropdown menu beyond the trigger width */
+  menuExtraWidth?: number;
 }
 
 export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
-  ({ label, error, helperText, options, placeholder, value, onChange, disabled, className = '', id, multiCheck = [], background = 'var(--bg-primary)' }, ref) => {
+  ({ label, error, helperText, options, placeholder, value, onChange, disabled, className = '', id, multiCheck = [], background = 'var(--bg-primary)', menuExtraWidth = 0 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedValue, setSelectedValue] = useState(value || '');
     const [isHovered, setIsHovered] = useState(false);
@@ -233,7 +235,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               position: 'fixed',
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
-              minWidth: `${dropdownPosition.width}px`,
+              minWidth: `${dropdownPosition.width + menuExtraWidth}px`,
               maxHeight: `${dropdownPosition.maxHeight}px`,
               backgroundColor: 'var(--bg-elevated)',
               border: '0.5px solid var(--border-default)',
