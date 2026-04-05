@@ -256,7 +256,7 @@ export function CityGridBackground() {
     <>
       {/* Static grid */}
       <svg style={{ ...sharedStyle, opacity: 0.95 }} viewBox="0 0 900 1400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <g stroke="var(--bg-secondary)" strokeWidth="1.5" opacity="0.9">
+        <g stroke="var(--bg-secondary)" strokeWidth="1.5" opacity="1">
           <line x1="0"   y1="0" x2="0"   y2="1400" /><line x1="105" y1="0" x2="105" y2="1400" />
           <line x1="230" y1="0" x2="230" y2="1400" /><line x1="310" y1="0" x2="310" y2="1400" />
           <line x1="460" y1="0" x2="460" y2="1400" /><line x1="570" y1="0" x2="570" y2="1400" />
@@ -269,7 +269,7 @@ export function CityGridBackground() {
           <line x1="0" y1="980"  x2="900" y2="980"  /><line x1="0" y1="1100" x2="900" y2="1100" />
           <line x1="0" y1="1260" x2="900" y2="1260" /><line x1="0" y1="1400" x2="900" y2="1400" />
         </g>
-        <g stroke="var(--bg-secondary)" strokeWidth="0.5" opacity="0.6">
+        <g stroke="var(--bg-secondary)" strokeWidth="0.5" opacity="1">
           <line x1="35"  y1="0" x2="35"  y2="1400" /><line x1="72"  y1="0" x2="72"  y2="1400" />
           <line x1="148" y1="0" x2="148" y2="1400" /><line x1="188" y1="0" x2="188" y2="1400" />
           <line x1="268" y1="0" x2="268" y2="1400" /><line x1="290" y1="0" x2="290" y2="1400" />
@@ -293,7 +293,7 @@ export function CityGridBackground() {
           <line x1="0" y1="1185" x2="900" y2="1185" /><line x1="0" y1="1220" x2="900" y2="1220" />
           <line x1="0" y1="1310" x2="900" y2="1310" /><line x1="0" y1="1355" x2="900" y2="1355" />
         </g>
-        <g stroke="var(--bg-secondary)" strokeWidth="1.2" opacity="0.7">
+        <g stroke="var(--bg-secondary)" strokeWidth="1.2" opacity="1">
           <line x1="0"   y1="300"  x2="900" y2="900"  />
           <line x1="150" y1="0"    x2="900" y2="1050" />
           <line x1="0"   y1="800"  x2="600" y2="1400" />

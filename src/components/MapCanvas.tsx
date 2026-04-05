@@ -1190,7 +1190,7 @@ export default function MapCanvas() {
   const isTripComparisonLoading = comparisonMode && selectedTrip && isTripData2Loading;
 
   // Check if route data matches the selected route (handles stale cached data during route switch)
-  const isRouteDataStale = selectedRouteId && routeData && routeData.metrics.routeId !== selectedRouteId;
+  const isRouteDataStale = selectedRouteId && routeData && routeData.metrics?.routeId !== selectedRouteId;
   const isSegmentDataStale = selectedRouteId && routeSegmentsData && routeSegmentsData.routeId !== selectedRouteId;
 
   // Full loading state for dimming - includes view-specific loading states
@@ -3433,8 +3433,6 @@ export default function MapCanvas() {
   const calculateBounds = calculateBoundsUtil;
 
   // Helper function to fit bounds using proper Mercator projection
-  // Note: isFiltersPanelOpen is captured at call time via getUIPadding, not as a dependency
-  // This prevents fitToBounds from being recreated on every panel toggle
   const fitToBounds = useCallback((bounds: LngLatBoundsLike, size: {width: number; height: number}) => {
     const { width, height } = size;
     // Guard against invalid dimensions
@@ -3477,7 +3475,7 @@ export default function MapCanvas() {
       console.warn('fitToBounds failed:', e);
       return null;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isFiltersPanelOpen, aiMode]);
 
   // Handlers for date filter tooltip
   const handleDateFilterMouseEnter = () => {

@@ -382,6 +382,11 @@ body {
   }
 }
 
+/* Story narrative markdown */
+.story-narrative p { margin: 0 0 12px; }
+.story-narrative p:last-child { margin-bottom: 0; }
+.story-narrative strong { color: var(--text-primary); }
+
 /* Compare button animated border */
 @keyframes compare-border-spin {
   from { transform: rotate(0deg); }
