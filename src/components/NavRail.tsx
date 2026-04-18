@@ -15,6 +15,8 @@ interface NavRailProps {
   onDifferentiatedPanelBackgroundsChange: (value: boolean) => void;
   aiMode: boolean;
   onAiModeChange: (value: boolean) => void;
+  homeChatEnabled: boolean;
+  onHomeChatEnabledChange: (value: boolean) => void;
   onOpenBookmarks: () => void;
   showBookmarkSavedToast?: boolean;
 }
@@ -135,6 +137,8 @@ const NavRail: React.FC<NavRailProps> = ({
   onDifferentiatedPanelBackgroundsChange,
   aiMode,
   onAiModeChange,
+  homeChatEnabled,
+  onHomeChatEnabledChange,
   onOpenBookmarks,
   showBookmarkSavedToast = false
 }) => {
@@ -154,7 +158,7 @@ const NavRail: React.FC<NavRailProps> = ({
     { id: 'stops' as const, label: 'Stops', Icon: StopsIcon },
   ];
   const navItems = aiMode
-    ? [{ id: 'home' as const, label: 'Home', Icon: HomeIcon }, ...baseNavItems]
+    ? [{ id: 'home' as const, label: 'Briefing', Icon: HomeIcon }, ...baseNavItems]
     : baseNavItems;
 
   const handleMouseEnter = () => {
@@ -227,7 +231,7 @@ const NavRail: React.FC<NavRailProps> = ({
       : 'var(--bg-primary)';
 
   return (
-    <div className="flex flex-col items-center h-full px-2 relative" style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', backgroundColor: navRailBackground, transition: 'background-color 300ms ease-in-out' }}>
+    <div className="flex flex-col items-center h-full px-2 relative" style={{ paddingTop: '12px', paddingBottom: '12px', borderRadius: '28px 0 0 28px', border: '0.5px solid var(--border-default)', borderRightColor: isHomeView ? 'rgba(212, 201, 186, 0.7)' : 'var(--border-default)', backgroundColor: navRailBackground, transition: 'background-color 300ms ease-in-out, border-right-color 200ms ease' }}>
       {/* Toggle Filters Button - only shown when AI mode is OFF */}
       {!aiMode && (
         <button
@@ -316,16 +320,19 @@ const NavRail: React.FC<NavRailProps> = ({
         <button
           ref={profileButtonRef}
           onClick={handleProfileClick}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-btn-secondary hover:bg-btn-secondary/80 transition-colors cursor-pointer"
+          className="flex items-center justify-center w-10 h-10 rounded-full transition-colors cursor-pointer"
           style={{
             marginBottom: '0',
+            backgroundColor: '#D9D4EA',
             border: showBookmarkSavedToast ? '2px solid #2D7A4F' : 'none',
-            transition: 'border 0.2s ease',
+            transition: 'border 0.2s ease, background-color 0.2s ease',
           }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#CEC7E3'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#D9D4EA'; }}
           aria-label="User profile"
           aria-expanded={isProfileMenuOpen}
         >
-          <span className="body-large text-text-primary">
+          <span className="body-large" style={{ color: 'var(--accent-ui-text)', fontWeight: 600 }}>
             {userInitial}
           </span>
         </button>
@@ -406,28 +413,11 @@ const NavRail: React.FC<NavRailProps> = ({
             {/* Profile Header */}
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: '16px 8px',
-                gap: '8px',
+                padding: '4px 20px 12px',
                 borderBottom: '0.5px solid var(--border-default)',
                 margin: '0 -8px',
-                paddingLeft: '16px',
-                paddingRight: '16px',
               }}
             >
-              <div
-                className="flex items-center justify-center rounded-full bg-btn-secondary"
-                style={{
-                  width: '48px',
-                  height: '48px',
-                }}
-              >
-                <span className="text-text-primary" style={{ fontSize: '20px', fontWeight: 500 }}>
-                  {userInitial}
-                </span>
-              </div>
               <span className="button-small text-text-primary">
                 Stephencoyner@gmail.com
               </span>
@@ -587,6 +577,40 @@ const NavRail: React.FC<NavRailProps> = ({
                       position: 'absolute',
                       top: '1px',
                       left: aiMode ? '19px' : '1px',
+                      transition: 'left 0.2s ease'
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Toggle Item - Home Chat */}
+              <div
+                className="flex items-center justify-between p-3 rounded-default hover:bg-bg-primary transition-colors cursor-pointer"
+                onClick={() => onHomeChatEnabledChange(!homeChatEnabled)}
+              >
+                <span className="button-small text-text-primary" style={{ fontSize: '13px' }}>
+                  Home Chat
+                </span>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: homeChatEnabled ? 'var(--text-primary)' : 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-elevated)',
+                      position: 'absolute',
+                      top: '1px',
+                      left: homeChatEnabled ? '19px' : '1px',
                       transition: 'left 0.2s ease'
                     }}
                   />

@@ -3,8 +3,9 @@
 import React, { useEffect, useRef } from 'react';
 
 // ── Road network (SVG viewBox 0 0 900 1400) ──────────────────────────────────
-const VERT_X  = [105, 230, 310, 460, 570, 680, 810];
-const HORIZ_Y = [120, 260, 370, 430, 580, 700, 820, 980, 1100, 1260];
+// Vehicles travel on main arterials — kept in sync with the wider stroke lines below.
+const VERT_X  = [75, 275, 475, 675, 875];
+const HORIZ_Y = [90, 330, 570, 810, 1050, 1290];
 
 const nid = (x: number, y: number) => `${x},${y}`;
 
@@ -12,6 +13,12 @@ const GRAPH: Record<string, Array<{ x: number; y: number }>> = {};
 const addEdge = (x1: number, y1: number, x2: number, y2: number) => {
   (GRAPH[nid(x1, y1)] ??= []).push({ x: x2, y: y2 });
   (GRAPH[nid(x2, y2)] ??= []).push({ x: x1, y: y1 });
+};
+const removeEdge = (x1: number, y1: number, x2: number, y2: number) => {
+  const a = GRAPH[nid(x1, y1)];
+  const b = GRAPH[nid(x2, y2)];
+  if (a) GRAPH[nid(x1, y1)] = a.filter(n => !(n.x === x2 && n.y === y2));
+  if (b) GRAPH[nid(x2, y2)] = b.filter(n => !(n.x === x1 && n.y === y1));
 };
 for (const x of VERT_X) {
   const ys = [0, ...HORIZ_Y, 1400];
@@ -22,16 +29,51 @@ for (const y of HORIZ_Y) {
   for (let i = 0; i < xs.length - 1; i++) addEdge(xs[i], y, xs[i + 1], y);
 }
 
-// Entry points at the visible panel boundary (panel ≈ SVG x:230-680, y:370-1100)
-// Each entry has a forced first-step direction so vehicles move INTO the panel
+// ── Madison St — diagonal SW→NE arterial (slope -1 for clean integer crossings) ─
+// Line: from (0, 1100) to (900, 200). Crosses each main avenue cleanly.
+const MADISON_NODES: Array<{ x: number; y: number }> = [
+  { x: 0,   y: 1100 },
+  { x: 75,  y: 1025 },
+  { x: 275, y: 825  },
+  { x: 475, y: 625  },
+  { x: 675, y: 425  },
+  { x: 875, y: 225  },
+  { x: 900, y: 200  },
+];
+const MADISON_EDGES = new Set<string>();
+const edgeKey = (ax: number, ay: number, bx: number, by: number) =>
+  `${nid(ax, ay)}|${nid(bx, by)}`;
+
+// Split each avenue segment at the Madison crossing, then stitch Madison together.
+for (let i = 1; i < MADISON_NODES.length - 1; i++) {
+  const { x, y } = MADISON_NODES[i];
+  const ys = [0, ...HORIZ_Y, 1400];
+  for (let j = 0; j < ys.length - 1; j++) {
+    if (ys[j] < y && y < ys[j + 1]) {
+      removeEdge(x, ys[j], x, ys[j + 1]);
+      addEdge(x, ys[j], x, y);
+      addEdge(x, y, x, ys[j + 1]);
+      break;
+    }
+  }
+}
+for (let i = 0; i < MADISON_NODES.length - 1; i++) {
+  const a = MADISON_NODES[i];
+  const b = MADISON_NODES[i + 1];
+  addEdge(a.x, a.y, b.x, b.y);
+  MADISON_EDGES.add(edgeKey(a.x, a.y, b.x, b.y));
+  MADISON_EDGES.add(edgeKey(b.x, b.y, a.x, a.y));
+}
+
+// Entry points sit OUTSIDE the visible viewBox on the view edges (x=0/900, y=0/1400).
+// First step targets the nearest main arterial intersection, so vehicles ride onto
+// screen along a visible road instead of popping in.
 interface EntryPoint { x: number; y: number; nx: number; ny: number; }
-const VISIBLE_Y = [370, 430, 580, 700, 820, 980, 1100];
-const VISIBLE_X = [230, 310, 460, 570, 680];
 const ENTRY_POINTS: EntryPoint[] = [
-  ...VISIBLE_Y.map(y => ({ x: 230, y, nx: 310, ny: y   })), // left edge → right
-  ...VISIBLE_Y.map(y => ({ x: 680, y, nx: 570, ny: y   })), // right edge → left
-  ...VISIBLE_X.map(x => ({ x, y: 370,  nx: x, ny: 430  })), // top edge → down
-  ...VISIBLE_X.map(x => ({ x, y: 1100, nx: x, ny: 980  })), // bottom edge → up
+  { x: 0,   y: 330,  nx: 75,  ny: 330  }, // west edge (upper) → enter east
+  { x: 900, y: 810,  nx: 875, ny: 810  }, // east edge (lower) → enter west
+  { x: 675, y: 0,    nx: 675, ny: 90   }, // north edge (right-of-center) → enter south
+  { x: 275, y: 1400, nx: 275, ny: 1290 }, // south edge (left-of-center) → enter north
 ];
 
 const isTerminal = (x: number, y: number) =>
@@ -40,13 +82,13 @@ const isTerminal = (x: number, y: number) =>
 // ── Map color scale (#E67E22 → #5C1276) ──────────────────────────────────────
 const COLORS = ['#E67E22', '#E95C46', '#DC2C7E', '#C71F8F', '#A010B4', '#7F1AA3', '#5C1276'];
 
-const PIXEL_SPEED   = 55;    // px / second — constant in screen space (no corner acceleration)
-const MAX_VEHICLES  = 4;
-const TRAIL_LEN     = 100;   // longer trail
-const MIN_AGE       = 10000; // ms
-const MAX_AGE       = 12000; // ms
-const FADE_START    = 0.78;  // start fading at 78% of lifetime
-const INITIAL_DELAY = 5000;  // ms before first vehicle spawns
+const PIXEL_SPEED    = 55;    // px / second — constant in screen space (no corner acceleration)
+const MAX_VEHICLES   = 5;
+const TRAIL_LEN      = 100;   // longer trail
+const TRAIL_FADE_MS  = 1000;  // trail tail-out duration after vehicle exits the view
+const INITIAL_DELAY  = 5000;  // ms before first vehicle spawns
+const SPAWN_GAP_MIN  = 600;   // ms minimum gap between spawns (when under cap)
+const SPAWN_GAP_MAX  = 2200;  // ms maximum gap between spawns
 
 function hexToRgba(hex: string, a: number) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -64,15 +106,14 @@ interface Vehicle {
   segPxLen: number;   // total segment length in PIXELS
   color: string;
   trail: Array<{ x: number; y: number }>;
-  born: number;
-  maxAge: number;
+  exitedAt: number | null; // timestamp when head reached an outer edge; null while traveling
   done: boolean;
 }
 
 let _vid = 0;
 
 // segPxLen is computed lazily in the animate loop once we have canvas dimensions
-function makeVehicle(now: number): Vehicle | null {
+function makeVehicle(): Vehicle {
   const entry = ENTRY_POINTS[Math.floor(Math.random() * ENTRY_POINTS.length)];
   return {
     id: _vid++,
@@ -83,18 +124,18 @@ function makeVehicle(now: number): Vehicle | null {
     segPxLen: -1, // sentinel: will be computed on first frame
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
     trail: [{ x: entry.x, y: entry.y }],
-    born: now,
-    maxAge: MIN_AGE + Math.random() * (MAX_AGE - MIN_AGE),
+    exitedAt: null,
     done: false,
   };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function CityGridBackground() {
-  const canvasRef    = useRef<HTMLCanvasElement>(null);
-  const vehiclesRef  = useRef<Vehicle[]>([]);
-  const rafRef       = useRef<number>(0);
-  const lastTimeRef  = useRef<number>(0);
+  const canvasRef     = useRef<HTMLCanvasElement>(null);
+  const vehiclesRef   = useRef<Vehicle[]>([]);
+  const rafRef        = useRef<number>(0);
+  const lastTimeRef   = useRef<number>(0);
+  const nextSpawnRef  = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,22 +149,7 @@ export function CityGridBackground() {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    // First vehicles appear after INITIAL_DELAY, then stagger
-    const spawnOne = (delay: number) =>
-      setTimeout(() => {
-        const v = makeVehicle(performance.now());
-        if (v) vehiclesRef.current.push(v);
-      }, delay);
-    spawnOne(INITIAL_DELAY);
-    spawnOne(INITIAL_DELAY + 1200);
-
-    const spawnTimer = setInterval(() => {
-      const active = vehiclesRef.current.filter(v => !v.done).length;
-      if (active < MAX_VEHICLES) {
-        const v = makeVehicle(performance.now());
-        if (v) vehiclesRef.current.push(v);
-      }
-    }, 1000 + Math.random() * 3000);
+    nextSpawnRef.current = performance.now() + INITIAL_DELAY;
 
     const animate = (now: number) => {
       if (!lastTimeRef.current) lastTimeRef.current = now;
@@ -142,61 +168,109 @@ export function CityGridBackground() {
 
       vehiclesRef.current = vehiclesRef.current.filter(v => !v.done);
 
+      // Is a segment already occupied by another active vehicle (either direction)?
+      const segmentOccupied = (excludeId: number, ax: number, ay: number, bx: number, by: number) => {
+        for (const o of vehiclesRef.current) {
+          if (o.id === excludeId || o.exitedAt !== null) continue;
+          if ((o.fromX === ax && o.fromY === ay && o.toX === bx && o.toY === by) ||
+              (o.fromX === bx && o.fromY === by && o.toX === ax && o.toY === ay)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      // Demand-driven spawn: only when under the cap, paced by a randomized gap.
+      // Skip if the chosen entry's first segment is already in use (avoids head-on spawns).
+      if (vehiclesRef.current.length < MAX_VEHICLES && now >= nextSpawnRef.current) {
+        const candidate = makeVehicle();
+        if (!segmentOccupied(candidate.id, candidate.fromX, candidate.fromY, candidate.toX, candidate.toY)) {
+          vehiclesRef.current.push(candidate);
+          nextSpawnRef.current = now + SPAWN_GAP_MIN + Math.random() * (SPAWN_GAP_MAX - SPAWN_GAP_MIN);
+        } else {
+          // Try again soon without a full gap
+          nextSpawnRef.current = now + 200;
+        }
+      }
+
       for (const v of vehiclesRef.current) {
-        const age     = now - v.born;
-        const ageRatio = age / v.maxAge;
-
-        // Fade multiplier (1 until FADE_START, then linearly → 0)
-        const fade = ageRatio < FADE_START
-          ? 1
-          : Math.max(0, 1 - (ageRatio - FADE_START) / (1 - FADE_START));
-
-        if (ageRatio >= 1) { v.done = true; continue; }
-
         // Compute pixel segment length (lazy init + after each turn)
         const pxLen = (fx: number, fy: number, tx: number, ty: number) =>
           Math.hypot((tx - fx) * sx, (ty - fy) * sy);
 
         if (v.segPxLen < 0) v.segPxLen = pxLen(v.fromX, v.fromY, v.toX, v.toY);
 
-        // Advance at constant PIXEL speed — no acceleration on corners
-        let remainingPx = (PIXEL_SPEED / 1000) * dt;
+        // Only advance the head while the vehicle is still in view
+        if (v.exitedAt === null) {
+          let remainingPx = (PIXEL_SPEED / 1000) * dt;
 
-        while (remainingPx > 0) {
-          const gap = v.segPxLen - v.distPx;
+          while (remainingPx > 0) {
+            const gap = v.segPxLen - v.distPx;
 
-          if (remainingPx < gap) {
-            v.distPx += remainingPx;
-            remainingPx = 0;
-          } else {
-            remainingPx -= gap;
-            v.x = v.toX; v.y = v.toY;
+            if (remainingPx < gap) {
+              v.distPx += remainingPx;
+              remainingPx = 0;
+            } else {
+              remainingPx -= gap;
+              v.x = v.toX; v.y = v.toY;
 
-            if (isTerminal(v.toX, v.toY)) { v.done = true; break; }
+              if (isTerminal(v.toX, v.toY)) {
+                // Head reached the view edge — stop advancing, start trail tail-out
+                v.exitedAt = now;
+                v.trail.push({ x: v.x, y: v.y });
+                break;
+              }
 
-            const neighbors = (GRAPH[nid(v.toX, v.toY)] ?? [])
-              .filter(n => nid(n.x, n.y) !== nid(v.fromX, v.fromY) && !isTerminal(n.x, n.y));
+              const neighbors = (GRAPH[nid(v.toX, v.toY)] ?? [])
+                .filter(n => nid(n.x, n.y) !== nid(v.fromX, v.fromY) && !isTerminal(n.x, n.y));
 
-            if (!neighbors.length) { v.done = true; break; }
+              if (!neighbors.length) {
+                // Dead end — treat like exit
+                v.exitedAt = now;
+                break;
+              }
 
-            const next    = neighbors[Math.floor(Math.random() * neighbors.length)];
-            v.fromX       = v.toX;
-            v.fromY       = v.toY;
-            v.toX         = next.x;
-            v.toY         = next.y;
-            v.segPxLen    = pxLen(v.fromX, v.fromY, v.toX, v.toY);
-            v.distPx      = 0;
+              // Weighted pick: Madison turns 3× more likely than grid turns;
+              // segments already in use by another vehicle get near-zero weight
+              // to avoid collisions (still picked if it's the only option).
+              const weights = neighbors.map(n => {
+                const base = MADISON_EDGES.has(edgeKey(v.toX, v.toY, n.x, n.y)) ? 3 : 1;
+                return segmentOccupied(v.id, v.toX, v.toY, n.x, n.y) ? 0.05 : base;
+              });
+              const totalW = weights.reduce((a, b) => a + b, 0);
+              let r = Math.random() * totalW;
+              let chosenIdx = 0;
+              for (let i = 0; i < weights.length; i++) {
+                r -= weights[i];
+                if (r <= 0) { chosenIdx = i; break; }
+              }
+              const next    = neighbors[chosenIdx];
+              v.fromX       = v.toX;
+              v.fromY       = v.toY;
+              v.toX         = next.x;
+              v.toY         = next.y;
+              v.segPxLen    = pxLen(v.fromX, v.fromY, v.toX, v.toY);
+              v.distPx      = 0;
+            }
+          }
+
+          if (v.exitedAt === null) {
+            // Position along current segment
+            const t = v.segPxLen > 0 ? v.distPx / v.segPxLen : 0;
+            v.x = v.fromX + (v.toX - v.fromX) * t;
+            v.y = v.fromY + (v.toY - v.fromY) * t;
+
+            v.trail.push({ x: v.x, y: v.y });
+            if (v.trail.length > TRAIL_LEN) v.trail.shift();
           }
         }
-        if (v.done) continue;
 
-        // Position along current segment
-        const t = v.segPxLen > 0 ? v.distPx / v.segPxLen : 0;
-        v.x = v.fromX + (v.toX - v.fromX) * t;
-        v.y = v.fromY + (v.toY - v.fromY) * t;
-
-        v.trail.push({ x: v.x, y: v.y });
-        if (v.trail.length > TRAIL_LEN) v.trail.shift();
+        // Compute fade: full opacity while in view, linearly to 0 over TRAIL_FADE_MS after exit
+        let fade = 1;
+        if (v.exitedAt !== null) {
+          fade = 1 - (now - v.exitedAt) / TRAIL_FADE_MS;
+          if (fade <= 0) { v.done = true; continue; }
+        }
 
         if (v.trail.length < 2) continue;
 
@@ -223,11 +297,13 @@ export function CityGridBackground() {
         ctx.lineJoin    = 'round';
         ctx.stroke();
 
-        // Draw vehicle dot — perfect 4px circle in pixel space
-        ctx.beginPath();
-        ctx.arc(v.x * sx, v.y * sy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = hexToRgba(v.color, 0.9 * fade);
-        ctx.fill();
+        // Head dot — only while still in view
+        if (v.exitedAt === null) {
+          ctx.beginPath();
+          ctx.arc(v.x * sx, v.y * sy, 4, 0, Math.PI * 2);
+          ctx.fillStyle = hexToRgba(v.color, 0.9);
+          ctx.fill();
+        }
       }
 
       rafRef.current = requestAnimationFrame(animate);
@@ -237,17 +313,15 @@ export function CityGridBackground() {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
-      clearInterval(spawnTimer);
       ro.disconnect();
     };
   }, []);
 
   const sharedStyle: React.CSSProperties = {
     position: 'absolute',
-    inset: '-40%',
-    width: '180%',
-    height: '180%',
-    transform: 'rotate(-14deg)',
+    inset: 0,
+    width: '100%',
+    height: '100%',
     pointerEvents: 'none',
     zIndex: 0,
   };
@@ -256,48 +330,62 @@ export function CityGridBackground() {
     <>
       {/* Static grid */}
       <svg style={{ ...sharedStyle, opacity: 0.95 }} viewBox="0 0 900 1400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <g stroke="var(--bg-secondary)" strokeWidth="1.5" opacity="1">
-          <line x1="0"   y1="0" x2="0"   y2="1400" /><line x1="105" y1="0" x2="105" y2="1400" />
-          <line x1="230" y1="0" x2="230" y2="1400" /><line x1="310" y1="0" x2="310" y2="1400" />
-          <line x1="460" y1="0" x2="460" y2="1400" /><line x1="570" y1="0" x2="570" y2="1400" />
-          <line x1="680" y1="0" x2="680" y2="1400" /><line x1="810" y1="0" x2="810" y2="1400" />
-          <line x1="900" y1="0" x2="900" y2="1400" />
-          <line x1="0" y1="0"    x2="900" y2="0"    /><line x1="0" y1="120"  x2="900" y2="120"  />
-          <line x1="0" y1="260"  x2="900" y2="260"  /><line x1="0" y1="370"  x2="900" y2="370"  />
-          <line x1="0" y1="430"  x2="900" y2="430"  /><line x1="0" y1="580"  x2="900" y2="580"  />
-          <line x1="0" y1="700"  x2="900" y2="700"  /><line x1="0" y1="820"  x2="900" y2="820"  />
-          <line x1="0" y1="980"  x2="900" y2="980"  /><line x1="0" y1="1100" x2="900" y2="1100" />
-          <line x1="0" y1="1260" x2="900" y2="1260" /><line x1="0" y1="1400" x2="900" y2="1400" />
+        <defs>
+          <linearGradient id="cityGridStroke" x1="0" y1="0" x2="0" y2="1400" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#E5E0CF" />
+            <stop offset="100%" stopColor="#D1C9B2" />
+          </linearGradient>
+          <style>{`line { vector-effect: non-scaling-stroke; }`}</style>
+        </defs>
+        {/* Capitol Hill–inspired grid */}
+        {/* Minor streets (thinner) */}
+        <g stroke="url(#cityGridStroke)" strokeWidth="0.8" opacity="0.2" vectorEffect="non-scaling-stroke">
+          <line x1="25"  y1="0" x2="25"  y2="1400" />
+          <line x1="125" y1="0" x2="125" y2="1400" />
+          <line x1="175" y1="0" x2="175" y2="1400" />
+          <line x1="225" y1="0" x2="225" y2="1400" />
+          <line x1="325" y1="0" x2="325" y2="1400" />
+          <line x1="375" y1="0" x2="375" y2="1400" />
+          <line x1="425" y1="0" x2="425" y2="1400" />
+          <line x1="525" y1="0" x2="525" y2="1400" />
+          <line x1="575" y1="0" x2="575" y2="1400" />
+          <line x1="625" y1="0" x2="625" y2="1400" />
+          <line x1="725" y1="0" x2="725" y2="1400" />
+          <line x1="775" y1="0" x2="775" y2="1400" />
+          <line x1="825" y1="0" x2="825" y2="1400" />
+          <line x1="0" y1="30"   x2="900" y2="30"   />
+          <line x1="0" y1="150"  x2="900" y2="150"  />
+          <line x1="0" y1="210"  x2="900" y2="210"  />
+          <line x1="0" y1="270"  x2="900" y2="270"  />
+          <line x1="0" y1="390"  x2="900" y2="390"  />
+          <line x1="0" y1="450"  x2="900" y2="450"  />
+          <line x1="0" y1="510"  x2="900" y2="510"  />
+          <line x1="0" y1="630"  x2="900" y2="630"  />
+          <line x1="0" y1="690"  x2="900" y2="690"  />
+          <line x1="0" y1="750"  x2="900" y2="750"  />
+          <line x1="0" y1="870"  x2="900" y2="870"  />
+          <line x1="0" y1="930"  x2="900" y2="930"  />
+          <line x1="0" y1="990"  x2="900" y2="990"  />
+          <line x1="0" y1="1110" x2="900" y2="1110" />
+          <line x1="0" y1="1170" x2="900" y2="1170" />
+          <line x1="0" y1="1230" x2="900" y2="1230" />
+          <line x1="0" y1="1350" x2="900" y2="1350" />
         </g>
-        <g stroke="var(--bg-secondary)" strokeWidth="0.5" opacity="1">
-          <line x1="35"  y1="0" x2="35"  y2="1400" /><line x1="72"  y1="0" x2="72"  y2="1400" />
-          <line x1="148" y1="0" x2="148" y2="1400" /><line x1="188" y1="0" x2="188" y2="1400" />
-          <line x1="268" y1="0" x2="268" y2="1400" /><line x1="290" y1="0" x2="290" y2="1400" />
-          <line x1="358" y1="0" x2="358" y2="1400" /><line x1="400" y1="0" x2="400" y2="1400" />
-          <line x1="432" y1="0" x2="432" y2="1400" /><line x1="510" y1="0" x2="510" y2="1400" />
-          <line x1="545" y1="0" x2="545" y2="1400" /><line x1="618" y1="0" x2="618" y2="1400" />
-          <line x1="650" y1="0" x2="650" y2="1400" /><line x1="730" y1="0" x2="730" y2="1400" />
-          <line x1="775" y1="0" x2="775" y2="1400" /><line x1="855" y1="0" x2="855" y2="1400" />
-          <line x1="882" y1="0" x2="882" y2="1400" />
-          <line x1="0" y1="45"   x2="900" y2="45"   /><line x1="0" y1="88"   x2="900" y2="88"   />
-          <line x1="0" y1="165"  x2="900" y2="165"  /><line x1="0" y1="210"  x2="900" y2="210"  />
-          <line x1="0" y1="242"  x2="900" y2="242"  /><line x1="0" y1="305"  x2="900" y2="305"  />
-          <line x1="0" y1="338"  x2="900" y2="338"  /><line x1="0" y1="398"  x2="900" y2="398"  />
-          <line x1="0" y1="415"  x2="900" y2="415"  /><line x1="0" y1="500"  x2="900" y2="500"  />
-          <line x1="0" y1="535"  x2="900" y2="535"  /><line x1="0" y1="558"  x2="900" y2="558"  />
-          <line x1="0" y1="638"  x2="900" y2="638"  /><line x1="0" y1="672"  x2="900" y2="672"  />
-          <line x1="0" y1="758"  x2="900" y2="758"  /><line x1="0" y1="795"  x2="900" y2="795"  />
-          <line x1="0" y1="870"  x2="900" y2="870"  /><line x1="0" y1="910"  x2="900" y2="910"  />
-          <line x1="0" y1="948"  x2="900" y2="948"  /><line x1="0" y1="1030" x2="900" y2="1030" />
-          <line x1="0" y1="1065" x2="900" y2="1065" /><line x1="0" y1="1140" x2="900" y2="1140" />
-          <line x1="0" y1="1185" x2="900" y2="1185" /><line x1="0" y1="1220" x2="900" y2="1220" />
-          <line x1="0" y1="1310" x2="900" y2="1310" /><line x1="0" y1="1355" x2="900" y2="1355" />
-        </g>
-        <g stroke="var(--bg-secondary)" strokeWidth="1.2" opacity="1">
-          <line x1="0"   y1="300"  x2="900" y2="900"  />
-          <line x1="150" y1="0"    x2="900" y2="1050" />
-          <line x1="0"   y1="800"  x2="600" y2="1400" />
-          <line x1="500" y1="0"    x2="900" y2="560"  />
+        {/* Main arterials (wider) — Broadway, 12th, 15th, 19th, 23rd + major E-W (Pike, Union, Madison, Cherry, Yesler) + Madison diagonal */}
+        <g stroke="url(#cityGridStroke)" strokeWidth="1.6" opacity="0.2" vectorEffect="non-scaling-stroke">
+          <line x1="75"  y1="0" x2="75"  y2="1400" />
+          <line x1="275" y1="0" x2="275" y2="1400" />
+          <line x1="475" y1="0" x2="475" y2="1400" />
+          <line x1="675" y1="0" x2="675" y2="1400" />
+          <line x1="875" y1="0" x2="875" y2="1400" />
+          <line x1="0" y1="90"   x2="900" y2="90"   />
+          <line x1="0" y1="330"  x2="900" y2="330"  />
+          <line x1="0" y1="570"  x2="900" y2="570"  />
+          <line x1="0" y1="810"  x2="900" y2="810"  />
+          <line x1="0" y1="1050" x2="900" y2="1050" />
+          <line x1="0" y1="1290" x2="900" y2="1290" />
+          {/* Madison St — diagonal cutting SW → NE */}
+          <line x1="0" y1="1100" x2="900" y2="200" />
         </g>
       </svg>
 

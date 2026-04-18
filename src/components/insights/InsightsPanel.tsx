@@ -22,6 +22,7 @@ interface InsightsPanelProps {
   setChatTitle: React.Dispatch<React.SetStateAction<string>>;
   chatConvoId: string;
   setChatConvoId: React.Dispatch<React.SetStateAction<string>>;
+  chatEnabled?: boolean;
 }
 
 // Greetings removed — briefing layout doesn't use them
@@ -40,6 +41,7 @@ export function InsightsPanel({
   setChatTitle,
   chatConvoId,
   setChatConvoId,
+  chatEnabled = false,
 }: InsightsPanelProps) {
   const hasData = data && data.insights.length > 0;
   const showInitialState = !data && !isLoading && !error;
@@ -482,7 +484,7 @@ export function InsightsPanel({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--bg-primary)',
+        background: 'linear-gradient(to bottom, #FBFBFA 0%, #F5F4ED 100%)',
         position: 'relative',
       }}
     >
@@ -494,9 +496,41 @@ export function InsightsPanel({
         top: 0,
         left: 0,
         right: 0,
-        height: '32px',
-        background: 'linear-gradient(to bottom, var(--bg-primary), transparent)',
+        height: '64px',
+        background: 'linear-gradient(to bottom, #FBFBFA, transparent)',
         zIndex: 10,
+        pointerEvents: 'none',
+      }} />
+      {/* Title — sits above the top fade so it's always legible */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: '24px 28px 0',
+        zIndex: 11,
+        pointerEvents: 'none',
+      }}>
+        <h1 className="display-large" style={{
+          color: 'var(--text-primary)',
+          margin: 0,
+          textAlign: 'center',
+          maxWidth: '800px',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+        }}>
+          Today&apos;s Briefing
+        </h1>
+      </div>
+      {/* Bottom fade gradient — above scrolling cards, behind the disclaimer text */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '64px',
+        background: 'linear-gradient(to top, #F5F4ED, transparent)',
+        zIndex: 2,
         pointerEvents: 'none',
       }} />
       {/* Scrollable Content */}
@@ -505,7 +539,7 @@ export function InsightsPanel({
         style={{
           flex: 1,
           overflow: 'auto',
-          padding: '0 28px 40px',
+          padding: '80px 28px 40px',
           position: 'relative',
           zIndex: 1,
           display: 'flex',
@@ -522,27 +556,6 @@ export function InsightsPanel({
             flexDirection: 'column',
           }}
         >
-          {/* Title */}
-          <h1 style={{
-            fontSize: '18px',
-            fontWeight: 700,
-            fontFamily: '"Playfair Display", Georgia, serif',
-            color: 'var(--text-primary)',
-            margin: '0 0 24px',
-            paddingTop: '24px',
-            textAlign: 'center',
-            flexShrink: 0,
-          }}>
-            Today&apos;s Briefing
-          </h1>
-          {/* Divider */}
-          <div style={{
-            width: '100%',
-            maxWidth: '800px',
-            height: '0px',
-            flexShrink: 0,
-          }} />
-
           {/* Cards wrapper — vertically centered in remaining space */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '20px' }}>
 
@@ -671,6 +684,7 @@ export function InsightsPanel({
                   insight={data.insights[0]}
                   onAnalyze={onAnalyze}
                   variant="hero"
+                  chatEnabled={chatEnabled}
                 />
               )}
 
@@ -688,6 +702,7 @@ export function InsightsPanel({
                       insight={insight}
                       onAnalyze={onAnalyze}
                       variant="compact"
+                      chatEnabled={chatEnabled}
                     />
                   ))}
                 </div>
@@ -711,11 +726,11 @@ export function InsightsPanel({
 
           </div>{/* end cards wrapper */}
         </div>
-        {/* Bottom spacer for fixed input */}
-        <div style={{ height: '120px', flexShrink: 0 }} />
+        {/* Bottom spacer for fixed input / disclaimer */}
+        <div style={{ height: chatEnabled ? '120px' : '40px', flexShrink: 0 }} />
       </div>
 
-      {/* Fixed bottom chat input */}
+      {/* Fixed bottom chat input + disclaimer */}
       <div style={{
         position: 'absolute',
         bottom: '12px',
@@ -724,9 +739,9 @@ export function InsightsPanel({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        zIndex: 2,
+        zIndex: 3,
       }}>
-        <div
+        {chatEnabled && <div
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -813,13 +828,13 @@ export function InsightsPanel({
               <path d="M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q-12 12-28.5 12T715-452L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z"/>
             </svg>
           </button>
-        </div>
+        </div>}
         <p style={{
           fontSize: '12px',
           color: 'var(--text-tertiary)',
           opacity: 0.5,
           textAlign: 'center',
-          margin: '8px 0 0',
+          margin: chatEnabled ? '8px 0 0' : '0',
         }}>Briefing is AI generated. Double check findings.</p>
       </div>
 

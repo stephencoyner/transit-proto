@@ -1,7 +1,37 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { InsightsResponse } from '@/types/insights';
+
+// Persist map thumbnails across browser sessions so cards don't re-capture on reload.
+const THUMB_STORAGE_PREFIX = 'insightThumb:';
+
+function readCachedThumb(insightId: string): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    return window.localStorage.getItem(THUMB_STORAGE_PREFIX + insightId) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCachedThumb(insightId: string, dataUrl: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(THUMB_STORAGE_PREFIX + insightId, dataUrl);
+  } catch {
+    // quota exceeded or storage disabled — silently ignore; image will stay in memory for this session
+  }
+}
+
+function hydrateWithCachedThumbs(response: InsightsResponse): InsightsResponse {
+  return {
+    ...response,
+    insights: response.insights.map(i =>
+      i.previewImage ? i : { ...i, previewImage: readCachedThumb(i.id) }
+    ),
+  };
+}
 
 // Set to true to use mock data instead of calling the API
 const USE_MOCK_DATA = true;
@@ -20,7 +50,7 @@ const MOCK_INSIGHTS: InsightsResponse = {
       category: 'crowding',
       severity: 'critical',
       title: 'Route 62: PM Peak Under Pressure',
-      narrative: 'Route 62\u2019s PM peak window is carrying 39% of all daily ridership in just 4 hours \u2014 more than AM Peak and Midday combined. The week of September 8th surged 11% above the summer average, and Tue\u2013Thu are consistently the highest-pressure days.',
+      narrative: 'Route 62\u2019s PM peak carries 39% of daily ridership in just 4 hours. Last week jumped 11% above the summer average with Tue\u2013Thu leading the surge.',
       hypothesis: 'UW fall orientation and return-to-office patterns are concentrating demand into PM Peak on midweek days. The September surge may signal a new baseline heading into fall.',
       analysisSteps: [
         'Break down ridership by time period to confirm PM Peak concentration',
@@ -360,14 +390,20 @@ interface UseInsightsResult {
 }
 
 export function useInsights(): UseInsightsResult {
+  // Initialize without cached thumbs so SSR and initial client render match.
+  // Cached thumbs are hydrated post-mount in the effect below.
   const [data, setData] = useState<InsightsResponse | null>(USE_MOCK_DATA ? MOCK_INSIGHTS : null);
+
+  useEffect(() => {
+    setData(prev => (prev ? hydrateWithCachedThumbs(prev) : prev));
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async (refresh: boolean = false) => {
     if (USE_MOCK_DATA) {
-      setData(MOCK_INSIGHTS);
+      setData(hydrateWithCachedThumbs(MOCK_INSIGHTS));
       return;
     }
 
@@ -399,12 +435,12 @@ export function useInsights(): UseInsightsResult {
         const mockPadding = MOCK_INSIGHTS.insights.filter(
           m => !aiInsight || m.routeIds?.[0] !== aiInsight.routeIds?.[0]
         ).slice(0, 4);
-        setData({
+        setData(hydrateWithCachedThumbs({
           ...result,
           insights: aiInsight ? [aiInsight, ...mockPadding] : mockPadding,
-        });
+        }));
       } else {
-        setData(result);
+        setData(hydrateWithCachedThumbs(result));
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
@@ -423,6 +459,7 @@ export function useInsights(): UseInsightsResult {
   }, [fetchData]);
 
   const updateInsightImage = useCallback((insightId: string, previewImage: string) => {
+    writeCachedThumb(insightId, previewImage);
     setData(prev => {
       if (!prev) return prev;
       return {
