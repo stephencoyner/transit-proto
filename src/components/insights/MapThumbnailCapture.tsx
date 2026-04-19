@@ -157,6 +157,11 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
           const { start, end } = insight.dateRange;
           const isComparison = insight.category === 'decline' || insight.category === 'comparison';
           const isBoardingViz = insight.category === 'anomaly' || (insight.category === 'trend' && insight.severity === 'positive');
+          // Optional time-period filter (e.g., ['pm_peak']) so crowding thumbnails
+          // render the worst-window loads instead of an all-day average.
+          const periodsParam = insight.deepLink?.periods?.length
+            ? `&periods=${insight.deepLink.periods.join(',')}`
+            : '';
 
           // ─── BOARDING VISUALIZATION MODE ───
           if (isBoardingViz) {
@@ -303,8 +308,8 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
           // ─── SEGMENT LOAD VISUALIZATION MODE ───
           // Fetch segments for both directions and pick the one that best shows the insight
           const [resDir0, resDir1] = await Promise.all([
-            fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${start}&endDate=${end}&direction=0`),
-            fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${start}&endDate=${end}&direction=1`),
+            fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${start}&endDate=${end}&direction=0${periodsParam}`),
+            fetch(`/api/ridership/route/${fullRouteId}/segments?startDate=${start}&endDate=${end}&direction=1${periodsParam}`),
           ]);
 
           let bestSegData: RouteSegmentsResponse | null = null;
@@ -436,8 +441,19 @@ export const MapThumbnailCapture = forwardRef<MapThumbnailCaptureHandle>(
                   });
                 }
               }
+            } else if (insight.category === 'crowding') {
+              // Absolute-maxLoad scale on the existing orange→purple palette:
+              // segments that hit crush capacity (maxLoad 85+) render deep purple,
+              // lighter loads shade toward orange. Independent of window spread.
+              const CROWD_MIN = 20;
+              const CROWD_MAX = 85;
+              geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) => {
+                const clamped = Math.max(CROWD_MIN, Math.min(CROWD_MAX, seg.maxLoad));
+                const pct = (clamped - CROWD_MIN) / (CROWD_MAX - CROWD_MIN);
+                return rgbToHex(valueToColor(pct, 0, 1));
+              });
             } else {
-              // Use percentile-based coloring for full color spread
+              // Default: percentile-based coloring for full color spread
               geojson = buildSegmentGeoJSON(bestSegData.segments, shapeCoords, (seg) => {
                 const pct = percentileMap.get(`${seg.fromStopId}-${seg.toStopId}`) ?? 0.5;
                 return rgbToHex(valueToColor(pct, 0, 1));

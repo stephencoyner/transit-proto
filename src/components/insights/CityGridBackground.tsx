@@ -82,7 +82,7 @@ const isTerminal = (x: number, y: number) =>
 // ── Map color scale (#E67E22 → #5C1276) ──────────────────────────────────────
 const COLORS = ['#E67E22', '#E95C46', '#DC2C7E', '#C71F8F', '#A010B4', '#7F1AA3', '#5C1276'];
 
-const PIXEL_SPEED    = 55;    // px / second — constant in screen space (no corner acceleration)
+const PIXEL_SPEED    = 66.55; // px / second — constant in screen space (no corner acceleration)
 const MAX_VEHICLES   = 5;
 const TRAIL_LEN      = 100;   // longer trail
 const TRAIL_FADE_MS  = 1000;  // trail tail-out duration after vehicle exits the view
@@ -142,8 +142,12 @@ export function CityGridBackground() {
     if (!canvas) return;
 
     const resize = () => {
-      canvas.width  = canvas.offsetWidth  || canvas.clientWidth;
-      canvas.height = canvas.offsetHeight || canvas.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+      const cssW = canvas.offsetWidth  || canvas.clientWidth;
+      const cssH = canvas.offsetHeight || canvas.clientHeight;
+      // Backing buffer is DPR-scaled for crisp dots/lines on retina.
+      canvas.width  = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -159,6 +163,7 @@ export function CityGridBackground() {
       const ctx = canvas.getContext('2d');
       if (!ctx) { rafRef.current = requestAnimationFrame(animate); return; }
 
+      const dpr = window.devicePixelRatio || 1;
       const W  = canvas.width;
       const H  = canvas.height;
       const sx = W / 900;
@@ -292,7 +297,7 @@ export function CityGridBackground() {
           ctx.lineTo(v.trail[i].x * sx, v.trail[i].y * sy);
         }
         ctx.strokeStyle = grad;
-        ctx.lineWidth   = 2.5;
+        ctx.lineWidth   = 2.5 * dpr;
         ctx.lineCap     = 'round';
         ctx.lineJoin    = 'round';
         ctx.stroke();
@@ -300,7 +305,7 @@ export function CityGridBackground() {
         // Head dot — only while still in view
         if (v.exitedAt === null) {
           ctx.beginPath();
-          ctx.arc(v.x * sx, v.y * sy, 4, 0, Math.PI * 2);
+          ctx.arc(v.x * sx, v.y * sy, 4 * dpr, 0, Math.PI * 2);
           ctx.fillStyle = hexToRgba(v.color, 0.9);
           ctx.fill();
         }

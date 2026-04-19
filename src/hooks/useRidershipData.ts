@@ -46,6 +46,12 @@ export function setCachedData(key: string, data: unknown): void {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
+/** True when a fresh entry exists in the in-memory cache for the given key. */
+export function hasCachedData(key: string): boolean {
+  const entry = cache.get(key);
+  return !!entry && Date.now() - entry.timestamp < CACHE_TTL;
+}
+
 // Types for hook responses
 interface UseRidershipResult<T> {
   data: T | null;
