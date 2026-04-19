@@ -710,9 +710,12 @@ export function StoryModePanel({
           {/* Narrative card: page title + dates + narrative */}
           <div style={chartCardStyle}>
             {/* Page title */}
-            <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
               {currentStep.pageName || `Page ${stepIndex + 1}`}
             </div>
+            {currentStep.showTitleDivider && (
+              <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '0 0 12px' }} />
+            )}
             {/* Narrative */}
             <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)' }} className="story-narrative">
               <ReactMarkdown>{currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}</ReactMarkdown>
