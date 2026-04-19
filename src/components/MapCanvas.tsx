@@ -17,7 +17,7 @@ import { MetricCard, ComparisonMetricCard, ByDateChart, ByDayChart, ByPeriodChar
 import MapScale from '@/components/MapScale';
 import { valueToColor, getValueRange } from '@/lib/utils/colorScale';
 import { DATETIME_1_COLOR, DATETIME_2_COLOR, getComparisonColorRGB, POSITIVE_PILL_BG, POSITIVE_PILL_TEXT, NEGATIVE_PILL_BG, NEGATIVE_PILL_TEXT } from '@/utils/comparisonColors';
-import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData, setCachedData } from '@/hooks/useRidershipData';
+import { useSystemData, useSystemByDateData, useSystemByDayData, useRouteData, useRouteSegmentsData, useRouteByDateData, useRouteByDayData, useAllStopsData, useRouteStopsData, useStopData, useStopByDateData, useStopByDayData, useStopByPeriodData, useTripData, useRouteTripsData, useRouteGridData } from '@/hooks/useRidershipData';
 import { useInsights } from '@/hooks/useInsights';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import type { ChatMessage } from '@/lib/chatHistory';
@@ -25,7 +25,7 @@ import { saveChatConversation, generateConversationId } from '@/lib/chatHistory'
 import type { InsightCard as InsightCardType, WalkthroughFilterState } from '@/types/insights';
 import { StoryModePanel } from '@/components/insights/StoryModePanel';
 import type { FilterState } from '@/lib/utils/filterBuilder';
-import { buildApiUrl, getCacheKey } from '@/lib/utils/filterBuilder';
+import { prefetchWalkthroughSteps, hydrateCacheFromLocalStorage } from '@/lib/utils/prefetch';
 import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
 import { calculateBounds as calculateBoundsUtil } from '@/lib/mapUtils';
 import { MapThumbnailCapture } from '@/components/insights/MapThumbnailCapture';
@@ -452,6 +452,12 @@ export default function MapCanvas() {
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
   const [homeChatEnabled, setHomeChatEnabled] = useState<boolean>(false);
   const [aiMode, setAiMode] = useState<boolean>(true);
+
+  // Seed the ridership in-memory cache from any persisted localStorage entries
+  // so warm reloads avoid re-fetching. Safe when LS is unavailable.
+  useEffect(() => {
+    hydrateCacheFromLocalStorage();
+  }, []);
   // crossFadeAnimation is always on (tab transition animation)
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
   const [hoveredStopViewButton, setHoveredStopViewButton] = useState<'Summary' | 'Amenities' | null>(null);
@@ -2569,6 +2575,7 @@ export default function MapCanvas() {
     }
     if (filters.routeTab) setSelectedRouteTab(filters.routeTab);
     setSelectedStopId(filters.stopId ?? null);
+    setSelectedPattern(filters.pattern ?? null);
 
     // Date range
     if (filters.startDate && filters.endDate) {
@@ -2611,75 +2618,9 @@ export default function MapCanvas() {
 
   // Prefetch all walkthrough steps' data to warm the cache
   const prefetchWalkthroughData = useCallback((steps: import('@/types/insights').WalkthroughStep[]) => {
-    steps.forEach((step) => {
-      const filters = step.filters;
-      const startDate = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : null;
-      const endDate = filters.endDate ? new Date(filters.endDate + 'T00:00:00') : null;
-
-      // Resolve route ID
-      let resolvedRouteId: string | null = null;
-      if (filters.routeId) {
-        const match = routesList.find(r => r.shortName === filters.routeId || r.id === filters.routeId);
-        resolvedRouteId = match ? match.id : filters.routeId;
-      }
-
-      const filterState: FilterState = {
-        startDate,
-        endDate,
-        daysMode: filters.daysMode ?? 'all',
-        customDays: filters.customDays ?? [],
-        timeMode: filters.timeMode ?? 'all',
-        timePeriods: filters.timePeriods ?? [],
-      };
-
-      // Determine which endpoints to prefetch based on tab/route
-      const endpoints: string[] = [];
-      if (filters.tab === 'system') {
-        endpoints.push('system', 'system/by-date', 'system/by-day');
-      } else if (filters.tab === 'routes' && resolvedRouteId) {
-        endpoints.push(
-          `route/${resolvedRouteId}`,
-          `route/${resolvedRouteId}/by-date`,
-          `route/${resolvedRouteId}/by-day`,
-          `route/${resolvedRouteId}/stops`,
-          `route/${resolvedRouteId}/segments`,
-        );
-      }
-
-      // Fire prefetch requests and populate the in-memory cache
-      endpoints.forEach((endpoint) => {
-        const url = buildApiUrl(endpoint, filterState);
-        const cacheKey = getCacheKey(endpoint, filterState);
-        if (url && cacheKey) {
-          fetch(url)
-            .then(r => r.json())
-            .then(data => setCachedData(cacheKey, data))
-            .catch(() => {});
-        }
-      });
-
-      // Also prefetch comparison data if needed
-      if (filters.comparisonMode && filters.comparisonStartDate && filters.comparisonEndDate) {
-        const compFilterState: FilterState = {
-          startDate: new Date(filters.comparisonStartDate + 'T00:00:00'),
-          endDate: new Date(filters.comparisonEndDate + 'T00:00:00'),
-          daysMode: filters.daysMode ?? 'all',
-          customDays: filters.customDays ?? [],
-          timeMode: filters.timeMode ?? 'all',
-          timePeriods: filters.timePeriods ?? [],
-        };
-        endpoints.forEach((endpoint) => {
-          const url = buildApiUrl(endpoint, compFilterState);
-          const cacheKey = getCacheKey(endpoint, compFilterState);
-          if (url && cacheKey) {
-            fetch(url)
-              .then(r => r.json())
-              .then(data => setCachedData(cacheKey, data))
-              .catch(() => {});
-          }
-        });
-      }
-    });
+    // Grid endpoint gates segment coloring — include it on the click path so
+    // pages 2+ also warm up while the user reads page 1.
+    prefetchWalkthroughSteps(steps, routesList, { includeGrid: true, includeComparison: true });
   }, [routesList]);
 
   const handleAnalyzeInsight = useCallback((insight: InsightCardType) => {
@@ -8972,6 +8913,14 @@ export default function MapCanvas() {
             onClose={handleStoryModeClose}
             isContentHidden={isTabContentHidden}
             onMetricChange={(metric: string) => setSelectedMetric(metric)}
+            onSegmentHover={(fromStopId) => {
+              if (fromStopId == null) {
+                setHoveredSegment(null);
+                return;
+              }
+              const idx = segmentGeoms.findIndex((s: { fromStopId: string }) => s.fromStopId === fromStopId);
+              setHoveredSegment(idx >= 0 ? idx : null);
+            }}
           />
         ) : isInsightsView ? (
           <InsightsPanel
@@ -8989,6 +8938,7 @@ export default function MapCanvas() {
             chatConvoId={chatConvoId}
             setChatConvoId={setChatConvoId}
             chatEnabled={homeChatEnabled}
+            routesList={routesList}
           />
         ) : selectedTrip ? (
           /* Trip Detail View */

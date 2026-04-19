@@ -12,7 +12,6 @@ import CustomTooltip from '@/components/charts/CustomTooltip';
 import ComparisonMetricCard from '@/components/charts/ComparisonMetricCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { ACCENT_UI, ACCENT_UI_BAR, ACCENT_UI_BAR_CMP, ACCENT_UI_BAR_CMP_LIGHT, ACCENT_UI_2_BAR_CMP, ACCENT_UI_2_BAR_CMP_LIGHT, ACCENT_UI_ON_WHITE, ACCENT_UI_2_ON_WHITE, accent } from '@/lib/uiAccent';
-import { DATETIME_1_COLOR, DATETIME_2_COLOR } from '@/utils/comparisonColors';
 
 interface StoryModePanelProps {
   insight: InsightCardType;
@@ -21,6 +20,7 @@ interface StoryModePanelProps {
   onClose: () => void;
   isContentHidden?: boolean;
   onMetricChange?: (metric: string) => void;
+  onSegmentHover?: (fromStopId: string | null) => void;
 }
 
 interface ChatMessage {
@@ -38,8 +38,19 @@ const chartCardStyle: React.CSSProperties = {
   marginBottom: '8px',
 };
 
+// Format axis/tooltip numbers: values ≥ 10,000 show as "10K" / "10.12K" (up to 2 decimals).
+function formatAxisNumber(v: number | string): string {
+  if (typeof v !== 'number' || !isFinite(v)) return String(v);
+  if (v === 0) return '';
+  if (Math.abs(v) >= 10000) {
+    // Strip trailing zeros and a dangling dot (e.g. "10.00K" → "10K", "10.20K" → "10.2K")
+    return (v / 1000).toFixed(2).replace(/\.?0+$/, '') + 'K';
+  }
+  return String(v);
+}
+
 // ── Chart renderer ──
-function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
+function StoryChart({ spec, bare, onSegmentHover }: { spec: StoryChartSpec; bare?: boolean; onSegmentHover?: (fromStopId: string | null) => void }) {
   const wrapper = bare
     ? { paddingTop: '16px' }
     : chartCardStyle;
@@ -48,10 +59,9 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
     return (
       <div style={wrapper}>
         <span
+          className="body-regular"
           style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            color: 'var(--text-tertiary)',
+            color: 'var(--text-secondary)',
             display: 'block',
             marginBottom: '4px',
           }}
@@ -88,10 +98,9 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
     <div style={wrapper}>
       {spec.title && (
         <h4
+          className="body-regular"
           style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            color: 'var(--text-tertiary)',
+            color: 'var(--text-secondary)',
             margin: '0 0 12px 0',
           }}
         >
@@ -100,20 +109,23 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
       )}
       <ResponsiveContainer width="100%" height={180}>
         {spec.type === 'area' ? (
-          <AreaChart data={spec.data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+          <AreaChart data={spec.data} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
             <XAxis
               dataKey={spec.xKey}
               tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
               axisLine={false}
               tickLine={false}
+              tickFormatter={formatAxisNumber}
             />
             <YAxis
               tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
               axisLine={false}
               tickLine={false}
+              tickCount={5}
+              tickFormatter={formatAxisNumber}
             />
-            <Tooltip content={<CustomTooltip isComparisonMode={isComparison} />} cursor={{ fill: `url(#cursor-${spec.id})` }} />
+            <Tooltip content={<CustomTooltip isComparisonMode={isComparison} metricLabel={spec.tooltipLabel} />} cursor={{ fill: `url(#cursor-${spec.id})` }} />
             <defs>
               <linearGradient id={`cursor-${spec.id}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={ACCENT_UI} stopOpacity={0.18} />
@@ -142,7 +154,11 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
             )}
           </AreaChart>
         ) : (
-          <BarChart data={spec.data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+          <BarChart
+            data={spec.data}
+            margin={{ top: 12, right: 8, left: -20, bottom: 0 }}
+            onMouseLeave={onSegmentHover ? () => onSegmentHover(null) : undefined}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke={accent(0.3)} strokeWidth={0.5} vertical={false} />
             <defs>
               <linearGradient id={`barCursor-${spec.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -155,20 +171,55 @@ function StoryChart({ spec, bare }: { spec: StoryChartSpec; bare?: boolean }) {
               tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
               axisLine={false}
               tickLine={false}
+              tickFormatter={formatAxisNumber}
             />
             <YAxis
               tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
               axisLine={false}
               tickLine={false}
+              tickCount={5}
+              tickFormatter={formatAxisNumber}
             />
-            <Tooltip content={<CustomTooltip isComparisonMode={isComparison} />} cursor={{ fill: `url(#barCursor-${spec.id})` }} />
+            <Tooltip content={<CustomTooltip isComparisonMode={isComparison} metricLabel={spec.tooltipLabel} />} cursor={{ fill: `url(#barCursor-${spec.id})` }} />
             {isComparison ? (
               <>
-                <Bar dataKey={spec.yKey} name="Date-time 1" fill={ACCENT_UI_BAR_CMP} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                <Bar dataKey={spec.yKey2!} name="Date-time 2" fill={ACCENT_UI_2_BAR_CMP} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar
+                  dataKey={spec.yKey}
+                  name="Date-time 1"
+                  fill={ACCENT_UI_BAR_CMP}
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                  onMouseEnter={onSegmentHover ? (d: unknown) => {
+                    const id = (d as { payload?: { fromStopId?: string | number }; fromStopId?: string | number })?.payload?.fromStopId
+                      ?? (d as { fromStopId?: string | number })?.fromStopId;
+                    if (id != null) onSegmentHover(String(id));
+                  } : undefined}
+                />
+                <Bar
+                  dataKey={spec.yKey2!}
+                  name="Date-time 2"
+                  fill={ACCENT_UI_2_BAR_CMP}
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                  onMouseEnter={onSegmentHover ? (d: unknown) => {
+                    const id = (d as { payload?: { fromStopId?: string | number }; fromStopId?: string | number })?.payload?.fromStopId
+                      ?? (d as { fromStopId?: string | number })?.fromStopId;
+                    if (id != null) onSegmentHover(String(id));
+                  } : undefined}
+                />
               </>
             ) : (
-              <Bar dataKey={spec.yKey} fill={ACCENT_UI_BAR} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar
+                dataKey={spec.yKey}
+                fill={ACCENT_UI_BAR}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+                onMouseEnter={onSegmentHover ? (d: unknown) => {
+                  const id = (d as { payload?: { fromStopId?: string | number }; fromStopId?: string | number })?.payload?.fromStopId
+                    ?? (d as { fromStopId?: string | number })?.fromStopId;
+                  if (id != null) onSegmentHover(String(id));
+                } : undefined}
+              />
             )}
           </BarChart>
         )}
@@ -185,6 +236,7 @@ export function StoryModePanel({
   onClose,
   isContentHidden,
   onMetricChange,
+  onSegmentHover,
 }: StoryModePanelProps) {
   const steps = insight.walkthrough ?? [];
   const currentStep = steps[stepIndex];
@@ -213,11 +265,15 @@ export function StoryModePanel({
     const firstMetric = currentStep?.relevantMetrics?.[0] ?? 'Average daily boardings';
     setStoryMetric(firstMetric);
     onMetricChange?.(firstMetric);
+    setIsPageScrolled(false);
   }, [stepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // View state
   const [view, setView] = useState<'page' | 'conversation'>('page');
   const [isViewTransitioning, setIsViewTransitioning] = useState(false);
+
+  // Title divider: only shows once the page scrolls
+  const [isPageScrolled, setIsPageScrolled] = useState(false);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -595,12 +651,12 @@ export function StoryModePanel({
       {/* Title Bar */}
       <div
         style={{
-          padding: '20px 16px 10px',
+          padding: '17px 16px 15px',
           flexShrink: 0,
         }}
       >
-        {/* Row 1: X + title */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+        {/* Row 1: X on left, title centered in panel */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', position: 'relative' }}>
           <button
             onClick={onClose}
             style={{
@@ -612,6 +668,10 @@ export function StoryModePanel({
               display: 'flex',
               alignItems: 'center',
               flexShrink: 0,
+              position: 'absolute',
+              left: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -622,120 +682,37 @@ export function StoryModePanel({
             color: 'var(--text-secondary)',
             margin: 0,
             lineHeight: 1.3,
-            flex: 1,
+            textAlign: 'center',
           }}>
             {insight.title}
           </h2>
         </div>
       </div>
-      <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '0 16px', flexShrink: 0 }} />
+      <div style={{
+        height: '0.5px',
+        backgroundColor: 'var(--border-default)',
+        margin: '0 16px',
+        flexShrink: 0,
+        opacity: isPageScrolled ? 1 : 0,
+        transition: 'opacity 150ms ease',
+      }} />
 
-      {/* Page Navigation */}
-      <div style={{ padding: '12px 16px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-        <button
-          onClick={() => onStepChange(stepIndex - 1)}
-          disabled={isFirst}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            border: '0.5px solid var(--border-default)',
-            backgroundColor: 'var(--bg-elevated)',
-            cursor: isFirst ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
-            opacity: isFirst ? 0.5 : 1,
-            color: 'var(--text-primary)',
-            flexShrink: 0,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {stepIndex + 1} of {totalSteps}
-        </span>
-        <button
-          onClick={() => onStepChange(stepIndex + 1)}
-          disabled={isLast}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            border: '0.5px solid var(--border-default)',
-            backgroundColor: 'var(--bg-elevated)',
-            cursor: isLast ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
-            opacity: isLast ? 0.5 : 1,
-            color: 'var(--text-primary)',
-            flexShrink: 0,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
-      <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', flexShrink: 0 }} />
-
-      {/* Scrollable Content */}
+      {/* Scrollable Content — extends beneath the floating page nav */}
       <div
+        onScroll={(e) => setIsPageScrolled((e.currentTarget as HTMLDivElement).scrollTop > 0)}
         style={{
           flex: 1,
           overflow: 'auto',
-          padding: '16px 16px 24px',
+          padding: '0 16px 88px',
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Narrative card: page title + dates + narrative */}
           <div style={chartCardStyle}>
             {/* Page title */}
-            <div style={{ fontSize: '16px', fontWeight: 400, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
               {currentStep.pageName || `Page ${stepIndex + 1}`}
             </div>
-            {/* Dates */}
-            {(() => {
-              const { filters } = currentStep;
-              const formatRange = (start?: string, end?: string) => {
-                if (!start || !end) return '';
-                const s = new Date(start + 'T00:00:00');
-                const e = new Date(end + 'T00:00:00');
-                const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-                return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
-              };
-              const parts: string[] = [];
-              if (filters.daysMode === 'weekdays') parts.push('Weekdays');
-              else if (filters.daysMode === 'weekends') parts.push('Weekends');
-              else if (filters.daysMode === 'custom' && filters.customDays?.length) parts.push(filters.customDays.join(', '));
-              else parts.push('All days');
-              if (filters.timeMode === 'custom' && filters.timePeriods?.length) parts.push(filters.timePeriods.join(', '));
-              const suffix = parts.join(' · ');
-              const isComparison = filters.comparisonMode && filters.comparisonStartDate && filters.comparisonEndDate;
-              if (isComparison) {
-                const rangeA = `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
-                const rangeB = `${formatRange(filters.comparisonStartDate, filters.comparisonEndDate)} · ${suffix}`;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '12px' }}>
-                    {[rangeA, rangeB].map((range, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: i === 0 ? DATETIME_1_COLOR : DATETIME_2_COLOR, flexShrink: 0 }} />
-                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{range}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              const summary = currentStep.filterSummary || `${formatRange(filters.startDate, filters.endDate)} · ${suffix}`;
-              return summary ? <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>{summary}</div> : null;
-            })()}
-            {/* Divider below dates */}
-            <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '0 0 12px' }} />
             {/* Narrative */}
             <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)' }} className="story-narrative">
               <ReactMarkdown>{currentStep.narrativeByMetric?.[storyMetric] ?? currentStep.narrative}</ReactMarkdown>
@@ -760,16 +737,84 @@ export function StoryModePanel({
                   {i > 0 && (
                     <div style={{ height: '0.5px', backgroundColor: 'var(--border-default)', margin: '16px 0 0' }} />
                   )}
-                  <StoryChart spec={chart} bare />
+                  <StoryChart spec={chart} bare onSegmentHover={onSegmentHover} />
                 </React.Fragment>
               ))}
             </div>
           ) : (
             (currentStep.charts)?.map((chart) => (
-              <StoryChart key={chart.id} spec={chart} />
+              <StoryChart key={chart.id} spec={chart} onSegmentHover={onSegmentHover} />
             ))
           )}
         </div>
+      </div>
+
+      {/* Bottom fade — sits above cards, behind the page nav */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '112px',
+        background: 'linear-gradient(to top, var(--bg-primary) 0%, var(--bg-primary) 55%, transparent 100%)',
+        zIndex: 2,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Page Navigation — floating at the bottom */}
+      <div style={{
+        position: 'absolute',
+        bottom: '16px',
+        left: '16px',
+        right: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 3,
+      }}>
+        <button
+          onClick={() => onStepChange(stepIndex - 1)}
+          disabled={isFirst}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '4px',
+            cursor: isFirst ? 'not-allowed' : 'pointer',
+            opacity: isFirst ? 0.4 : 1,
+            color: 'var(--text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+          aria-label="Previous"
+        >
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+            <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <span className="display-medium" style={{ margin: '0 16px', color: 'var(--text-primary)', fontSize: '13px' }}>
+          {stepIndex + 1} of {totalSteps}
+        </span>
+        <button
+          onClick={() => onStepChange(stepIndex + 1)}
+          disabled={isLast}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '4px',
+            cursor: isLast ? 'not-allowed' : 'pointer',
+            opacity: isLast ? 0.4 : 1,
+            color: 'var(--text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+          aria-label="Next"
+        >
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
     </div>

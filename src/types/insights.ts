@@ -45,6 +45,8 @@ export interface WalkthroughFilterState {
   comparisonMode?: boolean;
   comparisonStartDate?: string;
   comparisonEndDate?: string;
+  /** Route pattern headsign (e.g. "Ballard Wallingford") — limits map + data to one pattern */
+  pattern?: string;
 }
 
 export type StoryChartType = 'area' | 'bar' | 'metric' | 'comparison-metric';
@@ -61,6 +63,8 @@ export interface StoryChartSpec {
   metricValue?: string | number;
   metricValue2?: string | number;
   metricLabel?: string;
+  /** Label for the tooltip value (e.g. "avg passenger load", "weekly boardings") */
+  tooltipLabel?: string;
 }
 
 export interface WalkthroughStep {

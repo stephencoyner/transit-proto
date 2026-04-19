@@ -7,6 +7,7 @@ import { InsightCard } from './InsightCard';
 import { CityGridBackground } from './CityGridBackground';
 import type { ChatMessage } from '@/lib/chatHistory';
 import { generateConversationId } from '@/lib/chatHistory';
+import { prefetchWalkthroughSteps } from '@/lib/utils/prefetch';
 
 interface InsightsPanelProps {
   data: InsightsResponse | null;
@@ -23,6 +24,7 @@ interface InsightsPanelProps {
   chatConvoId: string;
   setChatConvoId: React.Dispatch<React.SetStateAction<string>>;
   chatEnabled?: boolean;
+  routesList?: Array<{ id: string; shortName: string }>;
 }
 
 // Greetings removed — briefing layout doesn't use them
@@ -42,9 +44,23 @@ export function InsightsPanel({
   chatConvoId,
   setChatConvoId,
   chatEnabled = false,
+  routesList,
 }: InsightsPanelProps) {
   const hasData = data && data.insights.length > 0;
   const showInitialState = !data && !isLoading && !error;
+
+  // Warm the ridership cache for each insight's first walkthrough step as soon as
+  // the briefing renders — so clicking a card lands on a cache hit. Page 1 only:
+  // later pages need pattern → direction resolution that isn't ready here.
+  useEffect(() => {
+    if (!data?.insights?.length || !routesList?.length) return;
+    const page1Steps = data.insights
+      .slice(0, 4)
+      .map(i => i.walkthrough?.[0])
+      .filter((s): s is NonNullable<typeof s> => !!s);
+    if (page1Steps.length === 0) return;
+    prefetchWalkthroughSteps(page1Steps, routesList, { includeGrid: true });
+  }, [data, routesList]);
 
   // Chat state (local only)
   const [chatInput, setChatInput] = useState('');
