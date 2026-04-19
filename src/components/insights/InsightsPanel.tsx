@@ -512,8 +512,8 @@ export function InsightsPanel({
         top: 0,
         left: 0,
         right: 0,
-        height: '64px',
-        background: 'linear-gradient(to bottom, #FBFBFA, transparent)',
+        height: '84px',
+        background: 'linear-gradient(to bottom, #FBFBFA 0%, #FBFBFA 35%, transparent 100%)',
         zIndex: 10,
         pointerEvents: 'none',
       }} />
@@ -545,7 +545,7 @@ export function InsightsPanel({
         left: 0,
         right: 0,
         height: '64px',
-        background: 'linear-gradient(to top, #F5F4ED, transparent)',
+        background: 'linear-gradient(to top, #F5F4ED 0%, #F5F4ED 35%, transparent 100%)',
         zIndex: 2,
         pointerEvents: 'none',
       }} />

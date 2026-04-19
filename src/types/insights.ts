@@ -76,6 +76,8 @@ export interface WalkthroughStep {
   chartsByMetric?: Record<string, StoryChartSpec[]>;
   filterSummary?: string;
   relevantMetrics?: string[];
+  /** Show a divider between the page title and the narrative body. */
+  showTitleDivider?: boolean;
 }
 
 export interface InsightsResponse {
