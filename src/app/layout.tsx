@@ -1,12 +1,13 @@
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Metadata } from "next";
 import { Analytics } from '@vercel/analytics/next';
-import { Playfair_Display } from 'next/font/google';
+import { Merriweather } from 'next/font/google';
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const merriweather = Merriweather({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['300', '400', '700', '900'],
+  style: ['normal', 'italic'],
   variable: '--font-display',
   display: 'swap',
 });
@@ -22,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={playfair.variable}>
+    <html lang="en" className={merriweather.variable}>
       <body className="antialiased">
         {children}
         <Analytics />

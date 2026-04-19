@@ -450,6 +450,7 @@ export default function MapCanvas() {
   const [experimentalDetailViewNav] = useState<boolean>(true); // Always true - controls visibility of route/stop controls
   const [routeControlsTitleSemibold, setRouteControlsTitleSemibold] = useState<boolean>(false);
   const [differentiatedPanelBackgrounds, setDifferentiatedPanelBackgrounds] = useState<boolean>(false);
+  const [homeChatEnabled, setHomeChatEnabled] = useState<boolean>(false);
   const [aiMode, setAiMode] = useState<boolean>(true);
   // crossFadeAnimation is always on (tab transition animation)
   const [hoveredViewButton, setHoveredViewButton] = useState<'Summary' | 'Trips' | 'Grid' | null>(null);
@@ -5619,6 +5620,8 @@ export default function MapCanvas() {
               setIsFiltersPanelOpen(true);
             }
           }}
+          homeChatEnabled={homeChatEnabled}
+          onHomeChatEnabledChange={setHomeChatEnabled}
           onOpenBookmarks={() => setIsBookmarksModalOpen(true)}
           showBookmarkSavedToast={showBookmarkSavedToast}
         />
@@ -8985,6 +8988,7 @@ export default function MapCanvas() {
             setChatTitle={setChatTitle}
             chatConvoId={chatConvoId}
             setChatConvoId={setChatConvoId}
+            chatEnabled={homeChatEnabled}
           />
         ) : selectedTrip ? (
           /* Trip Detail View */

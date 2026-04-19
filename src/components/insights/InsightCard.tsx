@@ -7,6 +7,7 @@ interface InsightCardProps {
   insight: InsightCardType;
   onAnalyze?: (insight: InsightCardType) => void;
   variant?: 'default' | 'hero' | 'compact';
+  chatEnabled?: boolean;
 }
 
 const severityConfig = {
@@ -82,7 +83,7 @@ function formatDateRange(start: string, end: string): string {
     : `${s.toLocaleDateString('en-US', yearOpts)} – ${e.toLocaleDateString('en-US', yearOpts)}`;
 }
 
-function CardFooter({ insight, onAnalyze, showSparkle }: { insight: InsightCardType; onAnalyze?: (i: InsightCardType) => void; showSparkle?: boolean }) {
+function CardFooter({ insight, chatEnabled }: { insight: InsightCardType; onAnalyze?: (i: InsightCardType) => void; showSparkle?: boolean; chatEnabled?: boolean }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -97,18 +98,18 @@ function CardFooter({ insight, onAnalyze, showSparkle }: { insight: InsightCardT
       </span>
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <span className="card-footer-icon"><BookmarkIcon /></span>
-        <span className="card-footer-icon"><AIIcon /></span>
+        {chatEnabled && <span className="card-footer-icon"><AIIcon /></span>}
       </div>
     </div>
   );
 }
 
 // --- Hero variant: side-by-side text + map ---
-function HeroCard({ insight, onAnalyze }: InsightCardProps) {
+function HeroCard({ insight, onAnalyze, chatEnabled }: InsightCardProps) {
   return (
     <>
       <style>{`
-        .insight-card-hero { border-color: var(--border-default); transition: border-color 150ms ease, box-shadow 150ms ease; }
+        .insight-card-hero { border-color: var(--border-subtle); transition: border-color 150ms ease, box-shadow 150ms ease; }
         .insight-card-hero:hover { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
         .insight-card-hero:hover .hero-thumbnail { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
         .insight-card-hero:hover h3, .insight-card-hero:hover p { color: var(--text-tertiary) !important; transition: color 150ms ease; }
@@ -120,7 +121,7 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
         style={{
           cursor: 'pointer',
           background: 'var(--bg-elevated)',
-          border: '0.5px solid var(--border-default)',
+          border: '0.5px solid var(--border-subtle)',
           borderRadius: '20px',
           overflow: 'hidden',
           display: 'flex',
@@ -130,16 +131,14 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
       >
         {/* Text side */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', padding: '20px 20px 16px 20px' }}>
-          <h3 style={{
-            color: 'var(--text-primary)', margin: '0 0 16px',
-            fontSize: '24px', fontWeight: 700, lineHeight: 1.2, fontFamily: '"Playfair Display", Georgia, serif',
+          <h3 className="display-xl" style={{
+            color: 'var(--text-primary)', margin: '0 0 12px',
           }}>
             {insight.title}
           </h3>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <p style={{
+            <p className="body-large" style={{
               color: 'var(--text-primary)', margin: '0 0 4px',
-              fontSize: '16px', fontWeight: 400, lineHeight: '24px', fontFamily: '"Playfair Display", Georgia, serif',
               display: '-webkit-box',
               WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical',
@@ -148,7 +147,7 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
               {insight.narrative}
             </p>
             <div style={{ marginTop: 'auto' }}>
-              <CardFooter insight={insight} onAnalyze={onAnalyze} showSparkle={insight.isAiGenerated} />
+              <CardFooter insight={insight} onAnalyze={onAnalyze} showSparkle={insight.isAiGenerated} chatEnabled={chatEnabled} />
             </div>
           </div>
         </div>
@@ -172,11 +171,11 @@ function HeroCard({ insight, onAnalyze }: InsightCardProps) {
 }
 
 // --- Compact variant: thumbnail + title + date ---
-function CompactCard({ insight, onAnalyze }: InsightCardProps) {
+function CompactCard({ insight, onAnalyze, chatEnabled }: InsightCardProps) {
   return (
     <>
       <style>{`
-        .insight-card-compact:hover .compact-card-body { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+        .insight-card-compact:hover { border-color: var(--border-hover) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
         .insight-card-compact:hover h3 { color: var(--text-tertiary) !important; }
         .insight-card-compact h3 { transition: color 150ms ease; }
       `}</style>
@@ -189,27 +188,23 @@ function CompactCard({ insight, onAnalyze }: InsightCardProps) {
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
+          border: '0.5px solid var(--border-subtle)',
+          borderRadius: '20px',
+          transition: 'border-color 150ms ease, box-shadow 150ms ease',
         }}
       >
-        <div style={{ borderRadius: '20px 20px 0 0', overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ flexShrink: 0 }}>
           <MapThumbnail src={insight.previewImage} height="140px" edgeToEdge />
         </div>
         <div className="compact-card-body" style={{
           padding: '12px 16px 16px',
           background: 'var(--bg-elevated)',
-          borderLeft: '0.5px solid var(--border-default)',
-          borderRight: '0.5px solid var(--border-default)',
-          borderBottom: '0.5px solid var(--border-default)',
-          borderTop: 'none',
-          borderRadius: '0 0 20px 20px',
-          transition: 'border-color 150ms ease, box-shadow 150ms ease',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
         }}>
-          <h3 style={{
+          <h3 className="display-medium" style={{
             color: 'var(--text-primary)', margin: '0 0 4px',
-            fontSize: '16px', fontWeight: 700, lineHeight: '24px', fontFamily: '"Playfair Display", Georgia, serif',
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -217,7 +212,7 @@ function CompactCard({ insight, onAnalyze }: InsightCardProps) {
           }}>
             {insight.title}
           </h3>
-          <CardFooter insight={insight} onAnalyze={onAnalyze} showSparkle={insight.isAiGenerated} />
+          <CardFooter insight={insight} onAnalyze={onAnalyze} showSparkle={insight.isAiGenerated} chatEnabled={chatEnabled} />
         </div>
       </div>
     </>
@@ -225,7 +220,7 @@ function CompactCard({ insight, onAnalyze }: InsightCardProps) {
 }
 
 // --- Default variant: full card (existing) ---
-function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
+function DefaultCard({ insight, onAnalyze, chatEnabled }: InsightCardProps) {
   const config = severityConfig[insight.severity];
   return (
     <>
@@ -238,7 +233,7 @@ function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
         className="insight-card"
         style={{
           background: 'var(--bg-elevated)',
-          border: '0.5px solid var(--border-default)',
+          border: '0.5px solid var(--border-subtle)',
           borderRadius: '24px',
           overflow: 'hidden',
           transition: 'border-color 150ms ease, box-shadow 150ms ease',
@@ -251,9 +246,9 @@ function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
             <SeverityBadge severity={insight.severity} />
           </div>
-          <h3 className="heading-small" style={{
+          <h3 className="display-medium" style={{
             color: 'var(--text-primary)', margin: 0,
-            fontSize: '16px', fontWeight: 700, lineHeight: 1.3, fontFamily: '"Playfair Display", Georgia, serif',
+            lineHeight: 1.3,
           }}>
             {insight.title}
           </h3>
@@ -323,10 +318,10 @@ function DefaultCard({ insight, onAnalyze }: InsightCardProps) {
   );
 }
 
-export function InsightCard({ insight, onAnalyze, variant = 'default' }: InsightCardProps) {
+export function InsightCard({ insight, onAnalyze, variant = 'default', chatEnabled }: InsightCardProps) {
   switch (variant) {
-    case 'hero': return <HeroCard insight={insight} onAnalyze={onAnalyze} />;
-    case 'compact': return <CompactCard insight={insight} onAnalyze={onAnalyze} />;
-    default: return <DefaultCard insight={insight} onAnalyze={onAnalyze} />;
+    case 'hero': return <HeroCard insight={insight} onAnalyze={onAnalyze} chatEnabled={chatEnabled} />;
+    case 'compact': return <CompactCard insight={insight} onAnalyze={onAnalyze} chatEnabled={chatEnabled} />;
+    default: return <DefaultCard insight={insight} onAnalyze={onAnalyze} chatEnabled={chatEnabled} />;
   }
 }

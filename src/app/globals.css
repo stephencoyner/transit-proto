@@ -33,6 +33,7 @@
 
   /* Border Colors */
   --border-default: #D4C9BA;
+  --border-subtle: rgba(212, 201, 186, 0.4);
   --border-hover: #D4C9BA;
   --border-focus: #C9B4A3;
 
@@ -74,7 +75,7 @@
 
   /* Font Family */
   --font-primary: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Playfair Display', Georgia, serif;
+  --font-display: 'Merriweather', Georgia, serif;
 
   /* Font Weights */
   --font-normal: 400;
@@ -153,6 +154,27 @@
   --data-small-size: 0.875rem;    /* 14px */
   --data-small-weight: 600;
   --data-small-line-height: 1.25rem;  /* 20px */
+
+  /* Typography - Display (Serif, Merriweather — ships 300/400/700/900) */
+  --display-xl-size: 1.5rem;          /* 24px */
+  --display-xl-weight: 700;
+  --display-xl-line-height: 1.25;
+  --display-xl-letter-spacing: -0.01em;
+
+  --display-large-size: 1.125rem;     /* 18px */
+  --display-large-weight: 400;
+  --display-large-line-height: 1.35;
+  --display-large-letter-spacing: -0.005em;
+
+  --display-medium-size: 1rem;        /* 16px */
+  --display-medium-weight: 700;
+  --display-medium-line-height: 1.5;  /* 24px */
+  --display-medium-letter-spacing: 0;
+
+  --display-small-size: 0.875rem;     /* 14px */
+  --display-small-weight: 700;
+  --display-small-line-height: 1.4;
+  --display-small-letter-spacing: 0;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -353,6 +375,38 @@
   font-size: var(--data-small-size);
   font-weight: var(--data-small-weight);
   line-height: var(--data-small-line-height);
+}
+
+.display-xl {
+  font-family: var(--font-display);
+  font-size: var(--display-xl-size);
+  font-weight: var(--display-xl-weight);
+  line-height: var(--display-xl-line-height);
+  letter-spacing: var(--display-xl-letter-spacing);
+}
+
+.display-large {
+  font-family: var(--font-display);
+  font-size: var(--display-large-size);
+  font-weight: var(--display-large-weight);
+  line-height: var(--display-large-line-height);
+  letter-spacing: var(--display-large-letter-spacing);
+}
+
+.display-medium {
+  font-family: var(--font-display);
+  font-size: var(--display-medium-size);
+  font-weight: var(--display-medium-weight);
+  line-height: var(--display-medium-line-height);
+  letter-spacing: var(--display-medium-letter-spacing);
+}
+
+.display-small {
+  font-family: var(--font-display);
+  font-size: var(--display-small-size);
+  font-weight: var(--display-small-weight);
+  line-height: var(--display-small-line-height);
+  letter-spacing: var(--display-small-letter-spacing);
 }
 
 body {
