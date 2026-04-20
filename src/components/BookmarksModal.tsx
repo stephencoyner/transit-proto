@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bookmark, getBookmarks, deleteBookmark, updateBookmark, formatDateRange } from '@/lib/bookmarks';
+import {
+  Bookmark,
+  BookmarkToast,
+  getBookmarks,
+  deleteBookmark,
+  updateBookmark,
+  formatDateRange,
+  messageForBookmarkError,
+} from '@/lib/bookmarks';
 import BookmarkCard from './BookmarkCard';
 import SaveBookmarkModal from './SaveBookmarkModal';
 
@@ -124,11 +132,13 @@ interface BookmarksModalProps {
   isOpen: boolean;
   onClose: () => void;
   onViewBookmark: (bookmark: Bookmark) => void;
+  onBookmarkToast?: (toast: BookmarkToast) => void;
 }
 
-const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onViewBookmark }) => {
+const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onViewBookmark, onBookmarkToast }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Load bookmarks when modal opens
@@ -162,20 +172,40 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
   };
 
   const handleEdit = (bookmark: Bookmark) => {
+    setEditError(null);
     setEditingBookmark(bookmark);
   };
 
   const handleDelete = (bookmark: Bookmark) => {
-    deleteBookmark(bookmark.id);
+    const result = deleteBookmark(bookmark.id);
+    if (!result.ok && result.kind !== 'not_found') {
+      const message = messageForBookmarkError(result.kind);
+      onBookmarkToast?.({ kind: 'error', message });
+      return;
+    }
     setBookmarks(getBookmarks());
   };
 
-  const handleSaveEdit = (name: string, description: string) => {
-    if (editingBookmark) {
-      updateBookmark(editingBookmark.id, { name, description });
-      setBookmarks(getBookmarks());
-      setEditingBookmark(null);
+  const handleSaveEdit = (name: string, description: string): boolean => {
+    if (!editingBookmark) return true;
+    const result = updateBookmark(editingBookmark.id, { name, description });
+    if (!result.ok) {
+      // If the bookmark was somehow deleted underneath us, close the edit modal
+      // rather than leaving the user stuck in an un-saveable state.
+      if (result.kind === 'not_found') {
+        setEditingBookmark(null);
+        setBookmarks(getBookmarks());
+        return true;
+      }
+      const message = messageForBookmarkError(result.kind);
+      setEditError(message);
+      onBookmarkToast?.({ kind: 'error', message });
+      return false;
     }
+    setBookmarks(getBookmarks());
+    setEditingBookmark(null);
+    setEditError(null);
+    return true;
   };
 
   if (!isOpen) return null;
@@ -317,12 +347,13 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
           return (
             <SaveBookmarkModal
               isOpen={true}
-              onClose={() => setEditingBookmark(null)}
+              onClose={() => { setEditingBookmark(null); setEditError(null); }}
               onSave={handleSaveEdit}
               initialName={editingBookmark.name}
               initialDescription={editingBookmark.description}
               mode="edit"
               bookmarkImage={editingBookmark.image}
+              errorMessage={editError}
               contextTitle={contextTitle}
               contextType={contextType}
               contextSubtitle={contextSubtitle}

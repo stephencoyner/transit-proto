@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import type { BookmarkToast } from '@/lib/bookmarks';
 
 interface NavRailProps {
   activeTab: 'home' | 'system' | 'routes' | 'stops' | 'components';
@@ -18,7 +19,7 @@ interface NavRailProps {
   homeChatEnabled: boolean;
   onHomeChatEnabledChange: (value: boolean) => void;
   onOpenBookmarks: () => void;
-  showBookmarkSavedToast?: boolean;
+  bookmarkToast?: BookmarkToast | null;
 }
 
 // Inline SVG components for nav icons
@@ -140,8 +141,10 @@ const NavRail: React.FC<NavRailProps> = ({
   homeChatEnabled,
   onHomeChatEnabledChange,
   onOpenBookmarks,
-  showBookmarkSavedToast = false
+  bookmarkToast = null
 }) => {
+  const isSavedToast = bookmarkToast?.kind === 'saved';
+  const isErrorToast = bookmarkToast?.kind === 'error';
   const [isHoveringFilters, setIsHoveringFilters] = useState(false);
   const [panelStateOnHover, setPanelStateOnHover] = useState<boolean | null>(null);
   const [hasClicked, setHasClicked] = useState(false);
@@ -324,7 +327,7 @@ const NavRail: React.FC<NavRailProps> = ({
           style={{
             marginBottom: '0',
             backgroundColor: '#D9D4EA',
-            border: showBookmarkSavedToast ? '2px solid #2D7A4F' : 'none',
+            border: isSavedToast ? '2px solid #2D7A4F' : 'none',
             transition: 'border 0.2s ease, background-color 0.2s ease',
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#CEC7E3'; }}
@@ -338,26 +341,29 @@ const NavRail: React.FC<NavRailProps> = ({
         </button>
       </div>
 
-      {/* Bookmark Saved Toast - rendered via portal */}
-      {showBookmarkSavedToast && profileButtonRef.current && createPortal(
+      {/* Bookmark Toast - rendered via portal. Green for success, red for errors. */}
+      {bookmarkToast && profileButtonRef.current && createPortal(
         <div
+          role={isErrorToast ? 'alert' : 'status'}
           style={{
             position: 'fixed',
             top: profileButtonRef.current.getBoundingClientRect().top + profileButtonRef.current.getBoundingClientRect().height / 2,
             left: profileButtonRef.current.getBoundingClientRect().right + 8,
             transform: 'translateY(-50%)',
-            backgroundColor: '#2D7A4F',
+            backgroundColor: isErrorToast ? '#B3261E' : '#2D7A4F',
             color: 'white',
             padding: '8px 12px',
             borderRadius: '8px',
             fontSize: '13px',
             fontWeight: 500,
-            whiteSpace: 'nowrap',
+            whiteSpace: isErrorToast ? 'normal' : 'nowrap',
+            maxWidth: isErrorToast ? '320px' : undefined,
+            lineHeight: '18px',
             boxShadow: 'var(--shadow-md)',
             zIndex: 10000,
           }}
         >
-          Bookmark Saved
+          {isSavedToast ? 'Bookmark Saved' : bookmarkToast.message}
         </div>,
         document.body
       )}

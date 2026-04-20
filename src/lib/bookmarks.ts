@@ -85,6 +85,64 @@ export interface Bookmark {
 // Keep old key for backwards compatibility - will read from old storage
 const BOOKMARKS_STORAGE_KEY = 'transit-proto-snapshots';
 
+export type BookmarkErrorKind = 'quota' | 'unavailable' | 'unknown';
+
+export type SaveBookmarkResult =
+  | { ok: true; bookmark: Bookmark }
+  | { ok: false; kind: BookmarkErrorKind; error: unknown };
+
+export type UpdateBookmarkResult =
+  | { ok: true; bookmark: Bookmark }
+  | { ok: false; kind: BookmarkErrorKind | 'not_found'; error?: unknown };
+
+export type DeleteBookmarkResult =
+  | { ok: true }
+  | { ok: false; kind: BookmarkErrorKind | 'not_found'; error?: unknown };
+
+export type BookmarkToast =
+  | { kind: 'saved' }
+  | { kind: 'error'; message: string };
+
+// Classifies any localStorage write failure into a discriminated kind so the UI can
+// show an appropriate message (quota exceeded is recoverable by deleting bookmarks;
+// unavailable usually means private browsing).
+function isQuotaError(e: unknown): boolean {
+  if (!(e instanceof DOMException)) return false;
+  // Standard, Firefox legacy (1014 / NS_ERROR_DOM_QUOTA_REACHED), and code 22.
+  return (
+    e.name === 'QuotaExceededError' ||
+    e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    e.code === 22 ||
+    e.code === 1014
+  );
+}
+
+function writeAll(bookmarks: Bookmark[]): { ok: true } | { ok: false; kind: BookmarkErrorKind; error: unknown } {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return { ok: false, kind: 'unavailable', error: new Error('localStorage is not available') };
+  }
+  try {
+    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+    return { ok: true };
+  } catch (e) {
+    const kind: BookmarkErrorKind = isQuotaError(e) ? 'quota' : 'unknown';
+    console.error('Failed to write bookmarks to localStorage:', e);
+    return { ok: false, kind, error: e };
+  }
+}
+
+export function messageForBookmarkError(kind: BookmarkErrorKind): string {
+  switch (kind) {
+    case 'quota':
+      return "Can't save — browser storage is full. Delete a few bookmarks and try again.";
+    case 'unavailable':
+      return "Can't save — browser storage is unavailable (private mode?).";
+    case 'unknown':
+    default:
+      return 'Couldn\u2019t save bookmark. Please try again.';
+  }
+}
+
 // Get all bookmarks from localStorage
 export function getBookmarks(): Bookmark[] {
   if (typeof window === 'undefined') return [];
@@ -100,7 +158,9 @@ export function getBookmarks(): Bookmark[] {
 }
 
 // Save a new bookmark
-export function saveBookmark(bookmark: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>): Bookmark {
+export function saveBookmark(
+  bookmark: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>,
+): SaveBookmarkResult {
   const bookmarks = getBookmarks();
   const now = new Date().toISOString();
 
@@ -111,38 +171,44 @@ export function saveBookmark(bookmark: Omit<Bookmark, 'id' | 'createdAt' | 'upda
     updatedAt: now,
   };
 
-  bookmarks.push(newBookmark);
-  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
-
-  return newBookmark;
+  const result = writeAll([...bookmarks, newBookmark]);
+  if (!result.ok) return result;
+  return { ok: true, bookmark: newBookmark };
 }
 
 // Update an existing bookmark
-export function updateBookmark(id: string, updates: Partial<Pick<Bookmark, 'name' | 'description'>>): Bookmark | null {
+export function updateBookmark(
+  id: string,
+  updates: Partial<Pick<Bookmark, 'name' | 'description'>>,
+): UpdateBookmarkResult {
   const bookmarks = getBookmarks();
   const index = bookmarks.findIndex(b => b.id === id);
 
-  if (index === -1) return null;
+  if (index === -1) return { ok: false, kind: 'not_found' };
 
-  bookmarks[index] = {
+  const updated: Bookmark = {
     ...bookmarks[index],
     ...updates,
     updatedAt: new Date().toISOString(),
   };
+  const next = bookmarks.slice();
+  next[index] = updated;
 
-  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
-  return bookmarks[index];
+  const result = writeAll(next);
+  if (!result.ok) return result;
+  return { ok: true, bookmark: updated };
 }
 
 // Delete a bookmark
-export function deleteBookmark(id: string): boolean {
+export function deleteBookmark(id: string): DeleteBookmarkResult {
   const bookmarks = getBookmarks();
   const filtered = bookmarks.filter(b => b.id !== id);
 
-  if (filtered.length === bookmarks.length) return false;
+  if (filtered.length === bookmarks.length) return { ok: false, kind: 'not_found' };
 
-  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(filtered));
-  return true;
+  const result = writeAll(filtered);
+  if (!result.ok) return result;
+  return { ok: true };
 }
 
 // Get a single bookmark by ID
