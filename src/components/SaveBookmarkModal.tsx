@@ -48,7 +48,6 @@ interface SaveBookmarkModalFullScreenProps {
   contextSubtitle?: string;
   contextFilters?: string;
   bookmarkImage?: string | null;
-  errorMessage?: string | null;
   // Comparison mode date ranges
   comparisonMode?: boolean;
   primaryDateLabel?: string;
@@ -67,7 +66,6 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
   contextSubtitle,
   contextFilters,
   bookmarkImage,
-  errorMessage,
   comparisonMode,
   primaryDateLabel,
   comparisonDateLabel,
@@ -279,24 +277,6 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
 
           {/* Spacer to push buttons to bottom */}
           <div style={{ flex: 1 }} />
-
-          {errorMessage && (
-            <div
-              role="alert"
-              style={{
-                marginBottom: '12px',
-                padding: '10px 12px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(179, 38, 30, 0.1)',
-                border: '0.5px solid rgba(179, 38, 30, 0.4)',
-                color: '#B3261E',
-                fontSize: '13px',
-                lineHeight: '18px',
-              }}
-            >
-              {errorMessage}
-            </div>
-          )}
 
           {/* Buttons at bottom of panel */}
           <div
