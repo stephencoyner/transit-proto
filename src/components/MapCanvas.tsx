@@ -26,7 +26,7 @@ import type { InsightCard as InsightCardType, WalkthroughFilterState } from '@/t
 import { StoryModePanel } from '@/components/insights/StoryModePanel';
 import type { FilterState } from '@/lib/utils/filterBuilder';
 import { prefetchWalkthroughSteps, hydrateCacheFromLocalStorage } from '@/lib/utils/prefetch';
-import { Bookmark, BookmarkState, saveBookmark } from '@/lib/bookmarks';
+import { Bookmark, BookmarkState, BookmarkToast, messageForBookmarkError, saveBookmark } from '@/lib/bookmarks';
 import { calculateBounds as calculateBoundsUtil } from '@/lib/mapUtils';
 import { MapThumbnailCapture } from '@/components/insights/MapThumbnailCapture';
 import type { MapThumbnailCaptureHandle } from '@/components/insights/MapThumbnailCapture';
@@ -516,9 +516,17 @@ export default function MapCanvas() {
 
   // Bookmark capture state
   const [isSaveBookmarkModalOpen, setIsSaveBookmarkModalOpen] = useState<boolean>(false);
-  const [showBookmarkSavedToast, setShowBookmarkSavedToast] = useState<boolean>(false);
+  const [bookmarkToast, setBookmarkToast] = useState<BookmarkToast | null>(null);
+  const [bookmarkSaveError, setBookmarkSaveError] = useState<string | null>(null);
   const [pendingBookmarkImage, setPendingBookmarkImage] = useState<string | null>(null);
   const [isCapturingBookmark, setIsCapturingBookmark] = useState<boolean>(false);
+
+  const showBookmarkToast = (toast: BookmarkToast) => {
+    setBookmarkToast(toast);
+    setTimeout(() => {
+      setBookmarkToast((current) => (current === toast ? null : current));
+    }, toast.kind === 'saved' ? 3000 : 5000);
+  };
 
   // Comparison mode state
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
@@ -5564,7 +5572,7 @@ export default function MapCanvas() {
           homeChatEnabled={homeChatEnabled}
           onHomeChatEnabledChange={setHomeChatEnabled}
           onOpenBookmarks={() => setIsBookmarksModalOpen(true)}
-          showBookmarkSavedToast={showBookmarkSavedToast}
+          bookmarkToast={bookmarkToast}
         />
       </div>
 
@@ -8652,6 +8660,7 @@ export default function MapCanvas() {
       <button
           onClick={async () => {
             // Show scrim and modal simultaneously - no delay
+            setBookmarkSaveError(null);
             setIsCapturingBookmark(true);
             setIsSaveBookmarkModalOpen(true);
 
@@ -8739,8 +8748,10 @@ export default function MapCanvas() {
               const cropY = 0;
               const cropWidth = mapCanvas.width;
               const cropHeight = mapCanvas.height;
-              // Output at same aspect ratio, scaled to reasonable size
-              const maxDimension = 1920;
+              // Output at same aspect ratio. Capped small because bookmark images live in
+              // localStorage (~5 MB per-origin quota) and a single 1920px JPEG can exceed
+              // 1 MB, so a handful of bookmarks would push the user over the limit.
+              const maxDimension = 800;
               const scale = Math.min(maxDimension / cropWidth, maxDimension / cropHeight, 1);
               const outputWidth = Math.round(cropWidth * scale);
               const outputHeight = Math.round(cropHeight * scale);
@@ -8767,7 +8778,7 @@ export default function MapCanvas() {
                 );
               }
 
-              const dataUrl = compositeCanvas.toDataURL('image/jpeg', 0.8);
+              const dataUrl = compositeCanvas.toDataURL('image/jpeg', 0.7);
               setPendingBookmarkImage(dataUrl);
 
               // Restore original view state
@@ -12761,8 +12772,10 @@ export default function MapCanvas() {
             setIsSaveBookmarkModalOpen(false);
             setIsCapturingBookmark(false);
             setPendingBookmarkImage(null);
+            setBookmarkSaveError(null);
           },
           bookmarkImage: pendingBookmarkImage,
+          errorMessage: bookmarkSaveError,
           contextTitle: selectedRouteId
             ? (() => {
                 const routeName = routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`;
@@ -12994,24 +13007,31 @@ export default function MapCanvas() {
             },
           };
 
-          saveBookmark({
+          setBookmarkSaveError(null);
+          const result = saveBookmark({
             name,
             description,
             state: bookmarkState,
             ...(pendingBookmarkImage && { image: pendingBookmarkImage }),
           });
 
+          if (!result.ok) {
+            const message = messageForBookmarkError(result.kind);
+            setBookmarkSaveError(message);
+            showBookmarkToast({ kind: 'error', message });
+            return false;
+          }
+
           // Clear the pending image and hide scrim
           setPendingBookmarkImage(null);
           setIsCapturingBookmark(false);
 
-            // Show toast notification
-            setShowBookmarkSavedToast(true);
-            setTimeout(() => setShowBookmarkSavedToast(false), 3000);
+          showBookmarkToast({ kind: 'saved' });
 
-            // Refresh bookmarks modal if it's using window.refreshBookmarks
-            const refreshFn = (window as unknown as { refreshBookmarks?: () => void }).refreshBookmarks;
-            if (refreshFn) refreshFn();
+          // Refresh bookmarks modal if it's using window.refreshBookmarks
+          const refreshFn = (window as unknown as { refreshBookmarks?: () => void }).refreshBookmarks;
+          if (refreshFn) refreshFn();
+          return true;
           },
         };
 
@@ -13022,6 +13042,7 @@ export default function MapCanvas() {
       <BookmarksModal
         isOpen={isBookmarksModalOpen}
         onClose={() => setIsBookmarksModalOpen(false)}
+        onBookmarkToast={showBookmarkToast}
         onViewBookmark={(bookmark) => {
           // Restore state from bookmark
           const state = bookmark.state;

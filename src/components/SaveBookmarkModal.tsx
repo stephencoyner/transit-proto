@@ -37,7 +37,9 @@ const getViewIcon = (contextType: string | undefined) => {
 interface SaveBookmarkModalFullScreenProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, description: string) => void;
+  // Returning false (or a Promise resolving to false) keeps the modal open so the user
+  // can see an error message and retry. Returning void is treated as success.
+  onSave: (name: string, description: string) => boolean | void | Promise<boolean | void>;
   initialName?: string;
   initialDescription?: string;
   mode?: 'create' | 'edit';
@@ -46,6 +48,7 @@ interface SaveBookmarkModalFullScreenProps {
   contextSubtitle?: string;
   contextFilters?: string;
   bookmarkImage?: string | null;
+  errorMessage?: string | null;
   // Comparison mode date ranges
   comparisonMode?: boolean;
   primaryDateLabel?: string;
@@ -64,6 +67,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
   contextSubtitle,
   contextFilters,
   bookmarkImage,
+  errorMessage,
   comparisonMode,
   primaryDateLabel,
   comparisonDateLabel,
@@ -71,6 +75,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,16 +83,21 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
     if (isOpen) {
       setName(initialName);
       setDescription(initialDescription);
+      setIsSubmitting(false);
       // Focus the name input when modal opens
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [isOpen, initialName, initialDescription]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      onSave(name.trim(), description.trim());
-      onClose();
+    if (!name.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const result = await onSave(name.trim(), description.trim());
+      if (result !== false) onClose();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -270,6 +280,24 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
           {/* Spacer to push buttons to bottom */}
           <div style={{ flex: 1 }} />
 
+          {errorMessage && (
+            <div
+              role="alert"
+              style={{
+                marginBottom: '12px',
+                padding: '10px 12px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(179, 38, 30, 0.1)',
+                border: '0.5px solid rgba(179, 38, 30, 0.4)',
+                color: '#B3261E',
+                fontSize: '13px',
+                lineHeight: '18px',
+              }}
+            >
+              {errorMessage}
+            </div>
+          )}
+
           {/* Buttons at bottom of panel */}
           <div
             style={{
@@ -291,7 +319,7 @@ const SaveBookmarkModalFullScreen: React.FC<SaveBookmarkModalFullScreenProps> = 
               type="button"
               variant="primary"
               size="medium"
-              disabled={!name.trim()}
+              disabled={!name.trim() || isSubmitting}
               onClick={handleSubmit}
               style={{ minWidth: '100px', whiteSpace: 'nowrap' }}
             >
