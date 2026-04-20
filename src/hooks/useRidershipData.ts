@@ -52,6 +52,23 @@ export function hasCachedData(key: string): boolean {
   return !!entry && Date.now() - entry.timestamp < CACHE_TTL;
 }
 
+// Tracks fetches currently in flight (from prefetch or hooks) so callers can
+// await the existing promise instead of firing a duplicate request. This closes
+// the race where a prefetch is mid-flight when a component's hook mounts for
+// the same cache key — previously each fired its own network request.
+const inflight = new Map<string, Promise<void>>();
+
+export function getInflightFetch(cacheKey: string): Promise<void> | undefined {
+  return inflight.get(cacheKey);
+}
+
+export function registerInflightFetch(cacheKey: string, promise: Promise<void>): void {
+  inflight.set(cacheKey, promise);
+  promise.finally(() => {
+    if (inflight.get(cacheKey) === promise) inflight.delete(cacheKey);
+  });
+}
+
 // Types for hook responses
 interface UseRidershipResult<T> {
   data: T | null;
@@ -99,6 +116,24 @@ function useRidershipFetch<T>(
       return;
     }
 
+    // If a prefetch (or another hook) is already fetching this key, await it
+    // instead of firing a duplicate request.
+    const pending = getInflightFetch(cacheKey);
+    if (pending) {
+      setIsLoading(true);
+      try {
+        await pending;
+        const afterWait = getCachedData<T>(cacheKey);
+        if (afterWait) {
+          setData(afterWait);
+          return;
+        }
+        // Fall through to a fresh fetch if prefetch ultimately didn't populate.
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
     // Cancel any in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -108,27 +143,32 @@ function useRidershipFetch<T>(
     setIsLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(url, {
-        signal: abortControllerRef.current.signal,
-      });
+    const task = (async () => {
+      try {
+        const response = await fetch(url, {
+          signal: abortControllerRef.current!.signal,
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-      const result = await response.json();
-      setCachedData(cacheKey, result);
-      setData(result);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // Request was cancelled, ignore
-        return;
+        const result = await response.json();
+        setCachedData(cacheKey, result);
+        setData(result);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          // Request was cancelled, ignore
+          return;
+        }
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        setIsLoading(false);
       }
-      setError(err instanceof Error ? err : new Error('Unknown error'));
-    } finally {
-      setIsLoading(false);
-    }
+    })();
+
+    registerInflightFetch(cacheKey, task);
+    await task;
   }, [endpoint, filters, enabled]);
 
   useEffect(() => {

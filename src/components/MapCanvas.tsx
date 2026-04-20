@@ -517,7 +517,6 @@ export default function MapCanvas() {
   // Bookmark capture state
   const [isSaveBookmarkModalOpen, setIsSaveBookmarkModalOpen] = useState<boolean>(false);
   const [bookmarkToast, setBookmarkToast] = useState<BookmarkToast | null>(null);
-  const [bookmarkSaveError, setBookmarkSaveError] = useState<string | null>(null);
   const [pendingBookmarkImage, setPendingBookmarkImage] = useState<string | null>(null);
   const [isCapturingBookmark, setIsCapturingBookmark] = useState<boolean>(false);
 
@@ -2628,8 +2627,14 @@ export default function MapCanvas() {
   const prefetchWalkthroughData = useCallback((steps: import('@/types/insights').WalkthroughStep[]) => {
     // Grid endpoint gates segment coloring — include it on the click path so
     // pages 2+ also warm up while the user reads page 1.
-    prefetchWalkthroughSteps(steps, routesList, { includeGrid: true, includeComparison: true });
-  }, [routesList]);
+    // routePatterns is required so prefetched URLs for pattern-scoped steps
+    // include `&direction=` and match the live query's cache key.
+    prefetchWalkthroughSteps(steps, routesList, {
+      includeGrid: true,
+      includeComparison: true,
+      routePatterns,
+    });
+  }, [routesList, routePatterns]);
 
   const handleAnalyzeInsight = useCallback((insight: InsightCardType) => {
     // If insight has walkthrough steps, enter story mode
@@ -4589,10 +4594,13 @@ export default function MapCanvas() {
     })();
   }, [fitToBounds]);
 
-  // Reset pattern filter, trip filters, and sort when route changes
-  // Skip this when restoring a bookmark (filters are restored separately)
+  // Reset pattern filter, trip filters, and sort when route changes.
+  // Skipped when restoring a bookmark (filters are restored separately) and
+  // when in story mode: walkthrough steps pick their own pattern/filters, and
+  // the route id can change during a same-route step (e.g. short name "44" →
+  // full id once routesList loads) which would otherwise wipe the pattern.
   useEffect(() => {
-    if (isRestoringBookmarkRef.current) {
+    if (isRestoringBookmarkRef.current || isStoryMode) {
       return;
     }
     setSelectedPattern(null);
@@ -4604,7 +4612,20 @@ export default function MapCanvas() {
     // Reset sort to default (time ascending)
     setTripSortBy('time');
     setTripSortOrder('asc');
-  }, [selectedRouteId]);
+  }, [selectedRouteId, isStoryMode]);
+
+  // Re-resolve a walkthrough's short-name route id once routesList arrives.
+  // applyWalkthroughStep captures routesList at call time — if the user clicks
+  // a story card before the list finishes loading, selectedRouteId stays as the
+  // short name ('44') which matches nothing in shapes (keyed by full ids like
+  // '100224') and the map renders empty until something else nudges it.
+  useEffect(() => {
+    if (!isStoryMode || !selectedRouteId || routesList.length === 0) return;
+    const match = routesList.find(r => r.shortName === selectedRouteId || r.id === selectedRouteId);
+    if (match && match.id !== selectedRouteId) {
+      setSelectedRouteId(match.id);
+    }
+  }, [routesList, isStoryMode, selectedRouteId]);
 
   // Reset trips scroll position when route or pattern changes
   useEffect(() => {
@@ -8003,13 +8024,16 @@ export default function MapCanvas() {
           style={{
             position: 'fixed',
             top: 0,
-            left: isFiltersPanelOpen ? '716px' : '460px',
+            // Story panel right edge = 72 + 432 = 504. Without the adjustment the scrim starts
+            // inside the panel area and paints a visible tinted band over the left of the map.
+            left: isStoryPanelVisible ? '504px' : (isFiltersPanelOpen ? '716px' : '460px'),
             right: 0,
             bottom: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            // No tint in story mode — the panel itself already frames the loading context.
+            backgroundColor: isStoryPanelVisible ? 'transparent' : 'rgba(255, 255, 255, 0.3)',
             zIndex: 500,
             pointerEvents: 'none',
             transition: 'left 300ms ease-in-out',
@@ -8660,7 +8684,6 @@ export default function MapCanvas() {
       <button
           onClick={async () => {
             // Show scrim and modal simultaneously - no delay
-            setBookmarkSaveError(null);
             setIsCapturingBookmark(true);
             setIsSaveBookmarkModalOpen(true);
 
@@ -8748,10 +8771,10 @@ export default function MapCanvas() {
               const cropY = 0;
               const cropWidth = mapCanvas.width;
               const cropHeight = mapCanvas.height;
-              // Output at same aspect ratio. Capped small because bookmark images live in
-              // localStorage (~5 MB per-origin quota) and a single 1920px JPEG can exceed
-              // 1 MB, so a handful of bookmarks would push the user over the limit.
-              const maxDimension = 800;
+              // Output at same aspect ratio. Capped because bookmark images live in
+              // localStorage (~5 MB per-origin quota); 1400px JPEG @ quality 0.8 is
+              // ~150 KB, so ~25 bookmarks fit alongside the prefetch cache budget.
+              const maxDimension = 1400;
               const scale = Math.min(maxDimension / cropWidth, maxDimension / cropHeight, 1);
               const outputWidth = Math.round(cropWidth * scale);
               const outputHeight = Math.round(cropHeight * scale);
@@ -8778,7 +8801,7 @@ export default function MapCanvas() {
                 );
               }
 
-              const dataUrl = compositeCanvas.toDataURL('image/jpeg', 0.7);
+              const dataUrl = compositeCanvas.toDataURL('image/jpeg', 0.8);
               setPendingBookmarkImage(dataUrl);
 
               // Restore original view state
@@ -12772,10 +12795,8 @@ export default function MapCanvas() {
             setIsSaveBookmarkModalOpen(false);
             setIsCapturingBookmark(false);
             setPendingBookmarkImage(null);
-            setBookmarkSaveError(null);
           },
           bookmarkImage: pendingBookmarkImage,
-          errorMessage: bookmarkSaveError,
           contextTitle: selectedRouteId
             ? (() => {
                 const routeName = routesList.find(r => r.id === selectedRouteId)?.name || `Route ${selectedRouteId}`;
@@ -13007,7 +13028,6 @@ export default function MapCanvas() {
             },
           };
 
-          setBookmarkSaveError(null);
           const result = saveBookmark({
             name,
             description,
@@ -13016,9 +13036,7 @@ export default function MapCanvas() {
           });
 
           if (!result.ok) {
-            const message = messageForBookmarkError(result.kind);
-            setBookmarkSaveError(message);
-            showBookmarkToast({ kind: 'error', message });
+            showBookmarkToast({ kind: 'error', message: messageForBookmarkError(result.kind) });
             return false;
           }
 

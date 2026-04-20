@@ -138,7 +138,6 @@ interface BookmarksModalProps {
 const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onViewBookmark, onBookmarkToast }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
-  const [editError, setEditError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Load bookmarks when modal opens
@@ -172,7 +171,6 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
   };
 
   const handleEdit = (bookmark: Bookmark) => {
-    setEditError(null);
     setEditingBookmark(bookmark);
   };
 
@@ -197,14 +195,11 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
         setBookmarks(getBookmarks());
         return true;
       }
-      const message = messageForBookmarkError(result.kind);
-      setEditError(message);
-      onBookmarkToast?.({ kind: 'error', message });
+      onBookmarkToast?.({ kind: 'error', message: messageForBookmarkError(result.kind) });
       return false;
     }
     setBookmarks(getBookmarks());
     setEditingBookmark(null);
-    setEditError(null);
     return true;
   };
 
@@ -347,13 +342,12 @@ const BookmarksModal: React.FC<BookmarksModalProps> = ({ isOpen, onClose, onView
           return (
             <SaveBookmarkModal
               isOpen={true}
-              onClose={() => { setEditingBookmark(null); setEditError(null); }}
+              onClose={() => setEditingBookmark(null)}
               onSave={handleSaveEdit}
               initialName={editingBookmark.name}
               initialDescription={editingBookmark.description}
               mode="edit"
               bookmarkImage={editingBookmark.image}
-              errorMessage={editError}
               contextTitle={contextTitle}
               contextType={contextType}
               contextSubtitle={contextSubtitle}
